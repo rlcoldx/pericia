@@ -1,0 +1,128 @@
+{% extends "layout/layoutMaster.twig" %}
+
+{% block title %}Templates de E-mail{% endblock %}
+
+{% block body %}
+
+<div class="content-body">
+    <div class="container-fluid">
+        <div class="page-titles">
+            <div class="d-flex flex-wrap align-items-center justify-content-between">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}">Home</a></li>
+                    <li class="breadcrumb-item active"><a href="javascript:void(0)">Templates de E-mail</a></li>
+                </ol>
+                {% if 'email_template_criar'|verifyPermission %}
+                <a href="{{ DOMAIN }}/email-templates/add" class="btn btn-primary">
+                    <i class="fa fa-plus me-2"></i>Novo Template
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="card-title">Templates de E-mail</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-bordered" id="tabelaTemplates">
+                                <thead>
+                                    <tr>
+                                        <th>Tipo</th>
+                                        <th>Assunto</th>
+                                        <th>Status</th>
+                                        <th>Data Criação</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for template in templates %}
+                                    <tr>
+                                        <td>{{ template.tipo }}</td>
+                                        <td>{{ template.assunto }}</td>
+                                        <td>
+                                            {% if template.ativo %}
+                                                <span class="badge badge-success">Ativo</span>
+                                            {% else %}
+                                                <span class="badge badge-danger">Inativo</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ template.data_create|date('d/m/Y H:i') }}</td>
+                                        <td>
+                                            {% if 'email_template_gerenciar'|verifyPermission %}
+                                            <a href="{{ DOMAIN }}/email-templates/editar/{{ template.id }}" class="btn btn-sm btn-primary">
+                                                <i class="fa fa-edit"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-danger btnRemover" data-id="{{ template.id }}">
+                                                <i class="fa fa-trash"></i>
+                                            </button>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr>
+                                        <td colspan="5" class="text-center">Nenhum template cadastrado</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.DOMAIN = '{{ DOMAIN }}';
+
+    (function() {
+        'use strict';
+
+        // Remover template
+        document.querySelectorAll('.btnRemover').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const id = this.getAttribute('data-id');
+
+                Swal.fire({
+                    title: 'Tem certeza?',
+                    text: 'Esta ação não pode ser desfeita!',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Sim, remover!',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        fetch(window.DOMAIN + '/email-templates/remover/' + id, {
+                            method: 'DELETE'
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                Swal.fire('Removido!', data.message, 'success').then(() => {
+                                    window.location.reload();
+                                });
+                            } else {
+                                Swal.fire('Erro!', data.message, 'error');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Erro:', error);
+                            Swal.fire('Erro!', 'Erro ao remover template.', 'error');
+                        });
+                    }
+                });
+            });
+        });
+    })();
+</script>
+{% endblock %}

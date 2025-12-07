@@ -1,0 +1,201 @@
+{% extends "layout/layoutMaster.twig" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block body %}
+
+<div class="content-body">
+    
+    <!-- row -->
+    <div class="container-fluid">
+        <div class="page-titles">
+            <div class="d-flex flex-wrap align-items-center justify-content-between">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}/contas-receber">Controle Financeiro</a></li>
+                    <li class="breadcrumb-item active"><a href="javascript:void(0)">{{ titulo }}</a></li>
+                </ol>
+                {% if 'contas_receber_criar'|verifyPermission %}
+                <a href="{{ DOMAIN }}/contas-receber/add" class="btn btn-primary text-nowrap"><i class="fa-solid fa-plus me-2"></i>Nova Conta</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Estatísticas -->
+        <div class="row">
+            <div class="col-xl-3 col-lg-6 col-sm-6">
+                <div class="widget-stat card">
+                    <div class="card-body p-4">
+                        <div class="media ai-icon">
+                            <span class="me-3 bgl-warning text-warning">
+                                <i class="fa-light fa-clock"></i>
+                            </span>
+                            <div class="media-body">
+                                <p class="mb-1">Pendentes</p>
+                                <h4 class="mb-0">{{ estatisticas.Pendente|default(0) }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-lg-6 col-sm-6">
+                <div class="widget-stat card">
+                    <div class="card-body p-4">
+                        <div class="media ai-icon">
+                            <span class="me-3 bgl-info text-info">
+                                <i class="fa-light fa-percent"></i>
+                            </span>
+                            <div class="media-body">
+                                <p class="mb-1">Parciais</p>
+                                <h4 class="mb-0">{{ estatisticas.Parcial|default(0) }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-lg-6 col-sm-6">
+                <div class="widget-stat card">
+                    <div class="card-body p-4">
+                        <div class="media ai-icon">
+                            <span class="me-3 bgl-success text-success">
+                                <i class="fa-light fa-check-circle"></i>
+                            </span>
+                            <div class="media-body">
+                                <p class="mb-1">Recebidas</p>
+                                <h4 class="mb-0">{{ estatisticas.Recebido|default(0) }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-lg-6 col-sm-6">
+                <div class="widget-stat card">
+                    <div class="card-body p-4">
+                        <div class="media ai-icon">
+                            <span class="me-3 bgl-primary text-primary">
+                                <i class="fa-light fa-wallet"></i>
+                            </span>
+                            <div class="media-body">
+                                <p class="mb-1">Total a Receber</p>
+                                <h4 class="mb-0">R$ {{ totais.total_pendente|default(0)|number_format(2, ',', '.') }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="card">
+            <div class="card-body">
+                <form id="filtrosContasReceber" method="GET" class="row g-3">
+                    <div class="col-md-2">
+                        <label class="form-label">Status</label>
+                        <select name="status" class="form-control">
+                            <option value="">Todos</option>
+                            <option value="Pendente">Pendente</option>
+                            <option value="Parcial">Parcial</option>
+                            <option value="Recebido">Recebido</option>
+                            <option value="Vencido">Vencido</option>
+                            <option value="Cancelado">Cancelado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Situação</label>
+                        <select name="situacao" class="form-control">
+                            <option value="">Todas</option>
+                            <option value="QUESITOS">QUESITOS</option>
+                            <option value="IMPUGNAÇÃO">IMPUGNAÇÃO</option>
+                            <option value="Parecer enviado">Parecer enviado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Data Vencimento Início</label>
+                        <input type="date" name="data_inicio" class="form-control">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Data Vencimento Fim</label>
+                        <input type="date" name="data_fim" class="form-control">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Nº Processo</label>
+                        <input type="text" name="numero_processo" class="form-control" placeholder="Buscar processo">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end gap-2">
+                        <button type="submit" class="btn btn-primary flex-fill"><i class="fa fa-filter me-2"></i>Filtrar</button>
+                        <button type="button" id="btnLimparFiltros" class="btn btn-secondary"><i class="fa fa-times"></i></button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Listagem -->
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title">Lista de Contas a Receber</h4>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table id="datatable-contas-receber" class="table dataTable align-middle">
+                        <thead>
+                            <tr role="row">
+                                <th>Local</th>
+                                <th>Reclamante</th>
+                                <th>Tipo</th>
+                                <th>Etapa</th>
+                                <th>Valor</th>
+                                <th>Processo</th>
+                                <th>Data Perícia</th>
+                                <th>Situação</th>
+                                <th>Nº Pedido</th>
+                                <th>Nº NF</th>
+                                <th>Nº Boleto</th>
+                                <th>Enviado</th>
+                                <th>Prazo</th>
+                                <th>Status</th>
+                                <th>Assistente</th>
+                                <th>Valor Assistente</th>
+                                <th width="150">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Dados carregados via AJAX -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Modal de Confirmação -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Remoção</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja remover esta conta a receber?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmRemover">Sim, Remover</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.DOMAIN = '{{ DOMAIN }}';
+</script>
+<script src="{{ PATH }}/view/assets/vendor/datatables/js/jquery.dataTables.min.js"></script>
+<script src="{{ PATH }}/view/assets/js/datatables/datatables-ajax.js"></script>
+<script src="{{ PATH }}/view/assets/js/pages/datatables/contas-receber-datatable.js"></script>
+{% endblock %}
+

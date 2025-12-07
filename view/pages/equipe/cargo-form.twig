@@ -1,0 +1,236 @@
+{% extends "layout/layoutMaster.twig" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block body %}
+
+<div class="content-body">
+    
+    <!-- row -->
+    <div class="container-fluid">
+        <div class="page-titles">
+            <div class="d-flex flex-wrap align-items-center justify-content-between">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}/equipe">Equipe</a></li>
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}/cargos">Cargos</a></li>
+                    <li class="breadcrumb-item active"><a href="javascript:void(0);">{{ titulo }}</a></li>
+                </ol>
+                <a href="{{ DOMAIN }}/cargos" class="btn btn-secondary">
+                    <i class="fa fa-arrow-left me-2"></i>Voltar
+                </a>
+            </div>
+        </div>
+
+        <form id="formCargo" method="POST">
+            {% if action == 'editar' %}
+                <input type="hidden" name="id" value="{{ cargo.id }}">
+            {% endif %}
+            
+            <div class="row">
+                <div class="col-12 col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h4 class="card-title">{{ titulo }}</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-12 col-md-6 mb-3">
+                                    <label class="form-label">Nome do Cargo <span class="text-danger">*</span></label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           name="nome" 
+                                           value="{{ action == 'editar' ? cargo.nome : '' }}"
+                                           required
+                                           placeholder="Ex: Gerente, Atendente, Recepcionista">
+                                </div>
+                                <div class="col-12 col-md-6 mb-3">
+                                    <label class="form-label">Status</label>
+                                    <select class="form-control" name="status">
+                                        <option value="Ativo" {{ (action == 'editar' and cargo.status == 'Ativo') ? 'selected' : '' }}>Ativo</option>
+                                        <option value="Inativo" {{ (action == 'editar' and cargo.status == 'Inativo') ? 'selected' : '' }}>Inativo</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-12 mb-3">
+                                    <label class="form-label">Descrição</label>
+                                    <textarea class="form-control" 
+                                              name="descricao" 
+                                              rows="3" 
+                                              placeholder="Descreva as responsabilidades e funções deste cargo">{{ action == 'editar' ? cargo.descricao : '' }}</textarea>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-12">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fa fa-save me-2"></i>
+                                        {{ action == 'criar' ? 'Criar Cargo' : 'Atualizar Cargo' }}
+                                    </button>
+                                    <a href="{{ DOMAIN }}/cargos" class="btn btn-secondary ms-2">
+                                        <i class="fa fa-times me-2"></i>Cancelar
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h4 class="card-title">Informações</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-info alert-sm">
+                                <h6><i class="fa fa-info-circle me-2"></i>Como Funciona</h6>
+                                <ul class="mb-0 small">
+                                    <li>Os usuários herdam as permissões do cargo</li>
+                                    <li>Selecione apenas as permissões necessárias</li>
+                                    <li>Você pode editar as permissões a qualquer momento</li>
+                                </ul>
+                            </div>
+                            
+                            {% if action == 'editar' %}
+                            <div class="alert alert-success alert-sm">
+                                <h6><i class="fa fa-briefcase me-2"></i>Dados do Cargo</h6>
+                                <ul class="mb-0 small">
+                                    <li><strong>ID:</strong> {{ cargo.id }}</li>
+                                    <li><strong>Criado em:</strong> {{ cargo.data_create|date("d/m/Y H:i") }}</li>
+                                    <li><strong>Última atualização:</strong> {{ cargo.data_update|date("d/m/Y H:i") }}</li>
+                                </ul>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-12 col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="d-flex justify-content-between align-items-center w-100">
+                                <div class="mb-0">
+                                    <h4 class="card-title mb-0">Permissões</h4>
+                                </div>
+                                <div class="mb-0">
+                                    <button type="button" class="btn btn-sm btn-outline-success" onclick="toggleAllPermissions()">
+                                        <i class="fa fa-check-square me-1"></i>Selecionar Todos
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body" style="max-height: 600px; overflow-y: auto;">
+                            
+                            {% set currentGroup = '' %}
+                            {% for permissao in permissoes %}
+                                {% if permissao.grupo != currentGroup %}
+                                    {% set currentGroup = permissao.grupo %}
+                                    <div class="mb-2 border-bottom border-danger">
+                                        <h6 class="text-danger mb-1">{{ currentGroup }}</h6>
+                                    </div>
+                                {% endif %}
+                                
+                                <div class="form-check form-check-sm mb-1">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           name="permissoes[]" 
+                                           value="{{ permissao.id }}" 
+                                           id="perm_{{ permissao.id }}"
+                                           {{ (action == 'editar' and permissao.id in permissoesCargo) ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="perm_{{ permissao.id }}">
+                                        <strong>{{ permissao.titulo }}</strong>
+                                    </label>
+                                </div>
+                            {% endfor %}
+                            
+                            {% if permissoes|length == 0 %}
+                                <div class="alert alert-warning">
+                                    <i class="fa fa-exclamation-triangle me-2"></i>
+                                    Nenhuma permissão disponível. Execute o script SQL para popular as permissões.
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.getElementById('formCargo').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    // Mostra loading
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin me-2"></i>Salvando...';
+    submitBtn.disabled = true;
+    
+    // Prepara dados do formulário
+    const formData = new FormData(this);
+    
+    // Faz a requisição
+    const url = '{{ DOMAIN }}/cargos/{{ action == "criar" ? "add/save" : "edit/save" }}';
+    
+    fetch(url, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Sucesso!',
+                text: data.message,
+                timer: 2000,
+                showConfirmButton: false
+            }).then(() => {
+                window.location.href = '{{ DOMAIN }}/cargos';
+            });
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro!',
+                text: data.message
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Erro!',
+            text: 'Ocorreu um erro ao salvar o cargo.'
+        });
+    })
+    .finally(() => {
+        // Restaura o botão
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    });
+});
+
+// Função para selecionar/deselecionar todas as permissões
+function toggleAllPermissions() {
+    const checkboxes = document.querySelectorAll('input[name="permissoes[]"]');
+    const checked = Array.from(checkboxes).some(cb => cb.checked);
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = !checked;
+    });
+    
+    // Atualiza o texto do botão
+    const button = document.querySelector('button[onclick="toggleAllPermissions()"]');
+    if (checked) {
+        button.innerHTML = '<i class="fa fa-check-square me-1"></i>Selecionar Todos';
+    } else {
+        button.innerHTML = '<i class="fa fa-square me-1"></i>Deselecionar Todos';
+    }
+}
+</script>
+
+{% endblock %}
+

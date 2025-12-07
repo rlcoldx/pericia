@@ -1,0 +1,268 @@
+{% extends "layout/layoutMaster.twig" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block body %}
+
+<div class="content-body">
+    <div class="container-fluid">
+        <div class="page-titles">
+            <div class="d-flex flex-wrap align-items-center justify-content-between">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}/pareceres">Pareceres</a></li>
+                    <li class="breadcrumb-item active"><a href="javascript:void(0)">{{ titulo }}</a></li>
+                </ol>
+                <a href="{{ DOMAIN }}/pareceres" class="btn btn-secondary">
+                    <i class="fa fa-arrow-left me-2"></i>Voltar
+                </a>
+            </div>
+        </div>
+
+        <form id="formParecer" method="POST">
+            {% if action == 'editar' %}
+                <input type="hidden" name="id" value="{{ parecer.id }}">
+            {% endif %}
+
+            <div class="row">
+                <div class="col-12">
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h4 class="card-title mb-0">
+                                <i class="fa fa-file-medical me-2"></i>Dados do Parecer
+                            </h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-12 col-lg-3 mb-3">
+                                    <label class="form-label">Data da Realização <span class="text-danger">*</span></label>
+                                    <input type="date"
+                                           class="form-control"
+                                           name="data_realizacao"
+                                           value="{{ action == 'editar' ? parecer.data_realizacao : '' }}"
+                                           required>
+                                </div>
+
+                                <div class="col-12 col-lg-3 mb-3">
+                                    <label class="form-label">Data Fatal</label>
+                                    <input type="date"
+                                           class="form-control"
+                                           name="data_fatal"
+                                           value="{{ action == 'editar' ? parecer.data_fatal : '' }}">
+                                </div>
+
+                                <div class="col-12 col-lg-3 mb-3">
+                                    <label class="form-label">Tipo <span class="text-danger">*</span></label>
+                                    <select class="form-control select2-tags" name="tipo" id="tipo" required>
+                                        {% if action == 'editar' %}
+                                        <option value="{{ parecer.tipo }}" selected>{{ parecer.tipo }}</option>
+                                        {% endif %}
+                                        {% for tipo in tipos %}
+                                        {% if action != 'editar' or parecer.tipo != tipo.nome %}
+                                        <option value="{{ tipo.nome }}">{{ tipo.nome }}</option>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                    <small class="form-text">Digite para buscar ou criar um novo tipo</small>
+                                </div>
+
+                                <div class="col-12 col-lg-3 mb-3">
+                                    <label class="form-label">Assistente</label>
+                                    <input type="text"
+                                           class="form-control"
+                                           name="assistente"
+                                           value="{{ action == 'editar' ? parecer.assistente : '' }}"
+                                           placeholder="Nome do assistente">
+                                </div>
+
+                                <div class="col-12 col-lg-3 mb-3">
+                                    <label class="form-label">Reclamada</label>
+                                    <select class="form-control" name="reclamada_id" id="reclamada_id">
+                                        <option value="">Selecione a Reclamada</option>
+                                        {% for reclamada in reclamadas %}
+                                        <option value="{{ reclamada.id }}" {{ action == 'editar' and parecer.reclamada_id == reclamada.id ? 'selected' : '' }}>
+                                            {{ reclamada.nome }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="col-12 col-lg-3 mb-3">
+                                    <label class="form-label">Reclamante</label>
+                                    <select class="form-control" name="reclamante_id" id="reclamante_id">
+                                        <option value="">Selecione o Reclamante</option>
+                                        {% for reclamante in reclamantes %}
+                                        <option value="{{ reclamante.id }}" {{ action == 'editar' and parecer.reclamante_id == reclamante.id ? 'selected' : '' }}>
+                                            {{ reclamante.nome }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="col-12 mb-3">
+                                    <label class="form-label">Função(ões)</label>
+                                    <textarea class="form-control"
+                                              name="funcoes"
+                                              rows="3"
+                                              placeholder="Descreva a(s) função(ões) do parecer">{{ action == 'editar' ? parecer.funcoes : '' }}</textarea>
+                                </div>
+
+                                <div class="col-12 mb-3">
+                                    <label class="form-label">Observações</label>
+                                    <textarea class="form-control"
+                                              name="observacoes"
+                                              rows="4"
+                                              placeholder="Observações sobre o parecer">{{ action == 'editar' ? parecer.observacoes : '' }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-body">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fa fa-save me-2"></i>
+                                {{ action == 'criar' ? 'Cadastrar Parecer' : 'Salvar Alterações' }}
+                            </button>
+                            <a href="{{ DOMAIN }}/pareceres" class="btn btn-secondary ms-2">
+                                <i class="fa fa-times me-2"></i>Cancelar
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.DOMAIN = '{{ DOMAIN }}';
+
+    (function() {
+        'use strict';
+
+        // Inicializar Select2 para Tipo com tags (permite criar novos)
+        $(document).ready(function() {
+            const tipoSelect = $('#tipo');
+            
+            tipoSelect.select2({
+                tags: true,
+                placeholder: 'Selecione ou digite um tipo',
+                allowClear: true,
+                width: '100%',
+                language: {
+                    noResults: function() {
+                        return "Digite para criar um novo tipo";
+                    },
+                    searching: function() {
+                        return "Buscando...";
+                    }
+                },
+                createTag: function (params) {
+                    const term = $.trim(params.term);
+                    if (term === '') {
+                        return null;
+                    }
+                    return {
+                        id: term.toUpperCase(),
+                        text: term.toUpperCase(),
+                        newTag: true
+                    };
+                }
+            });
+
+            // Forçar maiúsculas ao criar nova tag
+            tipoSelect.on('select2:select', function (e) {
+                const data = e.params.data;
+                if (data.newTag) {
+                    const upperValue = data.id.toUpperCase();
+                    if (data.id !== upperValue) {
+                        tipoSelect.val(upperValue).trigger('change');
+                    }
+                }
+            });
+
+            // Forçar maiúsculas ao digitar
+            tipoSelect.on('select2:open', function() {
+                setTimeout(function() {
+                    $('.select2-search__field').on('input', function() {
+                        const val = $(this).val();
+                        if (val && val !== val.toUpperCase()) {
+                            $(this).val(val.toUpperCase());
+                        }
+                    });
+                }, 100);
+            });
+
+            // Inicializar Select2 para Reclamada e Reclamante
+            $('#reclamada_id').select2({
+                placeholder: 'Selecione a Reclamada',
+                allowClear: true,
+                width: '100%'
+            });
+
+            $('#reclamante_id').select2({
+                placeholder: 'Selecione o Reclamante',
+                allowClear: true,
+                width: '100%'
+            });
+        });
+
+        const form = document.getElementById('formParecer');
+        if (!form) return;
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin me-2"></i>Salvando...';
+            submitBtn.disabled = true;
+
+            const formData = new FormData(form);
+            const isEdit = !!form.querySelector('input[name="id"]');
+            const url = window.DOMAIN + (isEdit ? '/pareceres/editar/save' : '/pareceres/add/save');
+
+            fetch(url, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Sucesso!',
+                        text: data.message,
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.href = window.DOMAIN + '/pareceres';
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Erro!',
+                        text: data.message
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro!',
+                    text: 'Ocorreu um erro ao salvar o parecer.'
+                });
+            })
+            .finally(() => {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
+        });
+    })();
+</script>
+{% endblock %}

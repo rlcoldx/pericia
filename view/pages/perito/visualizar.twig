@@ -1,0 +1,153 @@
+{% extends "layout/layoutMaster.twig" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block body %}
+
+<div class="content-body">
+    
+    <!-- row -->
+    <div class="container-fluid">
+        <div class="page-titles">
+            <div class="d-flex flex-wrap align-items-center justify-content-between">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}/perito">Peritos</a></li>
+                    <li class="breadcrumb-item active"><a href="javascript:void(0)">{{ titulo }}</a></li>
+                </ol>
+                <div>
+                    {% if 'perito_editar'|verifyPermission %}
+                    <a href="{{ DOMAIN }}/perito/edit/{{ perito.id }}" class="btn btn-success me-2">
+                        <i class="fa fa-pencil me-2"></i>Editar
+                    </a>
+                    {% endif %}
+                    <a href="{{ DOMAIN }}/perito" class="btn btn-secondary">
+                        <i class="fa fa-arrow-left me-2"></i>Voltar
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12 col-lg-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="card-title">{{ perito.nome }}</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Nome Completo</label>
+                                <p class="mb-0">{{ perito.nome }}</p>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Status</label>
+                                <p class="mb-0">
+                                    <span class="badge bg-{{ perito.status == 'Ativo' ? 'success' : 'danger' }}">
+                                        {{ perito.status }}
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+
+                        {% if perito.documento %}
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">{{ perito.tipo_documento }}</label>
+                                <p class="mb-0">{{ perito.documento }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if perito.email or perito.telefone %}
+                        <div class="row">
+                            {% if perito.email %}
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Email</label>
+                                <p class="mb-0">
+                                    <a href="mailto:{{ perito.email }}" class="text-primary">{{ perito.email }}</a>
+                                </p>
+                            </div>
+                            {% endif %}
+                            {% if perito.telefone %}
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Telefone</label>
+                                <p class="mb-0">
+                                    <a href="tel:{{ perito.telefone }}" class="text-success">{{ perito.telefone }}</a>
+                                </p>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+
+                        {% if perito.especialidade or perito.registro_profissional %}
+                        <hr>
+                        <h5 class="mb-4">Dados Profissionais</h5>
+                        <div class="row">
+                            {% if perito.especialidade %}
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Especialidade</label>
+                                <p class="mb-0">
+                                    <span class="badge bg-info">{{ perito.especialidade }}</span>
+                                </p>
+                            </div>
+                            {% endif %}
+                            {% if perito.registro_profissional %}
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Registro Profissional</label>
+                                <p class="mb-0">
+                                    <strong>{{ perito.registro_profissional }}</strong>
+                                    {% if perito.tipo_registro %}
+                                    <br><small>{{ perito.tipo_registro }}</small>
+                                    {% endif %}
+                                </p>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+
+                        {% if perito.observacoes %}
+                        <hr>
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label class="form-label fw-bold">Observações</label>
+                                <p class="mb-0">{{ perito.observacoes|nl2br }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-12 col-lg-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="card-title">Informações do Cadastro</h4>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-unstyled mb-0">
+                            <li class="mb-3">
+                                <strong>ID:</strong><br>
+                                <span>{{ perito.id }}</span>
+                            </li>
+                            <li class="mb-3">
+                                <strong>Criado em:</strong><br>
+                                <span>{{ perito.data_create|date("d/m/Y H:i") }}</span>
+                            </li>
+                            {% if perito.data_update %}
+                            <li class="mb-3">
+                                <strong>Atualizado em:</strong><br>
+                                <span>{{ perito.data_update|date("d/m/Y H:i") }}</span>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}
+

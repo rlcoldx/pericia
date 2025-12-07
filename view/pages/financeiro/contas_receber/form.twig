@@ -1,0 +1,353 @@
+{% extends "layout/layoutMaster.twig" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block body %}
+
+<div class="content-body">
+    <div class="container-fluid">
+        <div class="page-titles">
+            <div class="d-flex flex-wrap align-items-center justify-content-between">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}/contas-receber">Contas a Receber</a></li>
+                    <li class="breadcrumb-item active"><a href="javascript:void(0)">{{ titulo }}</a></li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title">{{ titulo }}</h4>
+            </div>
+            <div class="card-body">
+                <form id="formContaReceber">
+                    {% if action == 'editar' %}
+                    <input type="hidden" name="id" value="{{ conta.id }}">
+                    {% endif %}
+                    
+                    <!-- Seção: Dados do Agendamento -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">Vincular a Agendamento</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-12 mb-3">
+                                    <label class="form-label">Agendamento</label>
+                                    <select name="agendamento_id" id="agendamento_id" class="form-control select2">
+                                        <option value="">Selecione um agendamento (opcional)</option>
+                                        {% for agendamento in agendamentos %}
+                                        <option value="{{ agendamento.id }}" 
+                                                data-cliente="{{ agendamento.cliente_nome }}"
+                                                data-local="{{ agendamento.local_pericia|default('') }}"
+                                                data-reclamante="{{ agendamento.reclamante_nome|default('') }}"
+                                                data-processo="{{ agendamento.numero_processo|default('') }}"
+                                                data-valor="{{ agendamento.valor_pericia_cobrado|default('0') }}"
+                                                data-data-pericia="{{ agendamento.data_realizada|default('') }}"
+                                                data-assistente="{{ agendamento.assistente_nome|default('') }}"
+                                                data-valor-assistente="{{ agendamento.valor_pago_assistente|default('0') }}"
+                                                data-nota-fiscal="{{ agendamento.numero_nota_fiscal|default('') }}"
+                                                data-boleto="{{ agendamento.numero_boleto|default('') }}"
+                                                data-pedido="{{ agendamento.numero_pedido_cliente|default('') }}"
+                                                data-envio="{{ agendamento.data_envio_financeiro|default('') }}"
+                                                data-vencimento="{{ agendamento.data_vencimento_financeiro|default('') }}"
+                                                {{ (conta.agendamento_id|default('') == agendamento.id) ? 'selected' : '' }}>
+                                            {{ agendamento.cliente_nome }} - {{ agendamento.data_agendamento|date('d/m/Y') }} - {{ agendamento.tipo_pericia|default('') }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                    <small class="form-text">Ao selecionar um agendamento, os campos serão preenchidos automaticamente</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Seção: Dados Principais -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">Dados Principais</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Descrição <span class="text-danger">*</span></label>
+                                    <input type="text" name="descricao" id="descricao" class="form-control" value="{{ conta.descricao|default('') }}" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Cliente <span class="text-danger">*</span></label>
+                                    <input type="text" name="cliente_nome" id="cliente_nome" class="form-control" value="{{ conta.cliente_nome|default('') }}" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">CPF/CNPJ</label>
+                                    <input type="text" name="cliente_documento" class="form-control" value="{{ conta.cliente_documento|default('') }}">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Local da Perícia</label>
+                                    <input type="text" name="local_pericia" id="local_pericia" class="form-control" value="{{ conta.local_pericia|default('') }}">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Reclamante</label>
+                                    <input type="text" name="reclamante_nome" id="reclamante_nome" class="form-control" value="{{ conta.reclamante_nome|default('') }}">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Número do Processo</label>
+                                    <input type="text" name="numero_processo" id="numero_processo" class="form-control" value="{{ conta.numero_processo|default('') }}">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Tipo</label>
+                                    <select name="tipo" class="form-control">
+                                        <option value="Perícia" {{ conta.tipo|default('Perícia') == 'Perícia' ? 'selected' : '' }}>Perícia</option>
+                                        <option value="Serviço" {{ conta.tipo|default('') == 'Serviço' ? 'selected' : '' }}>Serviço</option>
+                                        <option value="Outro" {{ conta.tipo|default('') == 'Outro' ? 'selected' : '' }}>Outro</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Etapa</label>
+                                    <input type="text" name="etapa" class="form-control" value="{{ conta.etapa|default('PERICIA') }}" readonly>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Seção: Valores -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">Valores</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Valor Total <span class="text-danger">*</span></label>
+                                    <input type="text" name="valor_total" id="valor_total" class="form-control money" value="{{ conta.valor_total|default('0')|number_format(2, ',', '.') }}" required>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Valor Recebido</label>
+                                    <input type="text" name="valor_recebido" class="form-control money" value="{{ conta.valor_recebido|default('0')|number_format(2, ',', '.') }}">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Valor Assistente</label>
+                                    <input type="text" name="valor_assistente" id="valor_assistente" class="form-control money" value="{{ conta.valor_assistente|default('0')|number_format(2, ',', '.') }}">
+                                    <small class="form-text">Valor a ser pago ao assistente</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Seção: Datas -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">Datas</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label">Data Emissão</label>
+                                    <input type="date" name="data_emissao" class="form-control" value="{{ conta.data_emissao|default('now'|date('Y-m-d')) }}">
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label">Data da Perícia</label>
+                                    <input type="date" name="data_pericia" id="data_pericia" class="form-control" value="{{ conta.data_pericia|default('') }}">
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label">Data Envio</label>
+                                    <input type="date" name="data_envio" id="data_envio" class="form-control" value="{{ conta.data_envio|default('') }}">
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label">Data Vencimento <span class="text-danger">*</span></label>
+                                    <input type="date" name="data_vencimento" id="data_vencimento" class="form-control" value="{{ conta.data_vencimento|default('') }}" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Seção: Situação -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">Situação</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Situação</label>
+                                    <select name="situacao" class="form-control">
+                                        <option value="">Selecione...</option>
+                                        <option value="QUESITOS" {{ conta.situacao|default('') == 'QUESITOS' ? 'selected' : '' }}>QUESITOS</option>
+                                        <option value="IMPUGNAÇÃO" {{ conta.situacao|default('') == 'IMPUGNAÇÃO' ? 'selected' : '' }}>IMPUGNAÇÃO</option>
+                                        <option value="Parecer enviado" {{ conta.situacao|default('') == 'Parecer enviado' ? 'selected' : '' }}>Parecer enviado</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Data da Situação</label>
+                                    <input type="date" name="data_situacao" class="form-control" value="{{ conta.data_situacao|default('') }}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Seção: Documentos Financeiros -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">Documentos Financeiros</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Nº Pedido</label>
+                                    <input type="text" name="numero_pedido_cliente" id="numero_pedido_cliente" class="form-control" value="{{ conta.numero_pedido_cliente|default('') }}" readonly>
+                                    <small class="form-text">Vinculado ao agendamento</small>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Nº Nota Fiscal</label>
+                                    <input type="text" name="numero_nota_fiscal" id="numero_nota_fiscal" class="form-control" value="{{ conta.numero_nota_fiscal|default('') }}">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Nº Boleto</label>
+                                    <input type="text" name="numero_boleto" id="numero_boleto" class="form-control" value="{{ conta.numero_boleto|default('') }}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Seção: Assistente -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">Assistente</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Nome do Assistente</label>
+                                    <input type="text" name="assistente_nome" id="assistente_nome" class="form-control" value="{{ conta.assistente_nome|default('') }}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Seção: Observações -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">Observações</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-12 mb-3">
+                                    <label class="form-label">Observações</label>
+                                    <textarea name="observacoes" class="form-control" rows="3">{{ conta.observacoes|default('') }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa-solid fa-save me-2"></i>Salvar
+                        </button>
+                        <a href="{{ DOMAIN }}/contas-receber" class="btn btn-secondary">
+                            <i class="fa-solid fa-times me-2"></i>Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.DOMAIN = '{{ DOMAIN }}';
+    window.ACTION = '{{ action }}';
+</script>
+<script src="{{ PATH }}/view/assets/js/jquery.mask.js"></script>
+<script>
+    $(document).ready(function() {
+        $('.money').mask('#.##0,00', {reverse: true});
+        
+        // Inicializa Select2 com busca
+        $('#agendamento_id').select2({
+            placeholder: 'Selecione um agendamento (opcional)',
+            allowClear: true,
+            width: '100%',
+            language: {
+                noResults: function() {
+                    return "Nenhum agendamento encontrado";
+                },
+                searching: function() {
+                    return "Buscando...";
+                }
+            }
+        });
+        
+        // Preenche campos automaticamente ao selecionar agendamento
+        $('#agendamento_id').on('change', function() {
+            const selectedValue = $(this).val();
+            if (selectedValue) {
+                const option = $(this).find('option:selected');
+                $('#cliente_nome').val(option.data('cliente'));
+                $('#local_pericia').val(option.data('local'));
+                $('#reclamante_nome').val(option.data('reclamante'));
+                $('#numero_processo').val(option.data('processo'));
+                $('#valor_total').val(parseFloat(option.data('valor')).toFixed(2).replace('.', ','));
+                $('#data_pericia').val(option.data('data-pericia'));
+                $('#assistente_nome').val(option.data('assistente'));
+                $('#valor_assistente').val(parseFloat(option.data('valor-assistente')).toFixed(2).replace('.', ','));
+                $('#numero_nota_fiscal').val(option.data('nota-fiscal'));
+                $('#numero_boleto').val(option.data('boleto'));
+                $('#numero_pedido_cliente').val(option.data('pedido'));
+                $('#data_envio').val(option.data('envio'));
+                $('#data_vencimento').val(option.data('vencimento'));
+            } else {
+                // Limpa campos se nenhum agendamento for selecionado
+                $('#cliente_nome').val('');
+                $('#local_pericia').val('');
+                $('#reclamante_nome').val('');
+                $('#numero_processo').val('');
+                $('#valor_total').val('0,00');
+                $('#data_pericia').val('');
+                $('#assistente_nome').val('');
+                $('#valor_assistente').val('0,00');
+                $('#numero_nota_fiscal').val('');
+                $('#numero_boleto').val('');
+                $('#numero_pedido_cliente').val('');
+                $('#data_envio').val('');
+                $('#data_vencimento').val('');
+            }
+        });
+        
+        $('#formContaReceber').on('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const url = ACTION === 'criar' ? DOMAIN + '/contas-receber/add/save' : DOMAIN + '/contas-receber/edit/save';
+            
+            fetch(url, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Sucesso!',
+                        text: data.message,
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.href = DOMAIN + '/contas-receber';
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Erro!',
+                        text: data.message
+                    });
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}
+

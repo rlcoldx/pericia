@@ -1,0 +1,164 @@
+{% extends "layout/layoutMaster.twig" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block body %}
+
+<div class="content-body">
+    <div class="container-fluid">
+        <div class="page-titles">
+            <div class="d-flex flex-wrap align-items-center justify-content-between">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}/contas-receber">Contas a Receber</a></li>
+                    <li class="breadcrumb-item active"><a href="javascript:void(0)">{{ titulo }}</a></li>
+                </ol>
+                {% if 'contas_receber_editar'|verifyPermission %}
+                <a href="{{ DOMAIN }}/contas-receber/edit/{{ conta.id }}" class="btn btn-primary">
+                    <i class="fa-solid fa-pencil me-2"></i>Editar
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title">{{ titulo }}</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <h5>Dados Principais</h5>
+                        <hr>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Descrição:</strong><br>
+                        {{ conta.descricao }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Cliente:</strong><br>
+                        {{ conta.cliente_nome }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>CPF/CNPJ:</strong><br>
+                        {{ conta.cliente_documento|default('-') }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Local da Perícia:</strong><br>
+                        {{ conta.local_pericia|default('-') }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Reclamante:</strong><br>
+                        {{ conta.reclamante_nome|default('-') }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Número do Processo:</strong><br>
+                        {{ conta.numero_processo|default('-') }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Tipo:</strong><br>
+                        {{ conta.tipo|default('-') }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Etapa:</strong><br>
+                        {{ conta.etapa|default('PERICIA') }}
+                    </div>
+                    
+                    <div class="col-md-12 mb-3 mt-3">
+                        <h5>Valores</h5>
+                        <hr>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <strong>Valor Total:</strong><br>
+                        R$ {{ conta.valor_total|number_format(2, ',', '.') }}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <strong>Valor Recebido:</strong><br>
+                        R$ {{ conta.valor_recebido|number_format(2, ',', '.') }}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <strong>Valor Pendente:</strong><br>
+                        R$ {{ conta.valor_pendente|number_format(2, ',', '.') }}
+                    </div>
+                    
+                    <div class="col-md-12 mb-3 mt-3">
+                        <h5>Datas</h5>
+                        <hr>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <strong>Data Emissão:</strong><br>
+                        {{ conta.data_emissao ? conta.data_emissao|date('d/m/Y') : '-' }}
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <strong>Data da Perícia:</strong><br>
+                        {{ conta.data_pericia ? conta.data_pericia|date('d/m/Y') : '-' }}
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <strong>Data Envio:</strong><br>
+                        {{ conta.data_envio ? conta.data_envio|date('d/m/Y') : '-' }}
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <strong>Data Vencimento:</strong><br>
+                        {{ conta.data_vencimento|date('d/m/Y') }}
+                    </div>
+                    
+                    <div class="col-md-12 mb-3 mt-3">
+                        <h5>Situação</h5>
+                        <hr>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Situação:</strong><br>
+                        {{ conta.situacao|default('-') }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Data da Situação:</strong><br>
+                        {{ conta.data_situacao ? conta.data_situacao|date('d/m/Y') : '-' }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Status:</strong><br>
+                        <span class="badge badge-{{ conta.status == 'Recebido' ? 'success' : (conta.status == 'Vencido' ? 'danger' : 'warning') }}">
+                            {{ conta.status }}
+                        </span>
+                    </div>
+                    
+                    <div class="col-md-12 mb-3 mt-3">
+                        <h5>Documentos Financeiros</h5>
+                        <hr>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <strong>Nº Nota Fiscal:</strong><br>
+                        {{ conta.numero_nota_fiscal|default('-') }}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <strong>Nº Boleto:</strong><br>
+                        {{ conta.numero_boleto|default('-') }}
+                    </div>
+                    
+                    <div class="col-md-12 mb-3 mt-3">
+                        <h5>Assistente</h5>
+                        <hr>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Nome do Assistente:</strong><br>
+                        {{ conta.assistente_nome|default('-') }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Valor do Assistente:</strong><br>
+                        {{ conta.valor_assistente ? 'R$ ' ~ conta.valor_assistente|number_format(2, ',', '.') : '-' }}
+                    </div>
+                    
+                    {% if conta.observacoes %}
+                    <div class="col-md-12 mb-3 mt-3">
+                        <h5>Observações</h5>
+                        <hr>
+                        <p>{{ conta.observacoes }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+

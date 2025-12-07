@@ -1,0 +1,235 @@
+<div class="deznav">
+    <div class="deznav-scroll">
+		<ul class="metismenu" id="menu">
+            <li>
+                <a class="ai-icon" href="{{ DOMAIN }}">
+					<i class="fa-light fa-home"></i>
+					<span class="nav-text">Página Inicial</span>
+				</a>
+            </li>
+            {% if 'equipe_ver'|verifyPermission or 'cargos_ver'|verifyPermission %}
+			<li>
+				<a class="has-arrow ai-icon" href="javascript:void(0)" aria-expanded="false">
+					<i class="fa-light fa-users"></i>
+					<span class="nav-text">Usuários</span>
+				</a>
+				<ul aria-expanded="false">
+					{% if 'equipe_ver'|verifyPermission %}
+					<li><a href="{{ DOMAIN }}/equipe">Listar Todos</a></li>
+					{% endif %}
+					{% if 'equipe_criar'|verifyPermission %}
+					<li><a href="{{ DOMAIN }}/equipe/add">Add Novo</a></li>
+					{% endif %}
+					{% if 'cargos_ver'|verifyPermission %}
+					<li><a href="{{ DOMAIN }}/cargos">Gerenciar Cargos</a></li>
+					{% endif %}
+				</ul>
+			</li>
+			{% endif %}
+
+			{% if 'perito_ver'|verifyPermission or 'perito_criar'|verifyPermission %}
+			<li>
+				<a class="has-arrow ai-icon" href="javascript:void(0)" aria-expanded="false">
+					<i class="fa-light fa-user-doctor"></i>
+					<span class="nav-text">Peritos</span>
+				</a>
+				<ul aria-expanded="false">
+					{% if 'perito_ver'|verifyPermission %}
+					<li><a href="{{ DOMAIN }}/perito">Listar Todos</a></li>
+					{% endif %}
+					{% if 'perito_criar'|verifyPermission %}
+					<li><a href="{{ DOMAIN }}/perito/add">Novo Perito</a></li>
+					{% endif %}
+				</ul>
+			</li>
+			{% endif %}
+
+			{% if 'reclamada_ver'|verifyPermission or 'reclamada_criar'|verifyPermission %}
+			<li>
+				<a class="has-arrow ai-icon" href="javascript:void(0)" aria-expanded="false">
+					<i class="fa-light fa-building"></i>
+					<span class="nav-text">Reclamadas</span>
+				</a>
+				<ul aria-expanded="false">
+					{% if 'reclamada_ver'|verifyPermission %}
+					<li><a href="{{ DOMAIN }}/reclamadas">Listar Todas</a></li>
+					{% endif %}
+					{% if 'reclamada_criar'|verifyPermission %}
+					<li><a href="{{ DOMAIN }}/reclamadas/add">Nova Reclamada</a></li>
+					{% endif %}
+				</ul>
+			</li>
+			{% endif %}
+
+			{% if 'reclamante_ver'|verifyPermission or 'reclamante_criar'|verifyPermission %}
+			<li>
+				<a class="has-arrow ai-icon" href="javascript:void(0)" aria-expanded="false">
+					<i class="fa-light fa-user"></i>
+					<span class="nav-text">Reclamantes</span>
+				</a>
+				<ul aria-expanded="false">
+					{% if 'reclamante_ver'|verifyPermission %}
+					<li><a href="{{ DOMAIN }}/reclamantes">Listar Todos</a></li>
+					{% endif %}
+					{% if 'reclamante_criar'|verifyPermission %}
+					<li><a href="{{ DOMAIN }}/reclamantes/add">Novo Reclamante</a></li>
+					{% endif %}
+				</ul>
+			</li>
+			{% endif %}
+
+			{% if 'quesito_cadastrar'|verifyPermission or 'quesito_gerenciar'|verifyPermission %}
+			<li class="separator">
+				<span>Quesitos</span>
+			</li>
+			{% if 'quesito_gerenciar'|verifyPermission %}
+			<li><a class="ai-icon" href="{{ DOMAIN }}/quesitos"><i class="fa-light fa-file-alt"></i><span class="nav-text">  Lista de Quesitos</span></a></li>
+			{% endif %}
+			{% if 'quesito_cadastrar'|verifyPermission %}
+			<li><a href="{{ DOMAIN }}/quesitos/add" class="ai-icon"><i class="fa-solid fa-plus"></i> Novo Quesito</a></li>
+			{% endif %}
+			{% endif %}
+
+			{% if 'manifestacao_impugnacao_ver'|verifyPermission or 'manifestacao_impugnacao_criar'|verifyPermission %}
+			<li class="separator">
+				<span>Manifestações</span>
+			</li>
+			{% if 'manifestacao_impugnacao_ver'|verifyPermission %}
+			<li><a class="ai-icon" href="{{ DOMAIN }}/manifestacoes-impugnacoes"><i class="fa-light fa-file-contract"></i><span class="nav-text">  Lista de Manifestações</span></a></li>
+			{% endif %}
+			{% if 'manifestacao_impugnacao_criar'|verifyPermission %}
+			<li><a href="{{ DOMAIN }}/manifestacoes-impugnacoes/add" class="ai-icon"><i class="fa-solid fa-plus"></i> Nova Manifestação</a></li>
+			{% endif %}
+			{% endif %}
+
+			{% if 'parecer_ver'|verifyPermission or 'parecer_cadastrar'|verifyPermission %}
+			<li class="separator">
+				<span>Pareceres</span>
+			</li>
+			{% if 'parecer_ver'|verifyPermission %}
+			<li><a class="ai-icon" href="{{ DOMAIN }}/pareceres"><i class="fa-light fa-file-medical"></i><span class="nav-text">  Lista de Pareceres</span></a></li>
+			{% endif %}
+			{% if 'parecer_cadastrar'|verifyPermission %}
+			<li><a href="{{ DOMAIN }}/pareceres/add" class="ai-icon"><i class="fa-solid fa-plus"></i> Novo Parecer</a></li>
+			{% endif %}
+			{% endif %}
+
+			{% if 'agendamento_ver'|verifyPermission or 'agendamento_criar'|verifyPermission %}
+			<li class="separator">
+				<span>Agendamentos</span>
+			</li>
+			{% endif %}
+
+            {% if 'agendamento_ver'|verifyPermission %}
+				<li>
+					<a class="has-arrow ai-icon" href="javascript:void(0)" aria-expanded="false">
+						<i class="fa-light fa-list"></i>
+						<span class="nav-text">Agendamentos</span>
+					</a>
+					<ul aria-expanded="false">
+						{% if 'agendamento_ver'|verifyPermission %}
+						<li><a href="{{ DOMAIN }}/agendamento">Listar Agendamentos</a></li>
+						{% endif %}
+						{% if 'agendamento_criar'|verifyPermission %}
+						<li><a href="{{ DOMAIN }}/agendamento/add">Novo Agendamento</a></li>
+						{% endif %}
+					</ul>
+				</li>
+
+				{% if 'agendamento_ver'|verifyPermission %}
+				<li>
+					<a class="ai-icon" href="{{ DOMAIN }}/agendamento/calendario">
+						<i class="fa-light fa-calendar"></i>
+						<span class="nav-text">Calendário</span>
+					</a>
+				</li>
+				{% endif %}
+			{% endif %}
+
+			{% if 'contas_receber_ver'|verifyPermission or 'faturamento_ver'|verifyPermission or 'relatorio_financeiro_ver'|verifyPermission or 'pagamento_recebimento_ver'|verifyPermission %}
+			<li class="separator">
+				<span>Controle Financeiro</span>
+			</li>
+			{% endif %}
+			
+			{% if 'contas_receber_ver'|verifyPermission or 'contas_receber_criar'|verifyPermission %}
+			<li>
+				<a class="has-arrow ai-icon" href="javascript:void(0)" aria-expanded="false">
+					<i class="fa-light fa-wallet"></i>
+					<span class="nav-text">Contas a Receber</span>
+				</a>
+				<ul aria-expanded="false">
+					{% if 'contas_receber_ver'|verifyPermission %}
+					<li><a href="{{ DOMAIN }}/contas-receber/estatisticas">Estatísticas</a></li>
+					{% endif %}
+					{% if 'contas_receber_ver'|verifyPermission %}
+					<li><a href="{{ DOMAIN }}/contas-receber">Listar Contas</a></li>
+					{% endif %}
+					{% if 'contas_receber_criar'|verifyPermission %}
+					<li><a href="{{ DOMAIN }}/contas-receber/add">Nova Conta</a></li>
+					{% endif %}
+				</ul>
+			</li>
+			{% endif %}
+			
+			{% if 'faturamento_ver'|verifyPermission or 'faturamento_criar'|verifyPermission %}
+			<li>
+				<a class="has-arrow ai-icon" href="javascript:void(0)" aria-expanded="false">
+					<i class="fa-light fa-file-invoice"></i>
+					<span class="nav-text">Faturamento</span>
+				</a>
+				<ul aria-expanded="false">
+					{% if 'faturamento_ver'|verifyPermission %}
+					<li><a href="{{ DOMAIN }}/faturamento">Listar Faturas</a></li>
+					{% endif %}
+					{% if 'faturamento_criar'|verifyPermission %}
+					<li><a href="{{ DOMAIN }}/faturamento/add">Nova Fatura</a></li>
+					{% endif %}
+				</ul>
+			</li>
+			{% endif %}
+			
+			{% if 'pagamento_recebimento_ver'|verifyPermission or 'pagamento_recebimento_criar'|verifyPermission %}
+			<li>
+				<a class="has-arrow ai-icon" href="javascript:void(0)" aria-expanded="false">
+					<i class="fa-light fa-exchange-alt"></i>
+					<span class="nav-text">Pagamentos</span>
+				</a>
+				<ul aria-expanded="false">
+					{% if 'pagamento_recebimento_ver'|verifyPermission %}
+					<li><a href="{{ DOMAIN }}/recebimentos">Recebimentos</a></li>
+					<li><a href="{{ DOMAIN }}/pagamentos">Pagamentos</a></li>
+					{% endif %}
+					{% if 'pagamento_recebimento_criar'|verifyPermission %}
+					<li><a href="{{ DOMAIN }}/recebimentos/add">Novo Recebimento</a></li>
+					<li><a href="{{ DOMAIN }}/pagamentos/add">Novo Pagamento</a></li>
+					{% endif %}
+				</ul>
+			</li>
+			{% endif %}
+			
+			{% if 'relatorio_financeiro_ver'|verifyPermission %}
+			<li>
+				<a class="ai-icon" href="{{ DOMAIN }}/relatorio-financeiro">
+					<i class="fa-light fa-chart-line"></i>
+					<span class="nav-text">Relatórios Financeiros</span>
+				</a>
+			</li>
+			{% endif %}
+
+			{% if 'email_template_ver'|verifyPermission or 'email_template_criar'|verifyPermission %}
+			<li class="separator">
+				<span>Configurações</span>
+			</li>
+			{% if 'email_template_ver'|verifyPermission %}
+			<li>
+				<a class="ai-icon" href="{{ DOMAIN }}/email-templates">
+					<i class="fa-light fa-envelope"></i>
+					<span class="nav-text">Templates de E-mail</span>
+				</a>
+			</li>
+			{% endif %}
+			{% endif %}
+        </ul>
+	</div>
+</div>

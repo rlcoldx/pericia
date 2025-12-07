@@ -1,0 +1,114 @@
+{% extends "layout/layoutMaster.twig" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block body %}
+
+<div class="content-body">
+    <div class="container-fluid">
+        <div class="page-titles">
+            <div class="d-flex flex-wrap align-items-center justify-content-between">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}/recebimentos">Recebimentos</a></li>
+                    <li class="breadcrumb-item active"><a href="javascript:void(0)">{{ titulo }}</a></li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title">{{ titulo }}</h4>
+            </div>
+            <div class="card-body">
+                <form id="formRecebimento">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Descrição <span class="text-danger">*</span></label>
+                            <input type="text" name="descricao" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Valor <span class="text-danger">*</span></label>
+                            <input type="text" name="valor" class="form-control money" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Data Recebimento <span class="text-danger">*</span></label>
+                            <input type="date" name="data_recebimento" class="form-control" value="{{ 'now'|date('Y-m-d') }}" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Forma Pagamento</label>
+                            <select name="forma_pagamento" class="form-control">
+                                <option value="Transferência">Transferência</option>
+                                <option value="PIX">PIX</option>
+                                <option value="Boleto">Boleto</option>
+                                <option value="Dinheiro">Dinheiro</option>
+                                <option value="Cartão Crédito">Cartão Crédito</option>
+                                <option value="Cartão Débito">Cartão Débito</option>
+                                <option value="Cheque">Cheque</option>
+                            </select>
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label">Observações</label>
+                            <textarea name="observacoes" class="form-control" rows="3"></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa-solid fa-save me-2"></i>Salvar
+                        </button>
+                        <a href="{{ DOMAIN }}/recebimentos" class="btn btn-secondary">
+                            <i class="fa-solid fa-times me-2"></i>Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.DOMAIN = '{{ DOMAIN }}';
+</script>
+<script src="{{ PATH }}/view/assets/js/jquery.mask.js"></script>
+<script>
+    $(document).ready(function() {
+        $('.money').mask('#.##0,00', {reverse: true});
+        
+        $('#formRecebimento').on('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            
+            fetch(DOMAIN + '/recebimentos/add/save', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Sucesso!',
+                        text: data.message,
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.href = DOMAIN + '/recebimentos';
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Erro!',
+                        text: data.message
+                    });
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}
+

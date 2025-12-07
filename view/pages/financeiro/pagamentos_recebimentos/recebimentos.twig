@@ -1,0 +1,160 @@
+{% extends "layout/layoutMaster.twig" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block body %}
+
+<div class="content-body">
+    
+    <div class="container-fluid">
+        <div class="page-titles">
+            <div class="d-flex flex-wrap align-items-center justify-content-between">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}/recebimentos">Controle Financeiro</a></li>
+                    <li class="breadcrumb-item active"><a href="javascript:void(0)">{{ titulo }}</a></li>
+                </ol>
+                {% if 'pagamento_recebimento_criar'|verifyPermission %}
+                <a href="{{ DOMAIN }}/recebimentos/add" class="btn btn-primary text-nowrap"><i class="fa-solid fa-plus me-2"></i>Novo Recebimento</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Estatísticas -->
+        <div class="row">
+            <div class="col-xl-4 col-lg-6 col-sm-6">
+                <div class="widget-stat card">
+                    <div class="card-body p-4">
+                        <div class="media ai-icon">
+                            <span class="me-3 bgl-success text-success">
+                                <i class="fa-light fa-check-circle"></i>
+                            </span>
+                            <div class="media-body">
+                                <p class="mb-1">Total Recebido</p>
+                                <h4 class="mb-0">R$ {{ totais.total_recebimentos|default(0)|number_format(2, ',', '.') }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-4 col-lg-6 col-sm-6">
+                <div class="widget-stat card">
+                    <div class="card-body p-4">
+                        <div class="media ai-icon">
+                            <span class="me-3 bgl-danger text-danger">
+                                <i class="fa-light fa-minus-circle"></i>
+                            </span>
+                            <div class="media-body">
+                                <p class="mb-1">Total Pago</p>
+                                <h4 class="mb-0">R$ {{ totais.total_pagamentos|default(0)|number_format(2, ',', '.') }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-4 col-lg-6 col-sm-6">
+                <div class="widget-stat card">
+                    <div class="card-body p-4">
+                        <div class="media ai-icon">
+                            <span class="me-3 bgl-primary text-primary">
+                                <i class="fa-light fa-wallet"></i>
+                            </span>
+                            <div class="media-body">
+                                <p class="mb-1">Saldo</p>
+                                <h4 class="mb-0">R$ {{ totais.saldo|default(0)|number_format(2, ',', '.') }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="card">
+            <div class="card-body">
+                <form id="filtrosRecebimentos" method="GET" class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Status</label>
+                        <select name="status" class="form-control">
+                            <option value="">Todos</option>
+                            <option value="Confirmado">Confirmado</option>
+                            <option value="Pendente">Pendente</option>
+                            <option value="Cancelado">Cancelado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Data Recebimento Início</label>
+                        <input type="date" name="data_inicio" class="form-control">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Data Recebimento Fim</label>
+                        <input type="date" name="data_fim" class="form-control">
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end gap-2">
+                        <button type="submit" class="btn btn-primary flex-fill"><i class="fa fa-filter me-2"></i>Filtrar</button>
+                        <button type="button" id="btnLimparFiltros" class="btn btn-secondary"><i class="fa fa-times"></i></button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Listagem -->
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title">Lista de Recebimentos</h4>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table id="datatable-recebimentos" class="table dataTable align-middle">
+                        <thead>
+                            <tr role="row">
+                                <th>Descrição</th>
+                                <th>Valor</th>
+                                <th>Data Recebimento</th>
+                                <th>Forma Pagamento</th>
+                                <th>Status</th>
+                                <th>Conta Vinculada</th>
+                                <th width="150">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Dados carregados via AJAX -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Modal de Confirmação -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Remoção</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja remover este recebimento?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmRemover">Sim, Remover</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.DOMAIN = '{{ DOMAIN }}';
+</script>
+<script src="{{ PATH }}/view/assets/vendor/datatables/js/jquery.dataTables.min.js"></script>
+<script src="{{ PATH }}/view/assets/js/datatables/datatables-ajax.js"></script>
+<script src="{{ PATH }}/view/assets/js/pages/datatables/recebimentos-datatable.js"></script>
+{% endblock %}
+

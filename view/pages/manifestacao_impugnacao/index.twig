@@ -1,0 +1,58 @@
+{% extends "layout/layoutMaster.twig" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block body %}
+
+<div class="content-body">
+    <div class="container-fluid">
+        <div class="page-titles">
+            <div class="d-flex flex-wrap align-items-center justify-content-between">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}">Home</a></li>
+                    <li class="breadcrumb-item active"><a href="javascript:void(0)">{{ titulo }}</a></li>
+                </ol>
+                <div class="d-flex gap-2">
+                    {% if 'manifestacao_impugnacao_criar'|verifyPermission %}
+                    <a href="{{ DOMAIN }}/manifestacoes-impugnacoes/add" class="btn btn-primary text-nowrap">
+                        <i class="fa-solid fa-plus me-2"></i>Nova Manifestação
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title">Manifestações e Impugnações</h4>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table id="datatable-manifestacoes" class="table dataTable align-middle">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Tipo</th>
+                                <th>N°</th>
+                                <th>Reclamada</th>
+                                <th>Reclamante</th>
+                                <th>Fav/Desfav</th>
+                                <th>Perito</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ PATH }}/view/assets/js/datatables/datatables-ajax.js"></script>
+<script src="{{ PATH }}/view/assets/js/pages/datatables/manifestacao-impugnacao-datatable.js"></script>
+{% endblock %}

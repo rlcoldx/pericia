@@ -1,0 +1,130 @@
+/**
+ * DataTables AJAX - Configuração Base
+ * Sistema reutilizável para DataTables com Server-Side Processing
+ */
+
+(function() {
+    'use strict';
+
+    /**
+     * Classe base para DataTables AJAX
+     */
+    class DataTableAjax {
+        constructor(tableId, config) {
+            this.tableId = tableId;
+            this.config = {
+                ajax: {
+                    url: config.ajaxUrl || '',
+                    type: 'GET',
+                    data: function(d) {
+                        // Adiciona filtros customizados
+                        if (config.customFilters) {
+                            Object.keys(config.customFilters).forEach(key => {
+                                d[key] = config.customFilters[key];
+                            });
+                        }
+                        return d;
+                    },
+                    error: function(xhr, error, thrown) {
+                        console.error('Erro ao carregar dados:', error);
+                        if (config.onError) {
+                            config.onError(xhr, error, thrown);
+                        }
+                    }
+                },
+                processing: true,
+                serverSide: true,
+                responsive: true,
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json',
+                    processing: '<i class="fa fa-spinner fa-spin fa-2x"></i> Carregando dados...'
+                },
+                columns: config.columns || [],
+                order: config.order || [[1, 'desc']],
+                pageLength: config.pageLength || 10,
+                lengthMenu: config.lengthMenu || [[10, 25, 50, -1], [10, 25, 50, "Todos"]],
+                dom: config.dom || 'lfrtip',
+                drawCallback: function(settings) {
+                    // Reinicializa tooltips do Bootstrap após cada draw
+                    if (typeof bootstrap !== 'undefined') {
+                        const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+                        tooltipTriggerList.forEach(tooltipTriggerEl => {
+                            new bootstrap.Tooltip(tooltipTriggerEl);
+                        });
+                    }
+                    
+                    // Callback customizado
+                    if (config.onDraw) {
+                        config.onDraw(settings);
+                    }
+                },
+                initComplete: function(settings, json) {
+                    if (config.onInit) {
+                        config.onInit(settings, json);
+                    }
+                }
+            };
+
+            // Mescla configurações customizadas
+            if (config.customConfig) {
+                Object.assign(this.config, config.customConfig);
+            }
+
+            this.table = null;
+        }
+
+        /**
+         * Inicializa o DataTable
+         */
+        init() {
+            if (!this.tableId || !document.getElementById(this.tableId)) {
+                console.error('DataTable: Elemento não encontrado:', this.tableId);
+                return null;
+            }
+
+            this.table = $(`#${this.tableId}`).DataTable(this.config);
+            return this.table;
+        }
+
+        /**
+         * Recarrega os dados da tabela
+         */
+        reload() {
+            if (this.table) {
+                this.table.ajax.reload();
+            }
+        }
+
+        /**
+         * Atualiza filtros customizados
+         */
+        updateFilters(filters) {
+            if (this.config.ajax && this.config.ajax.data) {
+                const originalData = this.config.ajax.data;
+                this.config.ajax.data = function(d) {
+                    originalData(d);
+                    Object.keys(filters).forEach(key => {
+                        d[key] = filters[key];
+                    });
+                    return d;
+                };
+                this.reload();
+            }
+        }
+
+        /**
+         * Destrói a instância do DataTable
+         */
+        destroy() {
+            if (this.table) {
+                this.table.destroy();
+                this.table = null;
+            }
+        }
+    }
+
+    // Expõe globalmente
+    window.DataTableAjax = DataTableAjax;
+
+})();
+

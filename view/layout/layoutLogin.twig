@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="pt_BR" class="h-100">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>{{ NAME }} - Login</title>
+    <!-- Favicon icon -->
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ PATH }}/view/assets/images/favicon.png">
+    <link href="{{ PATH }}/view/assets/css/app.css" rel="stylesheet">
+    <link href="{{ PATH }}/view/assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;300;400;500;600;700;800;900&family=Roboto:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+    <script src="{{ PATH }}/view/assets/vendor/global/global.min.js"></script>
+</head>
+
+<body class="h-100" data-domain="{{ DOMAIN }}">
+
+    {% block body %}{% endblock %}
+
+    <!-- Required vendors -->
+    <script src="{{ PATH }}/view/assets/js/custom.min.js"></script>
+    <script src="{{ PATH }}/view/assets/js/deznav-init.js"></script>
+    <script src="{{ PATH }}/view/assets/js/pages/login.js"></script>
+
+</body>
+
+</html>

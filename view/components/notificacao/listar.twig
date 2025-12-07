@@ -1,0 +1,198 @@
+<div class="modal-header">
+    <h5 class="modal-title">Minhas Notificações</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body p-0">
+    {% if notificacoes is not empty %}
+    <div class="list-group">
+        {% for n in notificacoes %}
+        <div class="list-group-item d-flex justify-content-between align-items-start {% if not n.lido %}border-start border-primary border-3{% else %}opacity-75{% endif %}" data-notificacao-id="{{ n.id }}">
+            <div class="ms-2 me-auto flex-grow-1">
+                <div class="d-flex justify-content-between align-items-start mb-1">
+                    <div class="fw-bold {% if not n.lido %}text-primary{% endif %}">{{ n.titulo }}</div>
+                    {% if not n.lido %}
+                    <button type="button" 
+                            class="btn btn-sm btn-link p-0 text-primary marcar-lida-btn" 
+                            data-id="{{ n.id }}"
+                            data-bs-toggle="tooltip" 
+                            data-bs-title="Marcar como lida"
+                            style="text-decoration: none;">
+                        <i class="fa fa-check-circle"></i>
+                    </button>
+                    {% endif %}
+                </div>
+                <div class="small mb-1">{{ n.data_create|date("d/m/Y H:i") }}</div>
+                <div>{{ n.mensagem }}</div>
+                {% if n.url %}
+                <div class="mt-2">
+                    <a href="{{ n.url }}" class="text-primary" onclick="marcarNotificacaoComoLida({{ n.id }})">Abrir</a>
+                </div>
+                {% endif %}
+            </div>
+            {% if not n.lido %}
+            <span class="badge bg-primary rounded-pill ms-2">Novo</span>
+            {% else %}
+            <span class="badge bg-success rounded-pill ms-2">
+                <i class="fa fa-check"></i> Lida
+            </span>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center p-4">
+        <i class="fa fa-bell-slash fa-3x mb-3"></i>
+        <p>Nenhuma notificação encontrada.</p>
+    </div>
+    {% endif %}
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+</div>
+
+<script>
+(function() {
+    'use strict';
+    
+    // Função para marcar notificação como lida
+    window.marcarNotificacaoComoLida = function(notificacaoId) {
+        if (!notificacaoId) return;
+        
+        fetch('{{ DOMAIN }}/notificacoes/marcar-lida/' + notificacaoId, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Atualizar visualmente a notificação
+                const notificacaoItem = document.querySelector(`[data-notificacao-id="${notificacaoId}"]`);
+                if (notificacaoItem) {
+                    // Remover badge "Novo" e adicionar "Lida"
+                    const badgeNovo = notificacaoItem.querySelector('.badge.bg-primary');
+                    if (badgeNovo) {
+                        badgeNovo.className = 'badge bg-success rounded-pill ms-2';
+                        badgeNovo.innerHTML = '<i class="fa fa-check"></i> Lida';
+                    }
+                    
+                    // Remover botão "Marcar como lida"
+                    const btnMarcarLida = notificacaoItem.querySelector('.marcar-lida-btn');
+                    if (btnMarcarLida) {
+                        btnMarcarLida.remove();
+                    }
+                    
+                    // Remover borda azul e adicionar opacidade
+                    notificacaoItem.classList.remove('border-start', 'border-primary', 'border-3');
+                    notificacaoItem.classList.add('opacity-75');
+                    
+                    // Remover text-primary do título
+                    const titulo = notificacaoItem.querySelector('.fw-bold');
+                    if (titulo) {
+                        titulo.classList.remove('text-primary');
+                    }
+                }
+                
+                // Atualizar contador de notificações não lidas
+                atualizarContadorNotificacoes();
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao marcar notificação como lida:', error);
+        });
+    };
+    
+    // Função para atualizar contador de notificações não lidas
+    function atualizarContadorNotificacoes() {
+        // Usar função global se disponível, senão usar fetch
+        if (typeof window.atualizarContadorNotificacoes === 'function' && typeof jQuery !== 'undefined') {
+            window.atualizarContadorNotificacoes();
+        } else {
+            fetch('{{ DOMAIN }}/notificacoes/contar-nao-lidas')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const naoLidas = data.nao_lidas || 0;
+                        const bellLink = document.querySelector('.notification_dropdown .bell-link');
+                        
+                        if (bellLink) {
+                            // Remover badge existente se houver
+                            const badgeExistente = bellLink.querySelector('.badge');
+                            if (badgeExistente) {
+                                badgeExistente.remove();
+                            }
+                            
+                            // Atualizar o conteúdo do pulse-css
+                            const pulseCss = bellLink.querySelector('.pulse-css');
+                            if (pulseCss) {
+                                if (naoLidas > 0) {
+                                    // Se for maior que 9, mostrar "+9"
+                                    const texto = naoLidas > 9 ? '+9' : naoLidas.toString();
+                                    pulseCss.textContent = texto;
+                                    pulseCss.style.display = '';
+                                    
+                                    // Ajustar tamanho se for "+9" para caber o texto
+                                    if (naoLidas > 9) {
+                                        pulseCss.style.width = 'auto';
+                                        pulseCss.style.minWidth = '1.2rem';
+                                        pulseCss.style.height = '1.2rem';
+                                        pulseCss.style.padding = '0 4px';
+                                        pulseCss.style.lineHeight = '1.2rem';
+                                        pulseCss.style.fontSize = '10px';
+                                        pulseCss.style.fontWeight = 'bold';
+                                        pulseCss.style.color = '#fff';
+                                    } else {
+                                        // Restaurar tamanho padrão para números simples
+                                        pulseCss.style.width = '1.2rem';
+                                        pulseCss.style.height = '1.2rem';
+                                        pulseCss.style.padding = '0';
+                                        pulseCss.style.lineHeight = '1.2rem';
+                                        pulseCss.style.fontSize = '12px';
+                                        pulseCss.style.fontWeight = 'normal';
+                                        pulseCss.style.color = '#fff';
+                                    }
+                                } else {
+                                    pulseCss.textContent = '';
+                                    pulseCss.style.display = 'none';
+                                }
+                            }
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao atualizar contador:', error);
+                });
+        }
+    }
+    
+    // Adicionar event listeners aos botões de marcar como lida
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.marcar-lida-btn')) {
+            e.preventDefault();
+            const btn = e.target.closest('.marcar-lida-btn');
+            const notificacaoId = btn.getAttribute('data-id');
+            if (notificacaoId) {
+                marcarNotificacaoComoLida(parseInt(notificacaoId));
+            }
+        }
+    });
+    
+    // Inicializar tooltips após carregar o modal
+    setTimeout(function() {
+        if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        }
+    }, 100);
+    
+    // Atualizar contador ao carregar o modal
+    atualizarContadorNotificacoes();
+    
+    // Expor função globalmente para uso em outros lugares
+    window.atualizarContadorNotificacoes = atualizarContadorNotificacoes;
+})();
+</script>
+

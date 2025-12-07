@@ -1,0 +1,464 @@
+{% extends "layout/layoutMaster.twig" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block body %}
+
+<div class="content-body">
+    
+    <!-- row -->
+    <div class="container-fluid">
+        <div class="page-titles">
+            <div class="d-flex flex-wrap align-items-center justify-content-between">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}/agendamento">Agendamentos</a></li>
+                    <li class="breadcrumb-item active"><a href="javascript:void(0);">{{ titulo }}</a></li>
+                </ol>
+                <a href="{{ DOMAIN }}/agendamento" class="btn btn-secondary">
+                    <i class="fa fa-arrow-left me-2"></i>Voltar
+                </a>
+            </div>
+        </div>
+
+        <form id="formAgendamento" method="POST">
+            {% if action == 'editar' %}
+                <input type="hidden" name="id" value="{{ agendamento.id }}">
+            {% endif %}
+            
+            <div class="row">
+                <div class="col-12">
+                    
+                    <!-- SEÇÃO CLOVIS -->
+                    {% if 'agendamento_primeiro_passo_data_entrada'|verifyPermission or 'agendamento_primeiro_passo_data_pericia'|verifyPermission or 'agendamento_primeiro_passo_hora'|verifyPermission or 'agendamento_primeiro_passo_numero_processo'|verifyPermission or 'agendamento_primeiro_passo_vara'|verifyPermission or 'agendamento_primeiro_passo_local'|verifyPermission or 'agendamento_primeiro_passo_reclamante'|verifyPermission or 'agendamento_primeiro_passo_perito'|verifyPermission or 'agendamento_primeiro_passo_cliente'|verifyPermission or 'agendamento_primeiro_passo_valor_cobrado'|verifyPermission or 'agendamento_primeiro_passo_tipo'|verifyPermission or 'agendamento_primeiro_passo_numero_tipo'|verifyPermission or 'agendamento_primeiro_passo_assistente'|verifyPermission or 'agendamento_primeiro_passo_valor_pago_assistente'|verifyPermission %}
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h4 class="card-title mb-0"><i class="fa fa-user-tie me-2"></i>Dados do Agendamento - Primeiro Passo</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                {% if 'agendamento_primeiro_passo_data_entrada'|verifyPermission %}
+                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
+                                    <label class="form-label">Data de Entrada <span class="text-danger">*</span></label>
+                                    <input type="date" 
+                                           class="form-control" 
+                                           name="data_entrada" 
+                                           value="{{ action == 'editar' ? agendamento.data_entrada : '' }}"
+                                           required>
+                                </div>
+                                {% endif %}
+                                
+                                {% if 'agendamento_primeiro_passo_data_pericia'|verifyPermission %}
+                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
+                                    <label class="form-label">Data da Perícia <span class="text-danger">*</span></label>
+                                    <input type="date" 
+                                           class="form-control" 
+                                           name="data_agendamento" 
+                                           value="{{ action == 'editar' ? agendamento.data_agendamento : '' }}"
+                                           required>
+                                </div>
+                                {% endif %}
+                                
+                                {% if 'agendamento_primeiro_passo_hora'|verifyPermission %}
+                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
+                                    <label class="form-label">Hora <span class="text-danger">*</span></label>
+                                    <input type="time" 
+                                           class="form-control" 
+                                           name="hora_agendamento" 
+                                           value="{{ action == 'editar' ? agendamento.hora_agendamento : '' }}"
+                                           required>
+                                </div>
+                                {% endif %}
+                                
+                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
+                                    <label class="form-label">Status do Agendamento</label>
+                                    <select class="form-control" name="status">
+                                        {% set currentStatus = action == 'editar' ? agendamento.status|default('Pendente') : 'Pendente' %}
+                                        <option value="Pendente" {{ currentStatus == 'Pendente' ? 'selected' : '' }}>Pendente</option>
+                                        <option value="Agendado" {{ currentStatus == 'Agendado' ? 'selected' : '' }}>Agendado</option>
+                                        <option value="Realizado" {{ currentStatus == 'Realizado' ? 'selected' : '' }}>Realizado</option>
+                                        <option value="Cancelado" {{ currentStatus == 'Cancelado' ? 'selected' : '' }}>Cancelado</option>
+                                    </select>
+                                </div>
+                                
+                                {% if 'agendamento_primeiro_passo_local'|verifyPermission %}
+                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
+                                    <label class="form-label">Local</label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           name="local_pericia" 
+                                           value="{{ action == 'editar' ? agendamento.local_pericia : '' }}"
+                                           placeholder="Local da perícia">
+                                </div>
+                                {% endif %}
+                                
+                                {% if 'agendamento_primeiro_passo_numero_processo'|verifyPermission %}
+                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
+                                    <label class="form-label">Número do Processo</label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           name="numero_processo" 
+                                           value="{{ action == 'editar' ? agendamento.numero_processo : '' }}"
+                                           placeholder="Número do processo">
+                                </div>
+                                {% endif %}
+                                
+                                {% if 'agendamento_primeiro_passo_vara'|verifyPermission %}
+                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
+                                    <label class="form-label">Vara</label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           name="vara" 
+                                           value="{{ action == 'editar' ? agendamento.vara : '' }}"
+                                           placeholder="Vara/Órgão">
+                                </div>
+                                {% endif %}
+                                
+                                {% if 'agendamento_primeiro_passo_reclamante'|verifyPermission %}
+                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
+                                    <label class="form-label">Reclamante</label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           name="reclamante_nome" 
+                                           value="{{ action == 'editar' ? agendamento.reclamante_nome : '' }}"
+                                           placeholder="Nome do reclamante">
+                                </div>
+                                {% endif %}
+                                
+                                {% if 'agendamento_primeiro_passo_cliente'|verifyPermission %}
+                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
+                                    <label class="form-label">Reclamada (Cliente) <span class="text-danger">*</span></label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           name="cliente_nome" 
+                                           value="{{ action == 'editar' ? agendamento.cliente_nome : '' }}"
+                                           placeholder="Nome do cliente"
+                                           required>
+                                </div>
+                                {% endif %}
+                                
+                                {% if 'agendamento_primeiro_passo_perito'|verifyPermission %}
+                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
+                                    <label class="form-label">Perito</label>
+                                    <select class="form-control" name="perito_id">
+                                        <option value="">Selecione um perito</option>
+                                        {% for perito in peritos %}
+                                            <option value="{{ perito.id }}" 
+                                                    {{ (action == 'editar' and agendamento.perito_id == perito.id) ? 'selected' : '' }}>
+                                                {{ perito.nome }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                {% endif %}
+                                
+                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
+                                    <label class="form-label">Tipo de Documento</label>
+                                    <select class="form-control" id="tipo_documento" name="tipo_documento">
+                                        {% set isCNPJ = (action == 'editar' and agendamento.cliente_cpf and ('/' in agendamento.cliente_cpf or agendamento.cliente_cpf|replace({'.': '', '/': '', '-': ''})|length == 14)) %}
+                                        <option value="CPF" {{ not isCNPJ ? 'selected' : '' }}>CPF</option>
+                                        <option value="CNPJ" {{ isCNPJ ? 'selected' : '' }}>CNPJ</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
+                                    <label class="form-label">CPF/CNPJ</label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="cliente_documento"
+                                           name="cliente_documento" 
+                                           value="{{ action == 'editar' ? agendamento.cliente_cpf : '' }}"
+                                           placeholder="000.000.000-00">
+                                </div>
+                                
+                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
+                                    <label class="form-label">Email</label>
+                                    <input type="email" 
+                                           class="form-control" 
+                                           name="cliente_email" 
+                                           value="{{ action == 'editar' ? agendamento.cliente_email : '' }}">
+                                </div>
+                                
+                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
+                                    <label class="form-label">Telefone</label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           name="cliente_telefone" 
+                                           value="{{ action == 'editar' ? agendamento.cliente_telefone : '' }}"
+                                           placeholder="(11) 99999-9999">
+                                </div>
+                                
+                                {% if 'agendamento_primeiro_passo_valor_cobrado'|verifyPermission %}
+                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
+                                    <label class="form-label">Valor Cobrado pela Perícia</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">R$</span>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               name="valor_pericia_cobrado" 
+                                               value="{{ action == 'editar' ? agendamento.valor_pericia_cobrado|number_format(2, ',', '.') : '' }}"
+                                               placeholder="0,00"
+                                               class="money">
+                                    </div>
+                                </div>
+                                {% endif %}
+                                
+                                {% if 'agendamento_primeiro_passo_tipo'|verifyPermission %}
+                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
+                                    <label class="form-label">Tipo de Perícia</label>
+                                    <select class="form-control" name="tipo_pericia" id="tipo_pericia">
+                                        <option value="">Selecione</option>
+                                        <option value="MEDIACA" {{ (action == 'editar' and agendamento.tipo_pericia == 'MEDIACA') ? 'selected' : '' }}>MEDIACA</option>
+                                        <option value="TECNICA" {{ (action == 'editar' and agendamento.tipo_pericia == 'TECNICA') ? 'selected' : '' }}>TECNICA</option>
+                                        <option value="ERGONO" {{ (action == 'editar' and agendamento.tipo_pericia == 'ERGONO') ? 'selected' : '' }}>ERGONO</option>
+                                        <option value="CINESIO" {{ (action == 'editar' and agendamento.tipo_pericia == 'CINESIO') ? 'selected' : '' }}>CINESIO</option>
+                                        <option value="VISTORIA" {{ (action == 'editar' and agendamento.tipo_pericia == 'VISTORIA') ? 'selected' : '' }}>VISTORIA</option>
+                                        <option value="X1" {{ (action == 'editar' and agendamento.tipo_pericia == 'X1') ? 'selected' : '' }}>X1</option>
+                                        <option value="X2" {{ (action == 'editar' and agendamento.tipo_pericia == 'X2') ? 'selected' : '' }}>X2</option>
+                                    </select>
+                                </div>
+                                {% endif %}
+                                
+                                {% if 'agendamento_primeiro_passo_numero_tipo'|verifyPermission %}
+                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
+                                    <label class="form-label">N° (Tipo)</label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           name="numero_tipo_pericia" 
+                                           value="{{ action == 'editar' ? agendamento.numero_tipo_pericia : '' }}"
+                                           placeholder="Número do tipo">
+                                </div>
+                                {% endif %}
+                                
+                                {% if 'agendamento_primeiro_passo_assistente'|verifyPermission %}
+                                <div class="col-12 col-lg-6 col-xl-6 mb-3">
+                                    <label class="form-label">Assistente (Prestador de Serviço Técnico/Médico)</label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           name="assistente_nome" 
+                                           value="{{ action == 'editar' ? agendamento.assistente_nome : '' }}"
+                                           placeholder="Nome do assistente">
+                                </div>
+                                {% endif %}
+                                
+                                {% if 'agendamento_primeiro_passo_valor_pago_assistente'|verifyPermission %}
+                                <div class="col-12 col-lg-6 col-xl-6 mb-3">
+                                    <label class="form-label">Valor a Ser Pago ao Assistente</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">R$</span>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               name="valor_pago_assistente" 
+                                               value="{{ action == 'editar' ? agendamento.valor_pago_assistente|number_format(2, ',', '.') : '' }}"
+                                               placeholder="0,00"
+                                               class="money">
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- SEÇÃO MARCELO -->
+                    {% if 'agendamento_segundo_passo_data_realizada'|verifyPermission or 'agendamento_segundo_passo_data_fatal'|verifyPermission or 'agendamento_segundo_passo_data_entrega_parecer'|verifyPermission or 'agendamento_segundo_passo_status_parecer'|verifyPermission or 'agendamento_segundo_passo_obs_parecer'|verifyPermission %}
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h4 class="card-title mb-0"><i class="fa fa-file-alt me-2"></i>Dados do Parecer - Segundo Passo</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                {% if 'agendamento_segundo_passo_data_realizada'|verifyPermission %}
+                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
+                                    <label class="form-label">Data Realizada</label>
+                                    <input type="date" 
+                                           class="form-control" 
+                                           name="data_realizada" 
+                                           value="{{ action == 'editar' ? agendamento.data_realizada : '' }}">
+                                </div>
+                                {% endif %}
+                                
+                                {% if 'agendamento_segundo_passo_data_fatal'|verifyPermission %}
+                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
+                                    <label class="form-label">Data Fatal</label>
+                                    <input type="date" 
+                                           class="form-control" 
+                                           name="data_fatal" 
+                                           value="{{ action == 'editar' ? agendamento.data_fatal : '' }}">
+                                </div>
+                                {% endif %}
+                                
+                                {% if 'agendamento_segundo_passo_data_entrega_parecer'|verifyPermission %}
+                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
+                                    <label class="form-label">Data de Entrega do Parecer</label>
+                                    <input type="date" 
+                                           class="form-control" 
+                                           name="data_entrega_parecer" 
+                                           value="{{ action == 'editar' ? agendamento.data_entrega_parecer : '' }}">
+                                </div>
+                                {% endif %}
+                                
+                                {% if 'agendamento_segundo_passo_status_parecer'|verifyPermission %}
+                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
+                                    <label class="form-label">Status do Parecer</label>
+                                    <select class="form-control" name="status_parecer">
+                                        <option value="">Selecione</option>
+                                        <option value="OK" {{ (action == 'editar' and agendamento.status_parecer == 'OK') ? 'selected' : '' }}>OK</option>
+                                        <option value="FAVORAVEL" {{ (action == 'editar' and agendamento.status_parecer == 'FAVORAVEL') ? 'selected' : '' }}>FAVORAVEL</option>
+                                        <option value="DESFAVORAVEL" {{ (action == 'editar' and agendamento.status_parecer == 'DESFAVORAVEL') ? 'selected' : '' }}>DESFAVORAVEL</option>
+                                        <option value="PARCIAL FAVORAVEL" {{ (action == 'editar' and agendamento.status_parecer == 'PARCIAL FAVORAVEL') ? 'selected' : '' }}>PARCIAL FAVORAVEL</option>
+                                        <option value="NR (NÃO REALIZADO)" {{ (action == 'editar' and agendamento.status_parecer == 'NR (NÃO REALIZADO)') ? 'selected' : '' }}>NR (NÃO REALIZADO)</option>
+                                    </select>
+                                </div>
+                                {% endif %}
+                                
+                                {% if 'agendamento_segundo_passo_obs_parecer'|verifyPermission %}
+                                <div class="col-12 col-lg-12 col-xl-12 mb-3">
+                                    <label class="form-label">Função/OBS</label>
+                                    <textarea class="form-control" 
+                                              name="obs_parecer" 
+                                              rows="3"
+                                              placeholder="Observações referentes ao status">{{ action == 'editar' ? agendamento.obs_parecer : '' }}</textarea>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- SEÇÃO MAURO -->
+                    {% if 'agendamento_terceiro_passo_data_pagamento_assistente'|verifyPermission or 'agendamento_terceiro_passo_numero_pedido'|verifyPermission or 'agendamento_terceiro_passo_numero_nota_fiscal'|verifyPermission or 'agendamento_terceiro_passo_numero_boleto'|verifyPermission or 'agendamento_terceiro_passo_data_envio'|verifyPermission or 'agendamento_terceiro_passo_data_vencimento'|verifyPermission or 'agendamento_terceiro_passo_status_pagamento'|verifyPermission %}
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h4 class="card-title mb-0"><i class="fa fa-dollar-sign me-2"></i>Dados Financeiros - Terceiro Passo</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                {% if 'agendamento_terceiro_passo_data_pagamento_assistente'|verifyPermission %}
+                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
+                                    <label class="form-label">Data do Pagamento do Assistente</label>
+                                    <input type="date" 
+                                           class="form-control" 
+                                           name="data_pagamento_assistente" 
+                                           value="{{ action == 'editar' ? agendamento.data_pagamento_assistente : '' }}">
+                                </div>
+                                {% endif %}
+                                
+                                {% if 'agendamento_terceiro_passo_numero_pedido'|verifyPermission %}
+                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
+                                    <label class="form-label">Número do Pedido do Cliente</label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           name="numero_pedido_cliente" 
+                                           value="{{ action == 'editar' ? agendamento.numero_pedido_cliente : '' }}"
+                                           placeholder="Número do pedido">
+                                </div>
+                                {% endif %}
+                                
+                                {% if 'agendamento_terceiro_passo_numero_nota_fiscal'|verifyPermission %}
+                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
+                                    <label class="form-label">Número da Nota Fiscal</label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           name="numero_nota_fiscal" 
+                                           value="{{ action == 'editar' ? agendamento.numero_nota_fiscal : '' }}"
+                                           placeholder="Número da NF">
+                                </div>
+                                {% endif %}
+                                
+                                {% if 'agendamento_terceiro_passo_numero_boleto'|verifyPermission %}
+                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
+                                    <label class="form-label">Número do Boleto</label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           name="numero_boleto" 
+                                           value="{{ action == 'editar' ? agendamento.numero_boleto : '' }}"
+                                           placeholder="Número do boleto">
+                                </div>
+                                {% endif %}
+                                
+                                {% if 'agendamento_terceiro_passo_data_envio'|verifyPermission %}
+                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
+                                    <label class="form-label">Data do Envio</label>
+                                    <input type="date" 
+                                           class="form-control" 
+                                           name="data_envio_financeiro" 
+                                           value="{{ action == 'editar' ? agendamento.data_envio_financeiro : '' }}">
+                                </div>
+                                {% endif %}
+                                
+                                {% if 'agendamento_terceiro_passo_data_vencimento'|verifyPermission %}
+                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
+                                    <label class="form-label">Data de Vencimento</label>
+                                    <input type="date" 
+                                           class="form-control" 
+                                           name="data_vencimento_financeiro" 
+                                           value="{{ action == 'editar' ? agendamento.data_vencimento_financeiro : '' }}">
+                                </div>
+                                {% endif %}
+                                
+                                {% if 'agendamento_terceiro_passo_status_pagamento'|verifyPermission %}
+                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
+                                    <label class="form-label">Status Pagamento</label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           name="status_pagamento" 
+                                           value="{{ action == 'editar' ? agendamento.status_pagamento : '' }}"
+                                           placeholder="Status do pagamento">
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- OBSERVAÇÕES GERAIS -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h4 class="card-title mb-0"><i class="fa fa-comments me-2"></i>Observações Gerais</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-12 mb-3">
+                                    <label class="form-label">Observações</label>
+                                    <textarea class="form-control" 
+                                              name="observacoes" 
+                                              rows="4"
+                                              placeholder="Informações adicionais sobre o agendamento...">{{ action == 'editar' ? agendamento.observacoes : '' }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- BOTÕES DE AÇÃO -->
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-12">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fa fa-save me-2"></i>
+                                        {{ action == 'criar' ? 'Criar Agendamento' : 'Atualizar Agendamento' }}
+                                    </button>
+                                    <a href="{{ DOMAIN }}/agendamento" class="btn btn-secondary ms-2">
+                                        <i class="fa fa-times me-2"></i>Cancelar
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Define DOMAIN globalmente para uso no JS externo
+    window.DOMAIN = '{{ DOMAIN }}';
+</script>
+<script src="{{ PATH }}/view/assets/js/pages/agendamento-form.js"></script>
+{% endblock %}

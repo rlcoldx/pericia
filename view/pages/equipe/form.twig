@@ -1,0 +1,261 @@
+{% extends "layout/layoutMaster.twig" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block body %}
+
+<div class="content-body">
+    
+    <!-- row -->
+    <div class="container-fluid">
+        <div class="page-titles">
+            <div class="d-flex flex-wrap align-items-center justify-content-between">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}/equipe">Equipe</a></li>
+                    <li class="breadcrumb-item active"><a href="javascript:void(0);">{{ titulo }}</a></li>
+                </ol>
+                <a href="{{ DOMAIN }}/equipe" class="btn btn-secondary">
+                    <i class="fa fa-arrow-left me-2"></i>Voltar
+                </a>
+            </div>
+        </div>
+
+        <form id="formUsuario" method="POST">
+            {% if action == 'editar' %}
+                <input type="hidden" name="id" value="{{ membro.id }}">
+            {% endif %}
+            
+            <div class="row">
+                <div class="col-12 col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h4 class="card-title">{{ titulo }}</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-12 col-md-6 mb-3">
+                                    <label class="form-label">Nome Completo <span class="text-danger">*</span></label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           name="nome" 
+                                           value="{{ action == 'editar' ? membro.nome : '' }}"
+                                           required>
+                                </div>
+                                <div class="col-12 col-md-6 mb-3">
+                                    <label class="form-label">Email <span class="text-danger">*</span></label>
+                                    <input type="email" 
+                                           class="form-control" 
+                                           name="email" 
+                                           value="{{ action == 'editar' ? membro.email : '' }}"
+                                           required>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-12 col-md-6 mb-3">
+                                    <label class="form-label">Telefone</label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           name="telefone" 
+                                           value="{{ action == 'editar' ? membro.telefone : '' }}"
+                                           placeholder="(11) 99999-9999">
+                                </div>
+                                <div class="col-12 col-md-6 mb-3">
+                                    <label class="form-label">Cargo</label>
+                                    <select class="form-control" name="cargo">
+                                        <option value="">Selecione um cargo</option>
+                                        {% for cargo in cargos %}
+                                            <option value="{{ cargo.nome }}" 
+                                                    {{ (action == 'editar' and membro.cargo == cargo.nome) ? 'selected' : '' }}>
+                                                {{ cargo.nome }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-12 col-md-6 mb-3">
+                                    <label class="form-label">
+                                        Senha 
+                                        {% if action == 'criar' %}
+                                            <span class="text-danger">*</span>
+                                        {% else %}
+                                            <small class="opacity-75">(deixe em branco para manter a atual)</small>
+                                        {% endif %}
+                                    </label>
+                                    <input type="password" 
+                                           class="form-control" 
+                                           name="senha"
+                                           {{ action == 'criar' ? 'required' : '' }}
+                                           minlength="6">
+                                </div>
+                                {% if action == 'criar' %}
+                                <div class="col-12 col-md-6 mb-3">
+                                    <label class="form-label">Confirmar Senha <span class="text-danger">*</span></label>
+                                    <input type="password" 
+                                           class="form-control" 
+                                           name="confirmar_senha"
+                                           required
+                                           minlength="6">
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-12">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fa fa-save me-2"></i>
+                                        {{ action == 'criar' ? 'Criar Membro' : 'Atualizar Membro' }}
+                                    </button>
+                                    <a href="{{ DOMAIN }}/equipe" class="btn btn-secondary ms-2">
+                                        <i class="fa fa-times me-2"></i>Cancelar
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-12 col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h4 class="card-title">Informações</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-info">
+                                <h6><i class="fa fa-info-circle me-2"></i>Dados Obrigatórios</h6>
+                                <ul class="mb-0">
+                                    <li>Nome completo</li>
+                                    <li>Email único</li>
+                                    {% if action == 'criar' %}
+                                    <li>Senha com mínimo 6 caracteres</li>
+                                    {% endif %}
+                                </ul>
+                            </div>
+                            
+                            <div class="alert alert-warning">
+                                <h6><i class="fa fa-shield-alt me-2"></i>Permissões</h6>
+                                <p class="mb-0">As permissões do usuário são definidas pelo cargo selecionado. Para gerenciar permissões, acesse o menu de <strong>Cargos</strong>.</p>
+                                <a href="{{ DOMAIN }}/cargos" class="btn btn-sm btn-light mt-2">
+                                    <i class="fa fa-cog me-1"></i>Gerenciar Cargos
+                                </a>
+                            </div>
+                            
+                            {% if action == 'editar' %}
+                            <div class="alert alert-success">
+                                <h6><i class="fa fa-user me-2"></i>Dados do Membro</h6>
+                                <ul class="mb-0">
+                                    <li><strong>ID:</strong> {{ membro.id }}</li>
+                                    <li><strong>Criado em:</strong> {{ membro.data|date("d/m/Y H:i") }}</li>
+                                    <li><strong>Status:</strong> 
+                                        <span class="badge bg-{{ membro.status == 'Ativo' ? 'success' : 'danger' }}">
+                                            {{ membro.status }}
+                                        </span>
+                                    </li>
+                                </ul>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.getElementById('formUsuario').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    // Validação de senha para criação
+    {% if action == 'criar' %}
+    const senha = document.querySelector('input[name="senha"]').value;
+    const confirmarSenha = document.querySelector('input[name="confirmar_senha"]').value;
+    
+    if (senha !== confirmarSenha) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Erro!',
+            text: 'As senhas não coincidem.'
+        });
+        return;
+    }
+    
+    if (senha.length < 6) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Erro!',
+            text: 'A senha deve ter pelo menos 6 caracteres.'
+        });
+        return;
+    }
+    {% endif %}
+    
+    // Mostra loading
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin me-2"></i>Salvando...';
+    submitBtn.disabled = true;
+    
+    // Prepara dados do formulário
+    const formData = new FormData(this);
+    
+    // Faz a requisição
+    const url = '{{ DOMAIN }}/equipe/{{ action == "criar" ? "add/save" : "edit/save" }}';
+    
+    fetch(url, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Sucesso!',
+                text: data.message,
+                timer: 2000,
+                showConfirmButton: false
+            }).then(() => {
+                window.location.href = '{{ DOMAIN }}/equipe';
+            });
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro!',
+                text: data.message
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Erro!',
+            text: 'Ocorreu um erro ao salvar o membro da equipe.'
+        });
+    })
+    .finally(() => {
+        // Restaura o botão
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    });
+});
+
+// Máscara para telefone
+document.querySelector('input[name="telefone"]').addEventListener('input', function(e) {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length >= 11) {
+        value = value.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+    } else if (value.length >= 7) {
+        value = value.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
+    } else if (value.length >= 3) {
+        value = value.replace(/(\d{2})(\d{0,5})/, '($1) $2');
+    }
+    e.target.value = value;
+});
+</script>
+
+{% endblock %}

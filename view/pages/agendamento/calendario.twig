@@ -1,0 +1,534 @@
+{% extends "layout/layoutMaster.twig" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block body %}
+
+<div class="content-body">
+    
+    <!-- row -->
+    <div class="container-fluid">
+        <div class="page-titles">
+            <div class="d-flex flex-wrap align-items-center justify-content-between">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}/agendamento">Agendamentos</a></li>
+                    <li class="breadcrumb-item active"><a href="javascript:void(0)">{{ titulo }}</a></li>
+                </ol>
+                <div>
+                    <button type="button" class="btn btn-success me-2" id="btnExportarGoogle">
+                        <i class="fa fa-calendar-plus me-2"></i>Exportar para Google Calendar
+                    </button>
+                    {% if 'agendamento_criar'|verifyPermission %}
+                    <a href="{{ DOMAIN }}/agendamento/add" class="btn btn-primary">
+                        <i class="fa-solid fa-plus me-2"></i>Novo Agendamento
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <form id="filtrosCalendario" method="GET" class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Status</label>
+                        <select name="status" id="filtroStatus" class="form-control">
+                            <option value="">Todos</option>
+                            <option value="Pendente">Pendente</option>
+                            <option value="Agendado">Agendado</option>
+                            <option value="Realizado">Realizado</option>
+                            <option value="Cancelado">Cancelado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Perito</label>
+                        <select name="perito_id" id="filtroPerito" class="form-control">
+                            <option value="">Todos</option>
+                            {% for perito in peritos %}
+                            <option value="{{ perito.id }}">{{ perito.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end gap-2">
+                        <button type="button" id="btnLimparFiltros" class="btn btn-secondary flex-fill">
+                            <i class="fa fa-times me-2"></i>Limpar Filtros
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Calendário -->
+        <div class="card">
+            <div class="card-body">
+                <div id="calendario"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Detalhes do Agendamento -->
+<div class="modal fade" id="modalDetalhes" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalhes do Agendamento</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalDetalhesBody">
+                <!-- Conteúdo será preenchido via JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <a href="#" id="btnEditarAgendamento" class="btn btn-primary">
+                    <i class="fa fa-pencil me-2"></i>Editar
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<!-- FullCalendar CSS -->
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet">
+<!-- FullCalendar JS -->
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/locales/pt-br.global.min.js"></script>
+
+<style>
+    /* Estilos para tema escuro do FullCalendar */
+    [data-theme-version="dark"] #calendario .fc {
+        color: #bdbdbd;
+    }
+    
+    [data-theme-version="dark"] #calendario .fc-header-toolbar {
+        background-color: #202124;
+        border-color: #4c4c4f;
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 10px;
+    }
+    
+    [data-theme-version="dark"] #calendario .fc-button {
+        background-color: #1b1b1b;
+        border-color: #4c4c4f;
+        color: #bdbdbd;
+    }
+    
+    [data-theme-version="dark"] #calendario .fc-button:hover {
+        background-color: #2a2a2a;
+        border-color: #5c5c5f;
+        color: #fff;
+    }
+    
+    [data-theme-version="dark"] #calendario .fc-button-active {
+        background-color: #2a2a2a;
+        border-color: #4c4c4f;
+        color: #bdbdbd;
+    }
+    
+    [data-theme-version="dark"] #calendario .fc-button-active:hover {
+        background-color: #353535;
+        border-color: #5c5c5f;
+        color: #fff;
+    }
+    
+    [data-theme-version="dark"] #calendario .fc-toolbar-title {
+        color: #fff;
+        font-weight: 600;
+    }
+    
+    [data-theme-version="dark"] #calendario .fc-col-header-cell {
+        background-color: #1b1b1b;
+        border-color: #4c4c4f;
+    }
+    
+    [data-theme-version="dark"] #calendario .fc-col-header-cell-cushion {
+        color: #bdbdbd;
+        font-weight: 600;
+    }
+    
+    [data-theme-version="dark"] #calendario .fc-daygrid-day {
+        background-color: #202124;
+        border-color: #4c4c4f;
+    }
+    
+    [data-theme-version="dark"] #calendario .fc-daygrid-day-number {
+        color: #bdbdbd;
+    }
+    
+    [data-theme-version="dark"] #calendario .fc-daygrid-day.fc-day-today {
+        background-color: rgba(76, 76, 79, 0.3);
+    }
+    
+    [data-theme-version="dark"] #calendario .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+        color: #fff;
+        font-weight: bold;
+    }
+    
+    [data-theme-version="dark"] #calendario .fc-day-other .fc-daygrid-day-number {
+        color: #6c757d;
+    }
+    
+    [data-theme-version="dark"] #calendario .fc-event {
+        border-color: transparent;
+        opacity: 0.85;
+    }
+    
+    [data-theme-version="dark"] #calendario .fc-event-title {
+        color: #fff;
+        font-weight: 500;
+    }
+    
+    [data-theme-version="dark"] #calendario .fc-event:hover {
+        opacity: 1;
+        filter: brightness(1.15);
+    }
+    
+    [data-theme-version="dark"] #calendario .fc-timegrid-slot {
+        border-color: #4c4c4f;
+    }
+    
+    [data-theme-version="dark"] #calendario .fc-timegrid-slot-label {
+        color: #828690;
+    }
+    
+    [data-theme-version="dark"] #calendario .fc-scrollgrid {
+        border-color: #4c4c4f;
+    }
+    
+    [data-theme-version="dark"] #calendario .fc-list-day-cushion {
+        background-color: #1b1b1b;
+        color: #bdbdbd;
+    }
+    
+    [data-theme-version="dark"] #calendario .fc-list-event {
+        background-color: #202124;
+        border-color: #4c4c4f;
+    }
+    
+    [data-theme-version="dark"] #calendario .fc-list-event-title {
+        color: #bdbdbd;
+    }
+    
+    /* Melhorias gerais para tema escuro */
+    [data-theme-version="dark"] #calendario .fc-daygrid-day-top {
+        color: #bdbdbd;
+    }
+    
+    [data-theme-version="dark"] #calendario .fc-timegrid-axis {
+        color: #828690;
+    }
+    
+    [data-theme-version="dark"] #calendario .fc-timegrid-now-indicator-line {
+        border-color: var(--primary);
+    }
+    
+    [data-theme-version="dark"] #calendario .fc-timegrid-now-indicator-arrow {
+        border-color: var(--primary);
+    }
+    
+    [data-theme-version="dark"] #calendario .fc-list-event-time {
+        color: #bdbdbd;
+    }
+    
+    [data-theme-version="dark"] #calendario .fc-list-event-dot {
+        border-color: var(--primary);
+    }
+</style>
+
+<script>
+    // Define DOMAIN globalmente
+    window.DOMAIN = '{{ DOMAIN }}';
+    
+    // Tradução customizada para português
+    const ptBrLocale = {
+        code: 'pt-br',
+        week: {
+            dow: 0, // Domingo é o primeiro dia da semana
+            doy: 4
+        },
+        buttonText: {
+            prev: 'Anterior',
+            next: 'Próximo',
+            today: 'Hoje',
+            month: 'Mês',
+            week: 'Semana',
+            day: 'Dia',
+            list: 'Lista'
+        },
+        allDayText: 'Dia inteiro',
+        moreLinkText: 'mais',
+        noEventsText: 'Não há eventos para exibir',
+        dayNames: ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'],
+        dayNamesShort: ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'],
+        monthNames: ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'],
+        monthNamesShort: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+    };
+    
+    let calendar;
+    let eventosCalendario = [];
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const calendarEl = document.getElementById('calendario');
+        
+        calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: ptBrLocale,
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+            },
+            buttonText: {
+                prev: 'Anterior',
+                next: 'Próximo',
+                today: 'Hoje',
+                month: 'Mês',
+                week: 'Semana',
+                day: 'Dia',
+                list: 'Lista'
+            },
+            allDayText: 'Dia inteiro',
+            moreLinkText: 'mais',
+            noEventsText: 'Não há eventos para exibir',
+            dayHeaderFormat: {
+                weekday: 'short'
+            },
+            dayHeaderContent: function(arg) {
+                const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+                return diasSemana[arg.date.getDay()];
+            },
+            height: 'auto',
+            events: function(fetchInfo, successCallback, failureCallback) {
+                const filtros = {
+                    start: fetchInfo.startStr.split('T')[0],
+                    end: fetchInfo.endStr.split('T')[0],
+                    status: document.getElementById('filtroStatus').value,
+                    perito_id: document.getElementById('filtroPerito').value
+                };
+                
+                const params = new URLSearchParams(filtros);
+                
+                fetch(`${DOMAIN}/agendamento/calendario/eventos?${params}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        eventosCalendario = data;
+                        successCallback(data);
+                    })
+                    .catch(error => {
+                        console.error('Erro ao carregar eventos:', error);
+                        failureCallback(error);
+                    });
+            },
+            eventClick: function(info) {
+                const evento = info.event;
+                const props = evento.extendedProps;
+                
+                // Monta HTML com detalhes
+                let html = `
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <strong>Cliente:</strong><br>
+                            ${props.cliente_nome || '-'}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <strong>Status:</strong><br>
+                            <span class="badge" style="background-color: ${evento.backgroundColor}">${props.status || '-'}</span>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <strong>Data/Hora:</strong><br>
+                            ${evento.start.toLocaleString('pt-BR')}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <strong>Tipo de Perícia:</strong><br>
+                            ${props.tipo_pericia || '-'}
+                        </div>
+                    </div>
+                `;
+                
+                if (props.cliente_email) {
+                    html += `
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <strong>Email:</strong><br>
+                                <a href="mailto:${props.cliente_email}">${props.cliente_email}</a>
+                            </div>
+                    `;
+                }
+                
+                if (props.cliente_telefone) {
+                    html += `
+                            <div class="col-md-6 mb-3">
+                                <strong>Telefone:</strong><br>
+                                <a href="tel:${props.cliente_telefone}">${props.cliente_telefone}</a>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    html += `</div>`;
+                }
+                
+                if (props.perito_nome) {
+                    html += `
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <strong>Perito:</strong><br>
+                                ${props.perito_nome}
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                if (props.local_pericia) {
+                    html += `
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <strong>Local:</strong><br>
+                                ${props.local_pericia}
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                if (props.observacoes) {
+                    html += `
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <strong>Observações:</strong><br>
+                                ${props.observacoes}
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                document.getElementById('modalDetalhesBody').innerHTML = html;
+                document.getElementById('btnEditarAgendamento').href = `${DOMAIN}/agendamento/edit/${evento.id}`;
+                
+                const modal = new bootstrap.Modal(document.getElementById('modalDetalhes'));
+                modal.show();
+            },
+            eventDisplay: 'block',
+            eventTimeFormat: {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            },
+            slotMinTime: '06:00:00',
+            slotMaxTime: '22:00:00',
+            allDaySlot: false,
+            allDayText: 'Dia inteiro',
+            moreLinkText: 'mais',
+            noEventsText: 'Não há eventos para exibir',
+            firstDay: 0
+        });
+        
+        calendar.render();
+        
+        // Filtros
+        document.getElementById('filtroStatus').addEventListener('change', function() {
+            calendar.refetchEvents();
+        });
+        
+        document.getElementById('filtroPerito').addEventListener('change', function() {
+            calendar.refetchEvents();
+        });
+        
+        document.getElementById('btnLimparFiltros').addEventListener('click', function() {
+            document.getElementById('filtroStatus').value = '';
+            document.getElementById('filtroPerito').value = '';
+            calendar.refetchEvents();
+        });
+        
+        // Exportar para Google Calendar
+        document.getElementById('btnExportarGoogle').addEventListener('click', function() {
+            if (eventosCalendario.length === 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Atenção!',
+                    text: 'Não há eventos para exportar.'
+                });
+                return;
+            }
+            
+            // Gera arquivo .ics
+            let icsContent = 'BEGIN:VCALENDAR\r\n';
+            icsContent += 'VERSION:2.0\r\n';
+            icsContent += 'PRODID:-//Sistema de Perícias//Agendamentos//PT\r\n';
+            icsContent += 'CALSCALE:GREGORIAN\r\n';
+            icsContent += 'METHOD:PUBLISH\r\n';
+            
+            eventosCalendario.forEach(function(evento) {
+                const props = evento.extendedProps;
+                const start = new Date(evento.start);
+                const end = new Date(evento.end || new Date(start.getTime() + 3600000)); // +1 hora se não tiver fim
+                
+                icsContent += 'BEGIN:VEVENT\r\n';
+                icsContent += `UID:agendamento-${evento.id}@pericia\r\n`;
+                icsContent += `DTSTART:${formatDateICS(start)}\r\n`;
+                icsContent += `DTEND:${formatDateICS(end)}\r\n`;
+                icsContent += `SUMMARY:${evento.title}\r\n`;
+                
+                let description = `Cliente: ${props.cliente_nome || '-'}\\n`;
+                description += `Status: ${props.status || '-'}\\n`;
+                description += `Tipo: ${props.tipo_pericia || '-'}\\n`;
+                if (props.local_pericia) {
+                    description += `Local: ${props.local_pericia}\\n`;
+                }
+                if (props.observacoes) {
+                    description += `Observações: ${props.observacoes}\\n`;
+                }
+                
+                icsContent += `DESCRIPTION:${description}\r\n`;
+                
+                if (props.local_pericia) {
+                    icsContent += `LOCATION:${props.local_pericia}\r\n`;
+                }
+                
+                icsContent += `URL:${DOMAIN}/agendamento/view/${evento.id}\r\n`;
+                icsContent += 'END:VEVENT\r\n';
+            });
+            
+            icsContent += 'END:VCALENDAR\r\n';
+            
+            // Cria e faz download do arquivo
+            const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = window.URL.createObjectURL(blob);
+            link.download = 'agendamentos-pericias.ics';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'Sucesso!',
+                text: 'Arquivo .ics gerado com sucesso! Você pode importá-lo no Google Calendar.',
+                timer: 3000,
+                showConfirmButton: false
+            });
+        });
+    });
+    
+    /**
+     * Formata data para formato ICS (YYYYMMDDTHHmmssZ)
+     */
+    function formatDateICS(date) {
+        const year = date.getUTCFullYear();
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(date.getUTCDate()).padStart(2, '0');
+        const hours = String(date.getUTCHours()).padStart(2, '0');
+        const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+        const seconds = String(date.getUTCSeconds()).padStart(2, '0');
+        
+        return `${year}${month}${day}T${hours}${minutes}${seconds}Z`;
+    }
+</script>
+{% endblock %}
+

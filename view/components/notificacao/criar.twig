@@ -1,0 +1,28 @@
+<div class="border-bottom px-3 py-3 mb-2">
+    <h4 class="mb-0">ENVIAR NOTIFICAÇÃO</h4>
+</div>
+<div class="px-3 py-2 pt-0">
+
+    <form action="javascript:void(0);" method="POST" id="enviar_notificacao">
+        <div class="mb-3">
+            <input type="text" name="titulo" class="form-control" placeholder="Título da Mensagem">
+        </div>
+        <div class="mb-3">
+            <textarea name="mensagem" class="form-control" placeholder="Digite sua mensagem..."></textarea>
+        </div>
+        <div class="mb-3">
+            <label for="cidade">Cidades (Deixe em branco para enviar para todas as cidades)</label>
+            <select name="cidade[]" multiple class="form-control select2">
+                <option value="">Todas as cidades</option>
+                {% for cidade in cidades %}
+                    <option value="{{ cidade.cidade }}">{{ cidade.cidade }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="d-flex justify-content-end w-100 my-3">
+            <button type="submit" id="salvar" class="btn btn-primary">ENVIAR NOTIFICAÇÃO</button>
+        </div>
+    </form>
+
+</div>
+<script src="{{ PATH }}/view/assets/js/pages/notificacao.js?v=1.0.1"></script>

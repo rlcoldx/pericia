@@ -1,0 +1,36 @@
+<nav>
+    <ul class="pagination justify-content-center mt-2">
+        {# //before #}
+        {% for paginate in pagination.before %}
+            <li><a href="{{ paginate.url }}{{ (_getString not in ['?', '']) ? _getString : '' }}">{{ paginate.number }}</a></li>
+        {% endfor %}
+
+        {# //divider#}
+        {% if pagination.before|length > 0 and (pagination.before|last).number + 1 != (pagination.beforeMiddle|first).number %}
+            <li class="disabled"><a href="javascript:void(0)">...</a></li>
+        {% endif %}
+
+        {# //before-midle #}
+        {% for paginate in pagination.beforeMiddle %}
+            <li><a href="{{ paginate.url }}{{ (_getString not in ['?', '']) ? _getString : '' }}">{{ paginate.number }}</a></li>
+        {% endfor %}
+
+        {# //actual #}
+        <li class="active"><a href="javascript:void(0)">{{ pagination.actual }}</a></li>
+
+        {# //late-middle#}
+        {% for paginate in pagination.lateMiddle %}
+            <li><a href="{{ paginate.url }}{{ (_getString not in ['?', '']) ? _getString : '' }}">{{ paginate.number }}</a></li>
+        {% endfor %}
+
+        {# //divider#}
+        {% if pagination.late|length > 0 and (pagination.lateMiddle|last).number + 1 != (pagination.late|first).number %}
+            <li class="disabled"><a href="javascript:void(0)">...</a></li>
+        {% endif %}
+
+        {# //late #}
+        {% for paginate in pagination.late %}
+            <li><a href="{{ paginate.url }}{{ (_getString not in ['?', '']) ? _getString : '' }}">{{ paginate.number }}</a></li>
+        {% endfor %}
+    </ul>
+</nav> 

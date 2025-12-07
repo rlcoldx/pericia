@@ -1,0 +1,501 @@
+{% extends "layout/layoutMaster.twig" %}
+
+{% block title %}Gerenciador de Migrations{% endblock %}
+
+{% block body %}
+
+<div class="content-body">
+    <div class="container-fluid">
+        
+        <!-- Header com estatísticas -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="page-titles">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{{ DOMAIN }}/">Home</a></li>
+                        <li class="breadcrumb-item active"><a href="javascript:void(0)">Migrations</a></li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cards de estatísticas -->
+        <div class="row mb-4">
+            <div class="col-xl-3 col-xxl-3 col-lg-6 col-sm-6">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0">
+                                <div class="icon-box bg-primary">
+                                    <i class="fa fa-list-ul text-white"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h5 class="mb-0" id="total-migrations">{{ status.total }}</h5>
+                                <span class="fs-14">Total de Migrations</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-xxl-3 col-lg-6 col-sm-6">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0">
+                                <div class="icon-box bg-success">
+                                    <i class="fa fa-check text-white"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h5 class="mb-0" id="executed-migrations">{{ status.executed }}</h5>
+                                <span class="fs-14">Executadas</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-xxl-3 col-lg-6 col-sm-6">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0">
+                                <div class="icon-box bg-warning">
+                                    <i class="fa fa-clock text-white"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h5 class="mb-0" id="pending-migrations">{{ status.pending }}</h5>
+                                <span class="fs-14">Pendentes</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-xxl-3 col-lg-6 col-sm-6">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0">
+                                <div class="icon-box bg-danger">
+                                    <i class="fa fa-exclamation-triangle text-white"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h5 class="mb-0" id="failed-migrations">{{ status.failed }}</h5>
+                                <span class="fs-14">Falhadas</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ações principais -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="fs-20 mb-0">
+                            <i class="fa fa-cog me-2"></i>
+                            Ações
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex flex-wrap gap-2">
+                            <button type="button" class="btn btn-primary" id="btn-run-all">
+                                <i class="fa fa-play me-2"></i>
+                                Executar Todas as Migrations Pendentes
+                            </button>
+                            <button type="button" class="btn btn-warning" id="btn-rollback">
+                                <i class="fa fa-undo me-2"></i>
+                                Reverter Última Batch
+                            </button>
+                            <button type="button" class="btn btn-info" id="btn-refresh">
+                                <i class="fa fa-sync me-2"></i>
+                                Atualizar Status
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabela de migrations -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="fs-20 mb-0">
+                            <i class="fa fa-table me-2"></i>
+                            Lista de Migrations
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="migrations-table">
+                                <thead>
+                                    <tr>
+                                        <th width="50">#</th>
+                                        <th>Nome da Migration</th>
+                                        <th width="120" class="text-center">Status</th>
+                                        <th width="100" class="text-center">Batch</th>
+                                        <th width="180" class="text-center">Executada em</th>
+                                        <th width="120" class="text-center">Tempo</th>
+                                        <th width="150" class="text-center">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="migrations-tbody">
+                                    {% for migration in status.migrations %}
+                                    <tr data-migration="{{ migration.name }}">
+                                        <td>{{ loop.index }}</td>
+                                        <td>
+                                            <div class="fw-bold">{{ migration.name }}</div>
+                                            {% if migration.error_message %}
+                                            <small class="text-danger">{{ migration.error_message }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            {% if migration.executed %}
+                                                {% if migration.status == 'success' %}
+                                                    <span class="badge bg-success">
+                                                        <i class="fa fa-check me-1"></i>Sucesso
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge bg-danger">
+                                                        <i class="fa fa-times me-1"></i>Falhou
+                                                    </span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="badge bg-secondary">
+                                                    <i class="fa fa-clock me-1"></i>Pendente
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            {% if migration.batch %}
+                                                <span class="badge bg-info">{{ migration.batch }}</span>
+                                            {% else %}
+                                                <span class="text-secondary">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            {% if migration.executed_at_formatted %}
+                                                <small>{{ migration.executed_at_formatted }}</small>
+                                            {% elseif migration.executed_at %}
+                                                <small>{{ migration.executed_at }}</small>
+                                            {% else %}
+                                                <span class="text-secondary">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            {% if migration.execution_time %}
+                                                <small>{{ migration.execution_time|number_format(4, '.', '') }}s</small>
+                                            {% else %}
+                                                <span class="text-secondary">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            {% if not migration.executed or migration.status == 'failed' %}
+                                                <button type="button" class="btn btn-sm btn-primary btn-run-single" data-migration="{{ migration.name }}">
+                                                    <i class="fa fa-play"></i> Executar
+                                                </button>
+                                            {% else %}
+                                                <span class="text-success">
+                                                    <i class="fa fa-check-circle"></i>
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Log de execução -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="fs-20 mb-0">
+                            <i class="fa fa-terminal me-2"></i>
+                            Log de Execução
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="execution-log" class="bg-dark text-white p-3 rounded" style="min-height: 200px; max-height: 400px; overflow-y: auto; font-family: monospace; font-size: 13px;">
+                            <div class="text-success">[Sistema] Aguardando execução de migrations...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const logContainer = document.getElementById('execution-log');
+    const btnRunAll = document.getElementById('btn-run-all');
+    const btnRollback = document.getElementById('btn-rollback');
+    const btnRefresh = document.getElementById('btn-refresh');
+    const btnRunSingle = document.querySelectorAll('.btn-run-single');
+
+    function addLog(message, type = 'info') {
+        const timestamp = new Date().toLocaleTimeString('pt-BR');
+        const colors = {
+            'info': 'text-info',
+            'success': 'text-success',
+            'error': 'text-danger',
+            'warning': 'text-warning'
+        };
+        const icon = {
+            'info': 'fa-info-circle',
+            'success': 'fa-check-circle',
+            'error': 'fa-times-circle',
+            'warning': 'fa-exclamation-triangle'
+        };
+        const logEntry = document.createElement('div');
+        logEntry.className = `${colors[type]} mb-2`;
+        logEntry.innerHTML = `[${timestamp}] <i class="fa ${icon[type]} me-1"></i>${message}`;
+        logContainer.appendChild(logEntry);
+        logContainer.scrollTop = logContainer.scrollHeight;
+    }
+
+    function updateStats(status) {
+        document.getElementById('total-migrations').textContent = status.total;
+        document.getElementById('executed-migrations').textContent = status.executed;
+        document.getElementById('pending-migrations').textContent = status.pending;
+        document.getElementById('failed-migrations').textContent = status.failed;
+    }
+
+    function updateTable(status) {
+        const tbody = document.getElementById('migrations-tbody');
+        tbody.innerHTML = '';
+        
+        status.migrations.forEach((migration, index) => {
+            const row = document.createElement('tr');
+            row.setAttribute('data-migration', migration.name);
+            
+            let statusBadge = '';
+            if (migration.executed) {
+                if (migration.status === 'success') {
+                    statusBadge = '<span class="badge bg-success"><i class="fa fa-check me-1"></i>Sucesso</span>';
+                } else {
+                    statusBadge = '<span class="badge bg-danger"><i class="fa fa-times me-1"></i>Falhou</span>';
+                }
+            } else {
+                statusBadge = '<span class="badge bg-secondary"><i class="fa fa-clock me-1"></i>Pendente</span>';
+            }
+
+            let actions = '';
+            if (!migration.executed || migration.status === 'failed') {
+                actions = `<button type="button" class="btn btn-sm btn-primary btn-run-single" data-migration="${migration.name}">
+                    <i class="fa fa-play"></i> Executar
+                </button>`;
+            } else {
+                actions = '<span class="text-success"><i class="fa fa-check-circle"></i></span>';
+            }
+
+            row.innerHTML = `
+                <td>${index + 1}</td>
+                <td>
+                    <div class="fw-bold">${migration.name}</div>
+                    ${migration.error_message ? `<small class="text-danger">${migration.error_message}</small>` : ''}
+                </td>
+                <td class="text-center">${statusBadge}</td>
+                <td class="text-center">${migration.batch ? `<span class="badge bg-info">${migration.batch}</span>` : '<span class="text-secondary">-</span>'}</td>
+                <td class="text-center">${migration.executed_at ? `<small>${migration.executed_at}</small>` : '<span class="text-secondary">-</span>'}</td>
+                <td class="text-center">${migration.execution_time ? `<small>${migration.execution_time}s</small>` : '<span class="text-secondary">-</span>'}</td>
+                <td class="text-center">${actions}</td>
+            `;
+            tbody.appendChild(row);
+        });
+
+        // Reattach event listeners
+        document.querySelectorAll('.btn-run-single').forEach(btn => {
+            btn.addEventListener('click', function() {
+                runSingleMigration(this.getAttribute('data-migration'));
+            });
+        });
+    }
+
+    function refreshStatus() {
+        addLog('Atualizando status das migrations...', 'info');
+        fetch('{{ DOMAIN }}/migrations/status')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    updateStats(data.status);
+                    updateTable(data.status);
+                    addLog('Status atualizado com sucesso!', 'success');
+                } else {
+                    addLog('Erro ao atualizar status: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                addLog('Erro ao atualizar status: ' + error.message, 'error');
+            });
+    }
+
+    function runAllMigrations() {
+        if (!confirm('Deseja executar todas as migrations pendentes?')) {
+            return;
+        }
+
+        addLog('Iniciando execução de todas as migrations pendentes...', 'info');
+        btnRunAll.disabled = true;
+        btnRunAll.innerHTML = '<i class="fa fa-spinner fa-spin me-2"></i>Executando...';
+
+        fetch('{{ DOMAIN }}/migrations/run', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            btnRunAll.disabled = false;
+            btnRunAll.innerHTML = '<i class="fa fa-play me-2"></i>Executar Todas as Migrations Pendentes';
+
+            if (data.success) {
+                addLog(`Execução concluída! ${data.results.length} migration(s) processada(s).`, 'success');
+                data.results.forEach(result => {
+                    if (result.status === 'success') {
+                        addLog(`✓ ${result.migration} - ${result.message} (${result.execution_time}s)`, 'success');
+                    } else {
+                        addLog(`✗ ${result.migration} - ${result.message}`, 'error');
+                    }
+                });
+                setTimeout(refreshStatus, 1000);
+            } else {
+                addLog('Erro ao executar migrations: ' + data.message, 'error');
+            }
+        })
+        .catch(error => {
+            btnRunAll.disabled = false;
+            btnRunAll.innerHTML = '<i class="fa fa-play me-2"></i>Executar Todas as Migrations Pendentes';
+            addLog('Erro ao executar migrations: ' + error.message, 'error');
+        });
+    }
+
+    function runSingleMigration(migrationName) {
+        if (!confirm(`Deseja executar a migration "${migrationName}"?`)) {
+            return;
+        }
+
+        addLog(`Iniciando execução da migration: ${migrationName}...`, 'info');
+        const btn = document.querySelector(`.btn-run-single[data-migration="${migrationName}"]`);
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i>';
+        }
+
+        fetch('{{ DOMAIN }}/migrations/run-single', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ migration: migrationName })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa fa-play"></i> Executar';
+            }
+
+            if (data.success) {
+                addLog(`✓ ${data.result.migration} - ${data.message} (${data.result.execution_time}s)`, 'success');
+                setTimeout(refreshStatus, 1000);
+            } else {
+                addLog(`✗ ${migrationName} - ${data.message}`, 'error');
+            }
+        })
+        .catch(error => {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa fa-play"></i> Executar';
+            }
+            addLog(`Erro ao executar migration: ${error.message}`, 'error');
+        });
+    }
+
+    function rollbackLastBatch() {
+        if (!confirm('Deseja reverter a última batch de migrations? Esta ação não pode ser desfeita facilmente.')) {
+            return;
+        }
+
+        addLog('Iniciando rollback da última batch...', 'warning');
+        btnRollback.disabled = true;
+        btnRollback.innerHTML = '<i class="fa fa-spinner fa-spin me-2"></i>Revertendo...';
+
+        fetch('{{ DOMAIN }}/migrations/rollback', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            btnRollback.disabled = false;
+            btnRollback.innerHTML = '<i class="fa fa-undo me-2"></i>Reverter Última Batch';
+
+            if (data.success) {
+                addLog(`Rollback concluído! ${data.results.length} migration(s) revertida(s).`, 'warning');
+                data.results.forEach(result => {
+                    if (result.status === 'success') {
+                        addLog(`✓ ${result.migration} - ${result.message} (${result.execution_time}s)`, 'success');
+                    } else {
+                        addLog(`✗ ${result.migration} - ${result.message}`, 'error');
+                    }
+                });
+                setTimeout(refreshStatus, 1000);
+            } else {
+                addLog('Erro ao executar rollback: ' + data.message, 'error');
+            }
+        })
+        .catch(error => {
+            btnRollback.disabled = false;
+            btnRollback.innerHTML = '<i class="fa fa-undo me-2"></i>Reverter Última Batch';
+            addLog('Erro ao executar rollback: ' + error.message, 'error');
+        });
+    }
+
+    // Event listeners
+    btnRunAll.addEventListener('click', runAllMigrations);
+    btnRollback.addEventListener('click', rollbackLastBatch);
+    btnRefresh.addEventListener('click', refreshStatus);
+    
+    btnRunSingle.forEach(btn => {
+        btn.addEventListener('click', function() {
+            runSingleMigration(this.getAttribute('data-migration'));
+        });
+    });
+});
+</script>
+<style>
+.icon-box {
+    width: 60px;
+    height: 60px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+}
+#execution-log {
+    background-color: #1e1e1e !important;
+    color: #d4d4d4 !important;
+}
+</style>
+{% endblock %}
+

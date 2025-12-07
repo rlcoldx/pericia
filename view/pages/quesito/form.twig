@@ -1,0 +1,239 @@
+{% extends "layout/layoutMaster.twig" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block body %}
+
+<div class="content-body">
+    <div class="container-fluid">
+        <div class="page-titles">
+            <div class="d-flex flex-wrap align-items-center justify-content-between">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}/quesitos">Quesitos</a></li>
+                    <li class="breadcrumb-item active"><a href="javascript:void(0)">{{ titulo }}</a></li>
+                </ol>
+                <a href="{{ DOMAIN }}/quesitos" class="btn btn-secondary">
+                    <i class="fa fa-arrow-left me-2"></i>Voltar
+                </a>
+            </div>
+        </div>
+
+        <form id="formQuesito" method="POST">
+            {% if action == 'editar' %}
+                <input type="hidden" name="id" value="{{ quesito.id }}">
+            {% endif %}
+
+            <div class="row">
+                <div class="col-12">
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h4 class="card-title mb-0">
+                                <i class="fa fa-file-alt me-2"></i>Dados do Quesito
+                            </h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-12 col-lg-3 mb-3">
+                                    <label class="form-label">Data <span class="text-danger">*</span></label>
+                                    <input type="date"
+                                           class="form-control"
+                                           name="data"
+                                           value="{{ action == 'editar' ? quesito.data : '' }}"
+                                           required>
+                                </div>
+
+                                <div class="col-12 col-lg-3 mb-3">
+                                    <label class="form-label">Tipo <span class="text-danger">*</span></label>
+                                    <input type="text"
+                                           class="form-control text-uppercase"
+                                           name="tipo"
+                                           value="{{ action == 'editar' ? quesito.tipo : '' }}"
+                                           placeholder="Tipo do quesito"
+                                           required>
+                                </div>
+
+                                <div class="col-12 col-lg-3 mb-3">
+                                    <label class="form-label">Vara <span class="text-danger">*</span></label>
+                                    <input type="text"
+                                           class="form-control"
+                                           name="vara"
+                                           value="{{ action == 'editar' ? quesito.vara : '' }}"
+                                           placeholder="Vara/Órgão"
+                                           required>
+                                </div>
+
+                                <div class="col-12 col-lg-3 mb-3">
+                                    <label class="form-label">Reclamante <span class="text-danger">*</span></label>
+                                    <select class="form-control" name="reclamante_id" required>
+                                        <option value="">Selecione o Reclamante</option>
+                                        {% for reclamante in reclamantes %}
+                                        <option value="{{ reclamante.id }}" {{ action == 'editar' and quesito.reclamante_id == reclamante.id ? 'selected' : '' }}>
+                                            {{ reclamante.nome }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="col-12 col-lg-3 mb-3">
+                                    <label class="form-label">Código Reclamante (opcional)</label>
+                                    <input type="text"
+                                           class="form-control"
+                                           name="codigo_reclamante"
+                                           value="{{ action == 'editar' ? quesito.codigo_reclamante : '' }}"
+                                           placeholder="Código interno do reclamante">
+                                </div>
+
+                                <div class="col-12 col-lg-3 mb-3">
+                                    <label class="form-label">Reclamada <span class="text-danger">*</span></label>
+                                    <select class="form-control" name="reclamada_id" required>
+                                        <option value="">Selecione a Reclamada</option>
+                                        {% for reclamada in reclamadas %}
+                                        <option value="{{ reclamada.id }}" {{ action == 'editar' and quesito.reclamada_id == reclamada.id ? 'selected' : '' }}>
+                                            {{ reclamada.nome }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="col-12 col-lg-6 mb-3">
+                                    <label class="form-label">Link da Pasta do Drive</label>
+                                    <input type="url"
+                                           class="form-control"
+                                           name="link_pasta_drive"
+                                           value="{{ action == 'editar' ? quesito.link_pasta_drive : '' }}"
+                                           placeholder="https://drive.google.com/....">
+                                </div>
+
+                                <div class="col-12 col-lg-3 mb-3">
+                                    <label class="form-label">Email do Cliente</label>
+                                    <input type="email"
+                                           class="form-control"
+                                           name="email_cliente"
+                                           value="{{ action == 'editar' ? quesito.email_cliente : '' }}"
+                                           placeholder="cliente@exemplo.com">
+                                </div>
+
+                                {% if action == 'editar' %}
+                                <div class="col-12 col-lg-3 mb-3 d-flex align-items-end">
+                                    <div class="form-check">
+                                        <input class="form-check-input"
+                                               type="checkbox"
+                                               id="enviar_para_cliente"
+                                               name="enviar_para_cliente"
+                                               {{ action == 'editar' and quesito.enviar_para_cliente ? 'checked' : '' }}>
+                                        <label class="form-check-label" for="enviar_para_cliente">
+                                            Enviar para o cliente
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-12 col-lg-3 mb-3">
+                                    <label class="form-label">Status</label>
+                                    <select name="status" class="form-control">
+                                        {% set currentStatus = quesito.status|default('Pendente') %}
+                                        <option value="Pendente" {{ currentStatus == 'Pendente' ? 'selected' : '' }}>Pendente</option>
+                                        <option value="Finalizado" {{ currentStatus == 'Finalizado' ? 'selected' : '' }}>Finalizado</option>
+                                        <option value="Pendente de Envio" {{ currentStatus == 'Pendente de Envio' ? 'selected' : '' }}>Pendente de Envio</option>
+                                        <option value="Recusado" {{ currentStatus == 'Recusado' ? 'selected' : '' }}>Recusado</option>
+                                    </select>
+                                </div>
+                                {% if action == 'editar' and quesito.email_cliente %}
+                                <div class="col-12 mb-3">
+                                    <div class="alert {{ quesito.email_cliente_enviado ? 'alert-success' : 'alert-warning' }} mb-0">
+                                        <i class="fa {{ quesito.email_cliente_enviado ? 'fa-check-circle' : 'fa-clock' }} me-2"></i>
+                                        <strong>Status do E-mail ao Cliente:</strong>
+                                        {% if quesito.email_cliente_enviado %}
+                                            <span>E-mail enviado em {{ quesito.email_cliente_data_envio|date('d/m/Y H:i') }}</span>
+                                        {% else %}
+                                            <span>E-mail pendente de envio</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endif %}
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-body">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fa fa-save me-2"></i>
+                                {{ action == 'criar' ? 'Cadastrar Quesito' : 'Salvar Alterações' }}
+                            </button>
+                            <a href="{{ DOMAIN }}/quesitos" class="btn btn-secondary ms-2">
+                                <i class="fa fa-times me-2"></i>Cancelar
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.DOMAIN = '{{ DOMAIN }}';
+
+    (function() {
+        'use strict';
+
+        const form = document.getElementById('formQuesito');
+        if (!form) return;
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin me-2"></i>Salvando...';
+            submitBtn.disabled = true;
+
+            const formData = new FormData(form);
+            const isEdit = !!form.querySelector('input[name="id"]');
+            const url = window.DOMAIN + (isEdit ? '/quesitos/editar/save' : '/quesitos/add/save');
+
+            fetch(url, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Sucesso!',
+                        text: data.message,
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.href = window.DOMAIN + '/quesitos';
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Erro!',
+                        text: data.message
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro!',
+                    text: 'Ocorreu um erro ao salvar o quesito.'
+                });
+            })
+            .finally(() => {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
+        });
+    })();
+</script>
+{% endblock %}
+

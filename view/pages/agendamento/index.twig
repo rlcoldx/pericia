@@ -1,0 +1,186 @@
+{% extends "layout/layoutMaster.twig" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block body %}
+
+<div class="content-body">
+    
+    <!-- row -->
+    <div class="container-fluid">
+        <div class="page-titles">
+            <div class="d-flex flex-wrap align-items-center justify-content-between">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}">Home</a></li>
+                    <li class="breadcrumb-item active"><a href="javascript:void(0)">{{ titulo }}</a></li>
+                </ol>
+                {% if 'agendamento_criar'|verifyPermission %}
+                <a href="{{ DOMAIN }}/agendamento/add" class="btn btn-primary text-nowrap"><i class="fa-solid fa-plus me-2"></i>Novo Agendamento</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Estatísticas -->
+        <div class="row">
+            <div class="col-xl-3 col-lg-6 col-sm-6">
+                <div class="widget-stat card">
+                    <div class="card-body p-4">
+                        <div class="media ai-icon">
+                            <span class="me-3 bgl-primary text-primary">
+                                <i class="fa-solid fa-clock"></i>
+                            </span>
+                            <div class="media-body">
+                                <p class="mb-1">Pendentes</p>
+                                <h4 class="mb-0">{{ estatisticas.Pendente|default(0) }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-lg-6 col-sm-6">
+                <div class="widget-stat card">
+                    <div class="card-body p-4">
+                        <div class="media ai-icon">
+                            <span class="me-3 bgl-success text-success">
+                                <i class="fa-solid fa-calendar-check"></i>
+                            </span>
+                            <div class="media-body">
+                                <p class="mb-1">Agendados</p>
+                                <h4 class="mb-0">{{ estatisticas.Agendado|default(0) }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-lg-6 col-sm-6">
+                <div class="widget-stat card">
+                    <div class="card-body p-4">
+                        <div class="media ai-icon">
+                            <span class="me-3 bgl-info text-info">
+                                <i class="fa-solid fa-check-circle"></i>
+                            </span>
+                            <div class="media-body">
+                                <p class="mb-1">Realizados</p>
+                                <h4 class="mb-0">{{ estatisticas.Realizado|default(0) }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-lg-6 col-sm-6">
+                <div class="widget-stat card">
+                    <div class="card-body p-4">
+                        <div class="media ai-icon">
+                            <span class="me-3 bgl-danger text-danger">
+                                <i class="fa-solid fa-ban"></i>
+                            </span>
+                            <div class="media-body">
+                                <p class="mb-1">Cancelados</p>
+                                <h4 class="mb-0">{{ estatisticas.Cancelado|default(0) }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="card">
+            <div class="card-body">
+                <form id="filtrosAgendamento" method="GET" class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Status</label>
+                        <select name="status" class="form-control">
+                            <option value="">Todos</option>
+                            <option value="Pendente">Pendente</option>
+                            <option value="Agendado">Agendado</option>
+                            <option value="Realizado">Realizado</option>
+                            <option value="Cancelado">Cancelado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Perito</label>
+                        <select name="perito_id" class="form-control">
+                            <option value="">Todos</option>
+                            {% for perito in peritos %}
+                            <option value="{{ perito.id }}">{{ perito.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Data Início</label>
+                        <input type="date" name="data_inicio" class="form-control">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Data Fim</label>
+                        <input type="date" name="data_fim" class="form-control">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end gap-2">
+                        <button type="submit" class="btn btn-primary flex-fill"><i class="fa fa-filter me-2"></i>Filtrar</button>
+                        <button type="button" id="btnLimparFiltros" class="btn btn-secondary"><i class="fa fa-times"></i></button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Listagem -->
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title">Lista de Agendamentos</h4>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table id="datatable-agendamentos" class="table dataTable align-middle">
+                        <thead>
+                            <tr role="row">
+                                <th>Cliente</th>
+                                <th>Data/Hora</th>
+                                <th>Perito</th>
+                                <th>Tipo</th>
+                                <th>Status</th>
+                                <th>Local</th>
+                                <th width="150">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Dados carregados via AJAX -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Modal de Confirmação -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Remoção</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja remover o agendamento de <strong id="nomeCliente"></strong>?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmRemover">Sim, Remover</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Define DOMAIN globalmente para uso no JS externo
+    window.DOMAIN = '{{ DOMAIN }}';
+</script>
+<script src="{{ PATH }}/view/assets/vendor/datatables/js/jquery.dataTables.min.js"></script>
+<script src="{{ PATH }}/view/assets/js/datatables/datatables-ajax.js"></script>
+<script src="{{ PATH }}/view/assets/js/pages/datatables/agendamento-datatable.js"></script>
+{% endblock %}
+

@@ -1,0 +1,204 @@
+{% extends "layout/layoutMaster.twig" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block body %}
+
+<div class="content-body">
+    
+    <!-- row -->
+    <div class="container-fluid">
+        <div class="page-titles">
+            <div class="d-flex flex-wrap align-items-center justify-content-between">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}">Home</a></li>
+                    <li class="breadcrumb-item active"><a href="javascript:void(0)">{{ titulo }}</a></li>
+                </ol>
+                <a href="{{ DOMAIN }}/equipe/add" class="btn btn-primary text-nowrap"><i class="fa-solid fa-plus me-2"></i>Adicionar Membro</a>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                {% if equipe|length > 0 %}
+                <div class="table-responsive">
+                    <table id="datatable" class="table dataTable align-middle">
+                        <thead>
+                            <tr role="row">
+                                <th class="sorting_asc">Nome</th>
+                                <th class="sorting">Email</th>
+                                <th class="sorting">Telefone</th>
+                                <th class="sorting">Cargo</th>
+                                <th class="sorting">Status</th>
+                                <th class="sorting">Data Criação</th>
+                                <th class="sorting" width="120">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for membro in equipe %}
+                            <tr class="membro-{{ membro.id }}">
+                                <td class="sorting_1">
+                                    <div class="d-flex align-items-center">
+                                        <div>
+                                            <h6 class="mb-0">{{ membro.nome }}</h6>
+                                            <small class="opacity-75">ID: {{ membro.id }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <a href="mailto:{{ membro.email }}" class="text-primary">{{ membro.email }}</a>
+                                </td>
+                                <td>
+                                    {% if membro.telefone %}
+                                        <a href="tel:{{ membro.telefone }}" class="text-success">{{ membro.telefone }}</a>
+                                    {% else %}
+                                        <span class="opacity-50">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if membro.cargo %}
+                                        <span class="badge bg-warning">{{ membro.cargo }}</span>
+                                    {% else %}
+                                        <span class="opacity-50">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if membro.status == 'Ativo' %}
+                                        <span class="badge bg-success">Ativo</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Inativo</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small>{{ membro.data|date("d/m/Y H:i") }}</small>
+                                </td>
+                                <td>
+                                    <div class="d-flex">
+                                        <a href="{{ DOMAIN }}/equipe/edit/{{ membro.id }}" 
+                                           class="btn btn-success shadow btn-xs sharp me-1" 
+                                           data-bs-toggle="tooltip" 
+                                           data-bs-title="Editar">
+                                            <i class="fa fa-pencil"></i>
+                                        </a>
+                                        <button type="button" 
+                                                class="btn btn-danger shadow btn-xs sharp" 
+                                                onclick="removerMembro({{ membro.id }}, '{{ membro.nome }}')"
+                                                data-bs-toggle="tooltip" 
+                                                data-bs-title="Remover">
+                                            <i class="fa fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <div class="mb-4">
+                        <i class="fa-solid fa-users fa-3x opacity-50"></i>
+                    </div>
+                    <h4>Nenhum membro da equipe encontrado</h4>
+                    <p class="opacity-75">Comece adicionando o primeiro membro da sua equipe.</p>
+                    <a href="{{ DOMAIN }}/equipe/add" class="btn btn-primary">
+                        <i class="fa-solid fa-plus me-2"></i>Adicionar Primeiro Membro
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Modal de Confirmação -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Remoção</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja remover permanentemente o membro <strong id="nomeMembro"></strong> da equipe?</p>
+                <p class="text-danger"><small><strong>ATENÇÃO:</strong> O usuário será deletado permanentemente do banco de dados. Esta ação não pode ser desfeita.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmRemover">Sim, Remover</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ PATH }}/view/assets/vendor/datatables/js/jquery.dataTables.min.js"></script>
+<script src="{{ PATH }}/view/assets/js/plugins-init/datatables.init.js"></script>
+
+<script>
+let membroParaRemover = null;
+
+function removerMembro(id, nome) {
+    membroParaRemover = id;
+    document.getElementById('nomeMembro').textContent = nome;
+    new bootstrap.Modal(document.getElementById('confirmModal')).show();
+}
+
+document.getElementById('confirmRemover').addEventListener('click', function() {
+    if (!membroParaRemover) return;
+    
+    // Mostra loading
+    this.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Removendo...';
+    this.disabled = true;
+    
+    // Faz a requisição
+    fetch('{{ DOMAIN }}/equipe/remover', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'id=' + membroParaRemover
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Remove a linha da tabela
+            document.querySelector('.membro-' + membroParaRemover).remove();
+            
+            // Mostra mensagem de sucesso
+            Swal.fire({
+                icon: 'success',
+                title: 'Sucesso!',
+                text: data.message,
+                timer: 2000,
+                showConfirmButton: false
+            });
+            
+            // Fecha o modal
+            bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro!',
+                text: data.message
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Erro!',
+            text: 'Ocorreu um erro ao remover o membro da equipe.'
+        });
+    })
+    .finally(() => {
+        // Restaura o botão
+        this.innerHTML = 'Sim, Remover';
+        this.disabled = false;
+        membroParaRemover = null;
+    });
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,136 @@
+{% extends "layout/layoutMaster.twig" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block body %}
+
+<div class="content-body">
+    <div class="container-fluid">
+        <div class="page-titles">
+            <div class="d-flex flex-wrap align-items-center justify-content-between">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}">Home</a></li>
+                    <li class="breadcrumb-item active"><a href="javascript:void(0)">{{ titulo }}</a></li>
+                </ol>
+                {% if 'reclamadas_criar'|verifyPermission %}
+                <a href="{{ DOMAIN }}/reclamadas/add" class="btn btn-primary text-nowrap">
+                    <i class="fa-solid fa-plus me-2"></i>Nova Reclamada
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title">Reclamadas</h4>
+            </div>
+            <div class="card-body">
+                {% if reclamadas is not empty %}
+                <div class="table-responsive">
+                    <table class="table table-striped align-middle">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th width="120">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for r in reclamadas %}
+                            <tr>
+                                <td>{{ r.nome }}</td>
+                                <td>
+                                    <div class="d-flex">
+                                        {% if 'reclamadas_editar'|verifyPermission %}
+                                        <a href="{{ DOMAIN }}/reclamadas/editar/{{ r.id }}" class="btn btn-success shadow btn-xs sharp me-1" data-bs-toggle="tooltip" data-bs-title="Editar">
+                                            <i class="fa fa-pencil"></i>
+                                        </a>
+                                        {% endif %}
+                                        {% if 'reclamadas_deletar'|verifyPermission %}
+                                        <button type="button" class="btn btn-danger shadow btn-xs sharp" onclick="removerReclamada({{ r.id }}, '{{ r.nome }}')" data-bs-toggle="tooltip" data-bs-title="Remover">
+                                            <i class="fa fa-trash"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p>Nenhuma reclamada cadastrada.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Remoção</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja remover a reclamada <strong id="nomeReclamada"></strong>?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmRemover">Sim, Remover</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+window.DOMAIN = '{{ DOMAIN }}';
+
+function removerReclamada(id, nome) {
+    document.getElementById('nomeReclamada').textContent = nome;
+    window.reclamadaParaRemover = id;
+    new bootstrap.Modal(document.getElementById('confirmModal')).show();
+}
+
+document.getElementById('confirmRemover')?.addEventListener('click', function() {
+    if (!window.reclamadaParaRemover) return;
+    
+    const btn = this;
+    btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Removendo...';
+    btn.disabled = true;
+    
+    fetch(window.DOMAIN + '/reclamadas/remover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'id=' + window.reclamadaParaRemover
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Sucesso!',
+                text: data.message,
+                timer: 2000,
+                showConfirmButton: false
+            }).then(() => location.reload());
+        } else {
+            Swal.fire({ icon: 'error', title: 'Erro!', text: data.message });
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        Swal.fire({ icon: 'error', title: 'Erro!', text: 'Ocorreu um erro ao remover.' });
+    })
+    .finally(() => {
+        btn.innerHTML = 'Sim, Remover';
+        btn.disabled = false;
+        window.reclamadaParaRemover = null;
+    });
+});
+</script>
+{% endblock %}

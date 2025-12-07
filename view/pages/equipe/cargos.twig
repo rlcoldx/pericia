@@ -1,0 +1,258 @@
+{% extends "layout/layoutMaster.twig" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block body %}
+
+<div class="content-body">
+    
+    <!-- row -->
+    <div class="container-fluid">
+        <div class="page-titles">
+            <div class="d-flex flex-wrap align-items-center justify-content-between">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}/equipe">Equipe</a></li>
+                    <li class="breadcrumb-item active"><a href="javascript:void(0)">{{ titulo }}</a></li>
+                </ol>
+                <a href="{{ DOMAIN }}/cargos/add" class="btn btn-primary text-nowrap">
+                    <i class="fa-solid fa-plus me-2"></i>Adicionar Cargo
+                </a>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                {% if cargos|length > 0 %}
+                <div class="table-responsive">
+                    <table id="datatable" class="table dataTable align-middle">
+                        <thead>
+                            <tr role="row">
+                                <th class="sorting_asc">Nome</th>
+                                <th class="sorting">Descrição</th>
+                                <th class="sorting">Permissões</th>
+                                <th class="sorting">Status</th>
+                                <th class="sorting">Data Criação</th>
+                                <th class="sorting" width="120">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cargo in cargos %}
+                            <tr class="cargo-{{ cargo.id }}">
+                                <td class="sorting_1">
+                                    <div class="d-flex align-items-center">
+                                        <div>
+                                            <h6 class="mb-0">{{ cargo.nome }}</h6>
+                                            <small class="opacity-75">ID: {{ cargo.id }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if cargo.descricao %}
+                                        <p class="mb-0">{{ cargo.descricao }}</p>
+                                    {% else %}
+                                        <span class="opacity-50">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-primary py-2 px-3" 
+                                            onclick="verPermissoes({{ cargo.id }}, '{{ cargo.nome }}')">
+                                        <i class="fa fa-eye me-1"></i>Ver Permissões
+                                    </button>
+                                </td>
+                                <td>
+                                    {% if cargo.status == 'Ativo' %}
+                                        <span class="badge bg-success">Ativo</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Inativo</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small>{{ cargo.data_create|date("d/m/Y H:i") }}</small>
+                                </td>
+                                <td>
+                                    <div class="d-flex">
+                                        <a href="{{ DOMAIN }}/cargos/edit/{{ cargo.id }}" 
+                                           class="btn btn-success shadow btn-xs sharp me-1" 
+                                           data-bs-toggle="tooltip" 
+                                           data-bs-title="Editar">
+                                            <i class="fa fa-pencil"></i>
+                                        </a>
+                                        <button type="button" 
+                                                class="btn btn-danger shadow btn-xs sharp" 
+                                                onclick="removerCargo({{ cargo.id }}, '{{ cargo.nome }}')"
+                                                data-bs-toggle="tooltip" 
+                                                data-bs-title="Remover">
+                                            <i class="fa fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <div class="mb-4">
+                        <i class="fa-solid fa-briefcase fa-3x opacity-50"></i>
+                    </div>
+                    <h4>Nenhum cargo encontrado</h4>
+                    <p class="opacity-75">Comece criando o primeiro cargo para sua equipe.</p>
+                    <a href="{{ DOMAIN }}/cargos/add" class="btn btn-primary">
+                        <i class="fa-solid fa-plus me-2"></i>Criar Primeiro Cargo
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Modal de Confirmação -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Remoção</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja remover o cargo <strong id="nomeCargo"></strong>?</p>
+                <p class="text-danger"><small><strong>ATENÇÃO:</strong> O cargo será deletado permanentemente do banco de dados. Esta ação não pode ser desfeita.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmRemover">Sim, Remover</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Permissões -->
+<div class="modal fade" id="permissoesModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-white">Permissões do Cargo: <span id="nomeCargoPermissoes"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="permissoesList">
+                    <div class="text-center">
+                        <i class="fa fa-spinner fa-spin"></i> Carregando permissões...
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ PATH }}/view/assets/vendor/datatables/js/jquery.dataTables.min.js"></script>
+<script src="{{ PATH }}/view/assets/js/plugins-init/datatables.init.js"></script>
+
+<script>
+let cargoParaRemover = null;
+
+function removerCargo(id, nome) {
+    cargoParaRemover = id;
+    document.getElementById('nomeCargo').textContent = nome;
+    new bootstrap.Modal(document.getElementById('confirmModal')).show();
+}
+
+function verPermissoes(id, nome) {
+    document.getElementById('nomeCargoPermissoes').textContent = nome;
+    
+    // Mostra modal
+    new bootstrap.Modal(document.getElementById('permissoesModal')).show();
+    
+    // Carrega permissões
+    fetch('{{ DOMAIN }}/cargos/permissoes/' + id)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                let html = '';
+                if (data.permissoes && data.permissoes.length > 0) {
+                    data.permissoes.forEach(permissao => {
+                        html += `<div class="alert alert-success mb-2">
+                            <strong>${permissao.titulo}</strong><br>
+                            <small>${permissao.descricao || ''}</small>
+                        </div>`;
+                    });
+                } else {
+                    html = '<div class="alert alert-warning">Este cargo não possui permissões atribuídas.</div>';
+                }
+                document.getElementById('permissoesList').innerHTML = html;
+            } else {
+                document.getElementById('permissoesList').innerHTML = '<div class="alert alert-danger">Erro ao carregar permissões.</div>';
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            document.getElementById('permissoesList').innerHTML = '<div class="alert alert-danger">Erro ao carregar permissões.</div>';
+        });
+}
+
+document.getElementById('confirmRemover').addEventListener('click', function() {
+    if (!cargoParaRemover) return;
+    
+    // Mostra loading
+    this.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Removendo...';
+    this.disabled = true;
+    
+    // Faz a requisição
+    fetch('{{ DOMAIN }}/cargos/remover', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'id=' + cargoParaRemover
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Remove a linha da tabela
+            document.querySelector('.cargo-' + cargoParaRemover).remove();
+            
+            // Mostra mensagem de sucesso
+            Swal.fire({
+                icon: 'success',
+                title: 'Sucesso!',
+                text: data.message,
+                timer: 2000,
+                showConfirmButton: false
+            });
+            
+            // Fecha o modal
+            bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro!',
+                text: data.message
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Erro!',
+            text: 'Ocorreu um erro ao remover o cargo.'
+        });
+    })
+    .finally(() => {
+        // Restaura o botão
+        this.innerHTML = 'Sim, Remover';
+        this.disabled = false;
+        cargoParaRemover = null;
+    });
+});
+</script>
+
+{% endblock %}

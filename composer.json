@@ -1,0 +1,37 @@
+{
+  "name": "agenciaclose/tanamesa",
+  "license": "proprietary",
+  "type": "project",
+  "description": "",
+  "config": {
+    "platform": {
+      "php": "7.4"
+    }
+  },
+  "authors": [
+    {
+      "name": "Agencia Close",
+      "email": "rafael@agenciaclose.com.br"
+    }
+  ],
+  "require": {
+    "twig/twig": "^3.0",
+    "guzzlehttp/guzzle": "^7.0",
+    "coffeecode/router": "^1.0",
+    "phpmailer/phpmailer": "^6.4",
+    "ext-pdo": "*",
+    "ext-gd": "*",
+    "ext-json": "*",
+    "ext-iconv": "*",
+    "codeinc/strip-accents": "^1.1"
+  },
+  "autoload": {
+    "psr-4": {
+      "Agencia\\Close\\": "application/"
+    },
+    "files": [
+      "config/config.php",
+      "config/functions.php"
+    ]
+  }
+}

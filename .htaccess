@@ -1,0 +1,17 @@
+<IfModule mod_rewrite.c>
+   RewriteEngine On
+   
+   # ROUTER URL Rewrite
+   RewriteCond %{SCRIPT_FILENAME} !-f
+   RewriteCond %{SCRIPT_FILENAME} !-d
+   RewriteRule ^(.*)$ index.php?route=/$1 [L,QSA]
+
+   DirectoryIndex index.php
+</IfModule>
+
+# Aumentar limites de upload para vídeos
+php_value upload_max_filesize 150M
+php_value post_max_size 150M
+php_value max_execution_time 300
+php_value max_input_time 300
+php_value memory_limit 256M

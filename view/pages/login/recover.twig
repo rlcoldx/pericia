@@ -1,0 +1,54 @@
+{% extends "layout/layoutPanelLogin.twig" %}
+
+{% block title %}Lugo Chat - Recuperar Senha{% endblock %}
+
+{% block body %}
+
+<link rel="stylesheet" type="text/css" href="{{ PATH }}/view/painel/src/css/pages/authentication.css">
+
+    <!-- BEGIN: Content-->
+    <div class="app-content content ">
+        <div class="content-overlay"></div>
+        <div class="header-navbar-shadow"></div>
+        <div class="content-wrapper">
+            <div class="content-header row">
+            </div>
+            <div class="content-body">
+                <div class="auth-wrapper auth-basic px-2">
+                    <div class="auth-inner my-2">
+                        <!-- Forgot Password basic -->
+                        <div class="card mb-0">
+                            <div class="card-body">
+                                <a href="javascript:void(0)" class="brand-logo">
+                                    <img src="{{ PATH }}/view/painel/src/images/logo/logo.svg" alt="">
+                                </a>
+                                <div class="text-center">
+                                    <h4 class="card-title mb-1">Esqueceu a Senha? 🔒</h4>
+                                    <p class="card-text mb-2">Digite seu E-mail e enviaremos instruções para redefinir sua senha</p>
+                                </div>
+
+                                <form class="auth-forgot-password-form mt-2" action="auth-reset-password-basic.html" method="POST">
+                                    <div class="mb-1">
+                                        <label for="forgot-password-email" class="form-label">E-mail</label>
+                                        <input type="text" class="form-control" id="forgot-password-email" name="forgot-password-email" placeholder="john@example.com" aria-describedby="forgot-password-email" tabindex="1" autofocus />
+                                    </div>
+                                    <button class="btn btn-primary w-100" tabindex="2">Recuparar Senha</button>
+                                </form>
+
+                                <p class="text-center mt-2">
+                                    <a href="{{ DOMAIN }}/painel/login"> <i data-feather="chevron-left"></i> Voltar ao login </a>
+                                </p>
+                            </div>
+                        </div>
+                        <!-- /Forgot Password basic -->
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    <!-- END: Content-->
+
+    <script src="{{ PATH }}/view/painel/src/js/scripts/pages/login.js"></script>
+    
+{% endblock %}

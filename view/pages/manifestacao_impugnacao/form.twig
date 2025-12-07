@@ -1,0 +1,231 @@
+{% extends "layout/layoutMaster.twig" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block body %}
+
+<div class="content-body">
+    <div class="container-fluid">
+        <div class="page-titles">
+            <div class="d-flex flex-wrap align-items-center justify-content-between">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}/manifestacoes-impugnacoes">Manifestações e Impugnações</a></li>
+                    <li class="breadcrumb-item active"><a href="javascript:void(0)">{{ titulo }}</a></li>
+                </ol>
+                <a href="{{ DOMAIN }}/manifestacoes-impugnacoes" class="btn btn-secondary">
+                    <i class="fa fa-arrow-left me-2"></i>Voltar
+                </a>
+            </div>
+        </div>
+
+        <form id="formManifestacao" method="POST">
+            {% if action == 'editar' %}
+                <input type="hidden" name="id" value="{{ manifestacao.id }}">
+            {% endif %}
+
+            <div class="row">
+                <div class="col-12">
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h4 class="card-title mb-0">
+                                <i class="fa fa-file-contract me-2"></i>Dados da Manifestação/Impugnação
+                            </h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-12 col-lg-3 mb-3">
+                                    <label class="form-label">Data <span class="text-danger">*</span></label>
+                                    <input type="date"
+                                           class="form-control"
+                                           name="data"
+                                           value="{{ action == 'editar' ? manifestacao.data : '' }}"
+                                           required>
+                                </div>
+
+                                <div class="col-12 col-lg-3 mb-3">
+                                    <label class="form-label">Tipo <span class="text-danger">*</span></label>
+                                    <input type="text"
+                                           class="form-control text-uppercase"
+                                           name="tipo"
+                                           value="{{ action == 'editar' ? manifestacao.tipo : '' }}"
+                                           placeholder="Tipo"
+                                           required>
+                                </div>
+
+                                <div class="col-12 col-lg-3 mb-3">
+                                    <label class="form-label">N°</label>
+                                    <input type="text"
+                                           class="form-control"
+                                           name="numero"
+                                           value="{{ action == 'editar' ? manifestacao.numero : '' }}"
+                                           placeholder="Número">
+                                </div>
+
+                                <div class="col-12 col-lg-3 mb-3">
+                                    <label class="form-label">Reclamada</label>
+                                    <select class="form-control" name="reclamada_id" id="reclamada_id">
+                                        <option value="">Selecione a Reclamada</option>
+                                        {% for reclamada in reclamadas %}
+                                        <option value="{{ reclamada.id }}" {{ action == 'editar' and manifestacao.reclamada_id == reclamada.id ? 'selected' : '' }}>
+                                            {{ reclamada.nome }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="col-12 col-lg-3 mb-3">
+                                    <label class="form-label">Reclamante</label>
+                                    <select class="form-control" name="reclamante_id" id="reclamante_id">
+                                        <option value="">Selecione o Reclamante</option>
+                                        {% for reclamante in reclamantes %}
+                                        <option value="{{ reclamante.id }}" {{ action == 'editar' and manifestacao.reclamante_id == reclamante.id ? 'selected' : '' }}>
+                                            {{ reclamante.nome }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="col-12 col-lg-3 mb-3">
+                                    <label class="form-label">Situação</label>
+                                    <select class="form-control" name="favoravel">
+                                        <option value="">Selecione</option>
+                                        <option value="Favorável" {{ action == 'editar' and manifestacao.favoravel == 'Favorável' ? 'selected' : '' }}>Favorável</option>
+                                        <option value="Desfavorável" {{ action == 'editar' and manifestacao.favoravel == 'Desfavorável' ? 'selected' : '' }}>Desfavorável</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-12 col-lg-3 mb-3">
+                                    <label class="form-label">Perito</label>
+                                    <select class="form-control select2" name="perito_id" id="perito_id">
+                                        <option value="">Selecione o Perito</option>
+                                        {% for perito in peritos %}
+                                        <option value="{{ perito.id }}" {{ action == 'editar' and manifestacao.perito_id == perito.id ? 'selected' : '' }}>
+                                            {{ perito.nome }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="col-12 mb-3">
+                                    <label class="form-label">Função / Observação</label>
+                                    <textarea class="form-control"
+                                              name="funcao_observacao"
+                                              rows="4"
+                                              placeholder="Função ou observações sobre a manifestação/impugnação">{{ action == 'editar' ? manifestacao.funcao_observacao : '' }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-body">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fa fa-save me-2"></i>
+                                {{ action == 'criar' ? 'Cadastrar Manifestação' : 'Salvar Alterações' }}
+                            </button>
+                            <a href="{{ DOMAIN }}/manifestacoes-impugnacoes" class="btn btn-secondary ms-2">
+                                <i class="fa fa-times me-2"></i>Cancelar
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.DOMAIN = '{{ DOMAIN }}';
+
+    (function() {
+        'use strict';
+
+        // Inicializar Select2 para Perito com busca
+        $(document).ready(function() {
+            $('#perito_id').select2({
+                placeholder: 'Selecione o Perito',
+                allowClear: true,
+                width: '100%',
+                language: {
+                    noResults: function() {
+                        return "Nenhum perito encontrado";
+                    },
+                    searching: function() {
+                        return "Buscando...";
+                    }
+                }
+            });
+
+            // Inicializar Select2 para Reclamada e Reclamante
+            $('#reclamada_id').select2({
+                placeholder: 'Selecione a Reclamada',
+                allowClear: true,
+                width: '100%'
+            });
+
+            $('#reclamante_id').select2({
+                placeholder: 'Selecione o Reclamante',
+                allowClear: true,
+                width: '100%'
+            });
+        });
+
+        const form = document.getElementById('formManifestacao');
+        if (!form) return;
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin me-2"></i>Salvando...';
+            submitBtn.disabled = true;
+
+            const formData = new FormData(form);
+            const isEdit = !!form.querySelector('input[name="id"]');
+            const url = window.DOMAIN + (isEdit ? '/manifestacoes-impugnacoes/editar/save' : '/manifestacoes-impugnacoes/add/save');
+
+            fetch(url, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Sucesso!',
+                        text: data.message,
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.href = window.DOMAIN + '/manifestacoes-impugnacoes';
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Erro!',
+                        text: data.message
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro!',
+                    text: 'Ocorreu um erro ao salvar a manifestação/impugnação.'
+                });
+            })
+            .finally(() => {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
+        });
+    })();
+</script>
+{% endblock %}

@@ -1,0 +1,113 @@
+{% extends "layout/layoutMaster.twig" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block body %}
+
+<div class="content-body">
+    <div class="container-fluid">
+        <div class="page-titles">
+            <div class="d-flex flex-wrap align-items-center justify-content-between">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}">Home</a></li>
+                    <li class="breadcrumb-item active"><a href="javascript:void(0)">{{ titulo }}</a></li>
+                </ol>
+                <div class="d-flex gap-2">
+                    {% if 'quesito_cadastrar'|verifyPermission %}
+                    <a href="{{ DOMAIN }}/quesitos/add" class="btn btn-primary text-nowrap">
+                        <i class="fa-solid fa-plus me-2"></i>Novo Quesito
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-body">
+                <form method="GET" class="row g-3">
+                    <div class="col-12 col-lg-3">
+                        <label class="form-label">Data Início</label>
+                        <input type="date" name="data_inicio" class="form-control" value="{{ filtros.data_inicio|default('') }}">
+                    </div>
+                    <div class="col-12 col-lg-3">
+                        <label class="form-label">Data Fim</label>
+                        <input type="date" name="data_fim" class="form-control" value="{{ filtros.data_fim|default('') }}">
+                    </div>
+                    <div class="col-12 col-lg-3">
+                        <label class="form-label">Status</label>
+                        <select name="status" class="form-control">
+                            <option value="">Todos</option>
+                            <option value="Pendente" {{ filtros.status == 'Pendente' ? 'selected' : '' }}>Pendente</option>
+                            <option value="Finalizado" {{ filtros.status == 'Finalizado' ? 'selected' : '' }}>Finalizado</option>
+                            <option value="Pendente de Envio" {{ filtros.status == 'Pendente de Envio' ? 'selected' : '' }}>Pendente de Envio</option>
+                            <option value="Recusado" {{ filtros.status == 'Recusado' ? 'selected' : '' }}>Recusado</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-lg-3 d-flex align-items-end gap-2">
+                        <button type="submit" class="btn btn-primary flex-fill">
+                            <i class="fa fa-filter me-2"></i>Filtrar
+                        </button>
+                        <a href="{{ DOMAIN }}/quesitos" class="btn btn-secondary">
+                            <i class="fa fa-times"></i>
+                        </a>
+                    </div>
+                    <div class="col-12 col-lg-3">
+                        <label class="form-label">Tipo</label>
+                        <input type="text" name="tipo" class="form-control text-uppercase" value="{{ filtros.tipo|default('') }}" placeholder="Tipo de quesito">
+                    </div>
+                    <div class="col-12 col-lg-3">
+                        <label class="form-label">Vara</label>
+                        <input type="text" name="vara" class="form-control" value="{{ filtros.vara|default('') }}" placeholder="Vara/Órgão">
+                    </div>
+                    <div class="col-12 col-lg-3">
+                        <label class="form-label">Reclamante</label>
+                        <input type="text" name="reclamante" class="form-control" value="{{ filtros.reclamante|default('') }}" placeholder="Nome do reclamante">
+                    </div>
+                    <div class="col-12 col-lg-3">
+                        <label class="form-label">Reclamada</label>
+                        <input type="text" name="reclamada" class="form-control" value="{{ filtros.reclamada|default('') }}" placeholder="Nome da reclamada">
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title">Quesitos</h4>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table id="datatable-quesitos" class="table dataTable align-middle">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Tipo</th>
+                                <th>Vara</th>
+                                <th>Reclamante</th>
+                                <th>Reclamada</th>
+                                <th>Status</th>
+                                <th>E-mail Cliente</th>
+                                <th width="120">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Dados carregados via AJAX -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.DOMAIN = '{{ DOMAIN }}';
+</script>
+<script src="{{ PATH }}/view/assets/vendor/datatables/js/jquery.dataTables.min.js"></script>
+<script src="{{ PATH }}/view/assets/js/datatables/datatables-ajax.js"></script>
+<script src="{{ PATH }}/view/assets/js/pages/datatables/quesito-datatable.js"></script>
+{% endblock %}
+

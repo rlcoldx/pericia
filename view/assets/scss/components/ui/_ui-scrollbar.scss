@@ -1,0 +1,26 @@
+.jsgrid-grid-body, 
+.dataTables_scrollBody, 
+.table-responsive {
+    &::-webkit-scrollbar {
+        background-color: transparent;
+        width: 5px;
+        height: 5px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background-color: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        border-radius: 10px;
+        background-color: #d6a220;
+    }
+
+    &::-webkit-scrollbar-thumb:hover {
+        background-color: #FFC700;
+    }
+
+    // Firefox
+    scrollbar-width: thin;
+    scrollbar-color: #d6a220 transparent;
+}

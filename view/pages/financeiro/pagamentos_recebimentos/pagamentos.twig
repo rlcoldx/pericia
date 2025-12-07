@@ -1,0 +1,121 @@
+{% extends "layout/layoutMaster.twig" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block body %}
+
+<div class="content-body">
+    
+    <div class="container-fluid">
+        <div class="page-titles">
+            <div class="d-flex flex-wrap align-items-center justify-content-between">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}/pagamentos">Controle Financeiro</a></li>
+                    <li class="breadcrumb-item active"><a href="javascript:void(0)">{{ titulo }}</a></li>
+                </ol>
+                {% if 'pagamento_recebimento_criar'|verifyPermission %}
+                <a href="{{ DOMAIN }}/pagamentos/add" class="btn btn-primary text-nowrap"><i class="fa-solid fa-plus me-2"></i>Novo Pagamento</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="card">
+            <div class="card-body">
+                <form id="filtrosPagamentos" method="GET" class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Status</label>
+                        <select name="status" class="form-control">
+                            <option value="">Todos</option>
+                            <option value="Pendente">Pendente</option>
+                            <option value="Pago">Pago</option>
+                            <option value="Cancelado">Cancelado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Tipo</label>
+                        <select name="tipo" class="form-control">
+                            <option value="">Todos</option>
+                            <option value="Assistente">Assistente</option>
+                            <option value="Fornecedor">Fornecedor</option>
+                            <option value="Serviço">Serviço</option>
+                            <option value="Outro">Outro</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Data Pagamento Início</label>
+                        <input type="date" name="data_inicio" class="form-control">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Data Pagamento Fim</label>
+                        <input type="date" name="data_fim" class="form-control">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end gap-2">
+                        <button type="submit" class="btn btn-primary flex-fill"><i class="fa fa-filter me-2"></i>Filtrar</button>
+                        <button type="button" id="btnLimparFiltros" class="btn btn-secondary"><i class="fa fa-times"></i></button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Listagem -->
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title">Lista de Pagamentos</h4>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table id="datatable-pagamentos" class="table dataTable align-middle">
+                        <thead>
+                            <tr role="row">
+                                <th>Descrição</th>
+                                <th>Beneficiário</th>
+                                <th>Valor</th>
+                                <th>Data Pagamento</th>
+                                <th>Tipo</th>
+                                <th>Status</th>
+                                <th width="150">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Dados carregados via AJAX -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Modal de Confirmação -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Remoção</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja remover este pagamento?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmRemover">Sim, Remover</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.DOMAIN = '{{ DOMAIN }}';
+</script>
+<script src="{{ PATH }}/view/assets/vendor/datatables/js/jquery.dataTables.min.js"></script>
+<script src="{{ PATH }}/view/assets/js/datatables/datatables-ajax.js"></script>
+<script src="{{ PATH }}/view/assets/js/pages/datatables/pagamentos-datatable.js"></script>
+{% endblock %}
+

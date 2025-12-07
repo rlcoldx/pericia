@@ -1,0 +1,197 @@
+{% extends "layout/layoutMaster.twig" %}
+
+{% block title %}Página Inicial{% endblock %}
+
+{% block body %}
+
+<div class="content-body">
+    <div class="container-fluid">
+        <!-- Filtro de Data -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <form method="GET" id="filtroDataForm" class="row g-3 align-items-end">
+                    <div class="col-12 col-lg-3">
+                        <label class="form-label">Data Início</label>
+                        <input type="date" name="data_inicio" id="data_inicio" class="form-control" value="{{ data_inicio }}">
+                    </div>
+                    <div class="col-12 col-lg-3">
+                        <label class="form-label">Data Fim</label>
+                        <input type="date" name="data_fim" id="data_fim" class="form-control" value="{{ data_fim }}">
+                    </div>
+                    <div class="col-12 col-lg-3">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa fa-filter me-2"></i>Filtrar
+                        </button>
+                        <button type="button" class="btn btn-secondary ms-2" id="btnMesAtual">
+                            <i class="fa fa-calendar me-2"></i>Mês Atual
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Cards de Estatísticas Gerais -->
+        <div class="row">
+            <div class="col-xl-3 col-lg-6 col-sm-6">
+                <div class="widget-stat card">
+                    <div class="card-body p-4">
+                        <div class="media ai-icon">
+                            <span class="me-3 bgl-primary text-primary">
+                                <i class="fa-light fa-file-alt"></i>
+                            </span>
+                            <div class="media-body">
+                                <p class="mb-1">Total de Quesitos</p>
+                                <h4 class="mb-0" id="stat-quesitos-total">{{ estatisticas.quesitos.total|default(0) }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-lg-6 col-sm-6">
+                <div class="widget-stat card">
+                    <div class="card-body p-4">
+                        <div class="media ai-icon">
+                            <span class="me-3 bgl-info text-info">
+                                <i class="fa-light fa-file-contract"></i>
+                            </span>
+                            <div class="media-body">
+                                <p class="mb-1">Total de Manifestações</p>
+                                <h4 class="mb-0" id="stat-manifestacoes-total">{{ estatisticas.manifestacoes.total|default(0) }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-lg-6 col-sm-6">
+                <div class="widget-stat card">
+                    <div class="card-body p-4">
+                        <div class="media ai-icon">
+                            <span class="me-3 bgl-success text-success">
+                                <i class="fa-light fa-file-medical"></i>
+                            </span>
+                            <div class="media-body">
+                                <p class="mb-1">Total de Pareceres</p>
+                                <h4 class="mb-0" id="stat-pareceres-total">{{ estatisticas.pareceres.total|default(0) }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-lg-6 col-sm-6">
+                <div class="widget-stat card">
+                    <div class="card-body p-4">
+                        <div class="media ai-icon">
+                            <span class="me-3 bgl-warning text-warning">
+                                <i class="fa-light fa-calendar"></i>
+                            </span>
+                            <div class="media-body">
+                                <p class="mb-1">Agendamentos Realizados</p>
+                                <h4 class="mb-0" id="stat-agendamentos-realizados">{{ estatisticas.agendamentos.realizados|default(0) }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráficos -->
+        <div class="row">
+            <!-- Quesitos por Status -->
+            <div class="col-xl-6 col-lg-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="card-title">Quesitos por Status</h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="chartQuesitosStatus" style="min-height: 350px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quesitos por Dia -->
+            <div class="col-xl-6 col-lg-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="card-title">Quesitos por Dia do Mês</h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="chartQuesitosDia" style="min-height: 350px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Manifestações/Impugnações -->
+            <div class="col-xl-6 col-lg-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="card-title">Manifestações/Impugnações por Dia</h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="chartManifestacoesDia" style="min-height: 350px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pareceres por Tipo -->
+            <div class="col-xl-6 col-lg-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="card-title">Pareceres por Tipo</h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="chartPareceresTipo" style="min-height: 350px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Agendamentos por Status -->
+            <div class="col-xl-6 col-lg-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="card-title">Agendamentos por Status</h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="chartAgendamentosStatus" style="min-height: 350px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Financeiro -->
+            <div class="col-xl-6 col-lg-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="card-title">Financeiro - Contas a Receber</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <div class="text-center">
+                                    <h5 class="mb-1">Valor Total</h5>
+                                    <h3 class="text-primary" id="stat-financeiro-total">R$ {{ estatisticas.financeiro.valor_total|number_format(2, ',', '.')|default('0,00') }}</h3>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="text-center">
+                                    <h5 class="mb-1">Valor Pago</h5>
+                                    <h3 class="text-success" id="stat-financeiro-pago">R$ {{ estatisticas.financeiro.valor_pago|number_format(2, ',', '.')|default('0,00') }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="chartFinanceiroStatus" style="min-height: 300px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.DOMAIN = '{{ DOMAIN }}';
+    window.STATISTICS_DATA = {{ estatisticas|json_encode|raw }};
+</script>
+<script src="{{ PATH }}/view/assets/vendor/apexchart/apexchart.js"></script>
+<script src="{{ PATH }}/view/assets/js/pages/home.js"></script>
+{% endblock %}

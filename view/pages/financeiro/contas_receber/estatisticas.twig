@@ -1,0 +1,239 @@
+{% extends "layout/layoutMaster.twig" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block body %}
+
+<div class="content-body">
+    <div class="container-fluid">
+        <div class="page-titles">
+            <div class="d-flex flex-wrap align-items-center justify-content-between">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}/contas-receber">Contas a Receber</a></li>
+                    <li class="breadcrumb-item active"><a href="javascript:void(0)">{{ titulo }}</a></li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Filtros de Período -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <form id="filtrosPeriodo" method="GET" class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Data Início</label>
+                        <input type="date" name="data_inicio" class="form-control" value="{{ data_inicio }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Data Fim</label>
+                        <input type="date" name="data_fim" class="form-control" value="{{ data_fim }}">
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end gap-2">
+                        <button type="submit" class="btn btn-primary flex-fill">
+                            <i class="fa-light fa-filter me-2"></i>Filtrar
+                        </button>
+                        <a href="{{ DOMAIN }}/contas-receber/estatisticas" class="btn btn-secondary">
+                            <i class="fa-light fa-times"></i>
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Fluxo de Caixa -->
+        <div class="row">
+            <div class="col-xl-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="card-title">
+                            <i class="fa-light fa-chart-line me-2"></i>Fluxo de Caixa
+                            <small class="ms-2">({{ data_inicio|date('d/m/Y') }} até {{ data_fim|date('d/m/Y') }})</small>
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="card bg-success">
+                                    <div class="card-body text-black">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="mb-1">Entradas</h6>
+                                                <h3 class="mb-0">R$ {{ fluxo_caixa.entradas.total|number_format(2, ',', '.') }}</h3>
+                                                <small>{{ fluxo_caixa.entradas.quantidade }} recebimento(s)</small>
+                                            </div>
+                                            <i class="fa-light fa-arrow-down fa-2x opacity-50"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-danger">
+                                    <div class="card-body text-black">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="mb-1">Saídas</h6>
+                                                <h3 class="mb-0">R$ {{ fluxo_caixa.saidas.total|number_format(2, ',', '.') }}</h3>
+                                                <small>{{ fluxo_caixa.saidas.quantidade }} pagamento(s)</small>
+                                            </div>
+                                            <i class="fa-light fa-arrow-up fa-2x opacity-50"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-info">
+                                    <div class="card-body text-black">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="mb-1">Previsão Entradas</h6>
+                                                <h3 class="mb-0">R$ {{ fluxo_caixa.previsao_entradas.total|number_format(2, ',', '.') }}</h3>
+                                                <small>{{ fluxo_caixa.previsao_entradas.quantidade }} conta(s) pendente(s)</small>
+                                            </div>
+                                            <i class="fa-light fa-calendar fa-2x opacity-50"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card {{ fluxo_caixa.saldo >= 0 ? 'bg-primary' : 'bg-warning' }}">
+                                    <div class="card-body text-black">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="mb-1">Saldo</h6>
+                                                <h3 class="mb-0">R$ {{ fluxo_caixa.saldo|number_format(2, ',', '.') }}</h3>
+                                                <small>Entradas - Saídas</small>
+                                            </div>
+                                            <i class="fa-light fa-wallet fa-2x opacity-50"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controle de Inadimplência -->
+        <div class="row">
+            <div class="col-xl-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="card-title">
+                            <i class="fa-light fa-exclamation-triangle me-2"></i>Controle de Inadimplência
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <div class="card border-danger">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="text-danger mb-1">Contas Vencidas</h6>
+                                                <h3 class="mb-0 text-danger">{{ inadimplencia.vencidas.quantidade }}</h3>
+                                                <p class="mb-0">R$ {{ inadimplencia.vencidas.valor_total|number_format(2, ',', '.') }}</p>
+                                            </div>
+                                            <i class="fa-light fa-exclamation-circle fa-2x text-danger"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card border-warning">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="text-warning mb-1">Vencem em 7 dias</h6>
+                                                <h3 class="mb-0 text-warning">{{ inadimplencia.vencer_7_dias.quantidade }}</h3>
+                                                <p class="mb-0">R$ {{ inadimplencia.vencer_7_dias.valor_total|number_format(2, ',', '.') }}</p>
+                                            </div>
+                                            <i class="fa-light fa-clock fa-2x text-warning"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card border-info">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="text-info mb-1">Vencem em 30 dias</h6>
+                                                <h3 class="mb-0 text-info">{{ inadimplencia.vencer_30_dias.quantidade }}</h3>
+                                                <p class="mb-0">R$ {{ inadimplencia.vencer_30_dias.valor_total|number_format(2, ',', '.') }}</p>
+                                            </div>
+                                            <i class="fa-light fa-calendar fa-2x text-info"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {% if inadimplencia.lista_vencidas|length > 0 %}
+                        <div class="table-responsive">
+                            <h5 class="mb-3">Últimas Contas Vencidas</h5>
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Cliente</th>
+                                        <th>Descrição</th>
+                                        <th>Valor Pendente</th>
+                                        <th>Data Vencimento</th>
+                                        <th>Dias Vencido</th>
+                                        <th>Status</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for conta in inadimplencia.lista_vencidas %}
+                                    <tr class="{{ conta.dias_vencido > 30 ? 'table-danger' : (conta.dias_vencido > 15 ? 'table-warning' : '') }}">
+                                        <td>{{ conta.cliente_nome }}</td>
+                                        <td>{{ conta.descricao }}</td>
+                                        <td class="fw-bold">R$ {{ conta.valor_pendente|number_format(2, ',', '.') }}</td>
+                                        <td>{{ conta.data_vencimento|date('d/m/Y') }}</td>
+                                        <td>
+                                            <span class="badge badge-{{ conta.dias_vencido > 30 ? 'danger' : (conta.dias_vencido > 15 ? 'warning' : 'secondary') }}">
+                                                {{ conta.dias_vencido }} dia(s)
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-{{ conta.status == 'Vencido' ? 'danger' : 'warning' }}">
+                                                {{ conta.status }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <a href="{{ DOMAIN }}/contas-receber/view/{{ conta.id }}" class="btn btn-sm btn-info">
+                                                <i class="fa-light fa-eye"></i>
+                                            </a>
+                                            {% if 'contas_receber_editar'|verifyPermission %}
+                                            <a href="{{ DOMAIN }}/contas-receber/edit/{{ conta.id }}" class="btn btn-sm btn-primary">
+                                                <i class="fa-light fa-pencil"></i>
+                                            </a>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-success">
+                            <i class="fa-light fa-check-circle me-2"></i>Nenhuma conta vencida no momento!
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.DOMAIN = '{{ DOMAIN }}';
+</script>
+{% endblock %}
+

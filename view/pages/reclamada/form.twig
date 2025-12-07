@@ -1,0 +1,112 @@
+{% extends "layout/layoutMaster.twig" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block body %}
+
+<div class="content-body">
+    <div class="container-fluid">
+        <div class="page-titles">
+            <div class="d-flex flex-wrap align-items-center justify-content-between">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}/reclamadas">Reclamadas</a></li>
+                    <li class="breadcrumb-item active"><a href="javascript:void(0)">{{ titulo }}</a></li>
+                </ol>
+                <a href="{{ DOMAIN }}/reclamadas" class="btn btn-secondary">
+                    <i class="fa fa-arrow-left me-2"></i>Voltar
+                </a>
+            </div>
+        </div>
+
+        <form id="formReclamada" method="POST">
+            {% if action == 'editar' %}
+                <input type="hidden" name="id" value="{{ reclamada.id }}">
+            {% endif %}
+
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title mb-0">{{ titulo }}</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-12 col-md-6 mb-3">
+                            <label class="form-label">Nome <span class="text-danger">*</span></label>
+                            <input type="text"
+                                   class="form-control"
+                                   name="nome"
+                                   value="{{ action == 'editar' ? reclamada.nome : '' }}"
+                                   placeholder="Nome da reclamada"
+                                   required>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fa fa-save me-2"></i>
+                                {{ action == 'criar' ? 'Cadastrar Reclamada' : 'Salvar Alterações' }}
+                            </button>
+                            <a href="{{ DOMAIN }}/reclamadas" class="btn btn-secondary ms-2">
+                                <i class="fa fa-times me-2"></i>Cancelar
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+window.DOMAIN = '{{ DOMAIN }}';
+
+(function() {
+    'use strict';
+    const form = document.getElementById('formReclamada');
+    if (!form) return;
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin me-2"></i>Salvando...';
+        submitBtn.disabled = true;
+
+        const formData = new FormData(form);
+        const isEdit = !!form.querySelector('input[name="id"]');
+        const url = window.DOMAIN + (isEdit ? '/reclamadas/editar/save' : '/reclamadas/add/save');
+
+        fetch(url, { method: 'POST', body: formData })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Sucesso!',
+                    text: data.message,
+                    timer: 2000,
+                    showConfirmButton: false
+                }).then(() => {
+                    window.location.href = window.DOMAIN + '/reclamadas';
+                });
+            } else {
+                Swal.fire({ icon: 'error', title: 'Erro!', text: data.message });
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            Swal.fire({ icon: 'error', title: 'Erro!', text: 'Ocorreu um erro ao salvar.' });
+        })
+        .finally(() => {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        });
+    });
+})();
+</script>
+{% endblock %}
