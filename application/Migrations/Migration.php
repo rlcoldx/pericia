@@ -55,14 +55,27 @@ abstract class Migration extends Conn
     protected function executeQueries(array $queries): bool
     {
         try {
-            $this->conn->beginTransaction();
+            // Verificar se já há uma transação ativa
+            $inTransaction = $this->conn->inTransaction();
+            
+            if (!$inTransaction) {
+                $this->conn->beginTransaction();
+            }
+            
             foreach ($queries as $sql) {
                 $this->conn->exec($sql);
             }
-            $this->conn->commit();
+            
+            if (!$inTransaction) {
+                $this->conn->commit();
+            }
+            
             return true;
         } catch (PDOException $e) {
-            $this->conn->rollBack();
+            // Só fazer rollback se tivermos iniciado a transação
+            if ($this->conn->inTransaction()) {
+                $this->conn->rollBack();
+            }
             throw new \Exception("Erro ao executar queries: " . $e->getMessage());
         }
     }
