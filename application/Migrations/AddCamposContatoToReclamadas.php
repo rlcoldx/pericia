@@ -27,22 +27,16 @@ class AddCamposContatoToReclamadas extends Migration
 
     public function down(): void
     {
-        $queries = [];
-
         if ($this->columnExists('reclamadas', 'telefone_contato')) {
-            $queries[] = "ALTER TABLE `reclamadas` DROP COLUMN `telefone_contato`";
+            $this->executeQuery("ALTER TABLE `reclamadas` DROP COLUMN `telefone_contato`");
         }
 
         if ($this->columnExists('reclamadas', 'email_contato')) {
-            $queries[] = "ALTER TABLE `reclamadas` DROP COLUMN `email_contato`";
+            $this->executeQuery("ALTER TABLE `reclamadas` DROP COLUMN `email_contato`");
         }
 
         if ($this->columnExists('reclamadas', 'nome_contato')) {
-            $queries[] = "ALTER TABLE `reclamadas` DROP COLUMN `nome_contato`";
-        }
-
-        if (!empty($queries)) {
-            $this->executeQueries($queries);
+            $this->executeQuery("ALTER TABLE `reclamadas` DROP COLUMN `nome_contato`");
         }
     }
 }
