@@ -60,6 +60,9 @@ class ReclamadaController extends Controller
         $result = $model->criar([
             'empresa' => (int) $empresa,
             'nome' => $nome,
+            'nome_contato' => !empty($_POST['nome_contato']) ? trim($_POST['nome_contato']) : null,
+            'email_contato' => !empty($_POST['email_contato']) ? trim($_POST['email_contato']) : null,
+            'telefone_contato' => !empty($_POST['telefone_contato']) ? trim($_POST['telefone_contato']) : null,
         ]);
 
         if ($result->getResult()) {
@@ -115,7 +118,12 @@ class ReclamadaController extends Controller
         }
 
         $model = new Reclamada();
-        $result = $model->atualizar($id, (int) $empresa, ['nome' => $nome]);
+        $result = $model->atualizar($id, (int) $empresa, [
+            'nome' => $nome,
+            'nome_contato' => !empty($_POST['nome_contato']) ? trim($_POST['nome_contato']) : null,
+            'email_contato' => !empty($_POST['email_contato']) ? trim($_POST['email_contato']) : null,
+            'telefone_contato' => !empty($_POST['telefone_contato']) ? trim($_POST['telefone_contato']) : null,
+        ]);
 
         if ($result->getResult()) {
             $this->enviarNotificacaoEmailReclamada($empresa, $id, ['nome' => $nome], 'editar');
