@@ -44,6 +44,21 @@ class EmailAdapter
         $this->mail->addAddress($email); //Name is optional
     }
 
+    public function addCC(string $email)
+    {
+        $this->mail->addCC($email);
+    }
+
+    public function addMultipleCC(array $emails)
+    {
+        foreach ($emails as $email) {
+            $email = trim($email);
+            if (!empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $this->mail->addCC($email);
+            }
+        }
+    }
+
     public function setSubject($subject)
     {
         $this->mail->Subject = $subject;

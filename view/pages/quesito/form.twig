@@ -45,12 +45,18 @@
 
                                 <div class="col-12 col-lg-3 mb-3">
                                     <label class="form-label">Tipo <span class="text-danger">*</span></label>
-                                    <input type="text"
-                                           class="form-control text-uppercase"
-                                           name="tipo"
-                                           value="{{ action == 'editar' ? quesito.tipo : '' }}"
-                                           placeholder="Tipo do quesito"
-                                           required>
+                                    <select class="form-control select2-tipo" name="tipo" id="tipo" required>
+                                        {% if action == 'editar' and quesito.tipo %}
+                                            <option value="{{ quesito.tipo }}" selected>{{ quesito.tipo }}</option>
+                                        {% endif %}
+                                        {% if tipos is defined and tipos is not empty %}
+                                            {% for tipo in tipos %}
+                                                {% if action != 'editar' or quesito.tipo != tipo.tipo %}
+                                                    <option value="{{ tipo.tipo }}">{{ tipo.tipo }}</option>
+                                                {% endif %}
+                                            {% endfor %}
+                                        {% endif %}
+                                    </select>
                                 </div>
 
                                 <div class="col-12 col-lg-3 mb-3">
@@ -65,7 +71,7 @@
 
                                 <div class="col-12 col-lg-3 mb-3">
                                     <label class="form-label">Reclamante <span class="text-danger">*</span></label>
-                                    <select class="form-control" name="reclamante_id" required>
+                                    <select class="form-control" name="reclamante_id" id="reclamante_id" required>
                                         <option value="">Selecione o Reclamante</option>
                                         {% for reclamante in reclamantes %}
                                         <option value="{{ reclamante.id }}" {{ action == 'editar' and quesito.reclamante_id == reclamante.id ? 'selected' : '' }}>
@@ -86,7 +92,7 @@
 
                                 <div class="col-12 col-lg-3 mb-3">
                                     <label class="form-label">Reclamada <span class="text-danger">*</span></label>
-                                    <select class="form-control" name="reclamada_id" required>
+                                    <select class="form-control" name="reclamada_id" id="reclamada_id" required>
                                         <option value="">Selecione a Reclamada</option>
                                         {% for reclamada in reclamadas %}
                                         <option value="{{ reclamada.id }}" {{ action == 'editar' and quesito.reclamada_id == reclamada.id ? 'selected' : '' }}>
@@ -114,6 +120,17 @@
                                            placeholder="cliente@exemplo.com">
                                 </div>
 
+                                <div class="col-12 col-lg-6 mb-3">
+                                    <label class="form-label">Emails CC (Cópia)</label>
+                                    <input type="text"
+                                           class="form-control"
+                                           name="email_cliente_cc"
+                                           id="email_cliente_cc"
+                                           data-role="tagsinput"
+                                           value="{{ action == 'editar' and quesito.email_cliente_cc ? quesito.email_cliente_cc : '' }}"
+                                           placeholder="Digite os emails separados por vírgula">
+                                </div>
+
                                 {% if action == 'editar' %}
                                 <div class="col-12 col-lg-3 mb-3 d-flex align-items-end">
                                     <div class="form-check">
@@ -133,6 +150,7 @@
                                         {% set currentStatus = quesito.status|default('Pendente') %}
                                         <option value="Pendente" {{ currentStatus == 'Pendente' ? 'selected' : '' }}>Pendente</option>
                                         <option value="Finalizado" {{ currentStatus == 'Finalizado' ? 'selected' : '' }}>Finalizado</option>
+                                        <option value="Finalizado e Enviado" {{ currentStatus == 'Finalizado e Enviado' ? 'selected' : '' }}>Finalizado e Enviado</option>
                                         <option value="Pendente de Envio" {{ currentStatus == 'Pendente de Envio' ? 'selected' : '' }}>Pendente de Envio</option>
                                         <option value="Recusado" {{ currentStatus == 'Recusado' ? 'selected' : '' }}>Recusado</option>
                                     </select>
@@ -180,6 +198,88 @@
 
     (function() {
         'use strict';
+
+        // Inicializar Select2 para Tipo com tags
+        $(document).ready(function() {
+            const tipoSelect = $('#tipo');
+            tipoSelect.select2({
+                tags: true,
+                placeholder: 'Selecione ou digite um tipo',
+                allowClear: true,
+                width: '100%',
+                language: {
+                    noResults: function() {
+                        return "Digite para criar um novo tipo";
+                    },
+                    searching: function() {
+                        return "Buscando...";
+                    }
+                }
+            });
+
+            // Força uppercase quando cria um novo valor
+            tipoSelect.on('select2:select', function (e) {
+                const data = e.params.data;
+                if (data && data.id && data.element === undefined) {
+                    const upper = data.id.toUpperCase();
+                    const newOption = new Option(upper, upper, true, true);
+                    tipoSelect.append(newOption).trigger('change');
+                }
+            });
+
+            // Inicializar Select2 para Reclamada e Reclamante com busca
+            $('#reclamada_id').select2({
+                placeholder: 'Selecione a Reclamada',
+                allowClear: true,
+                width: '100%',
+                language: {
+                    noResults: function() {
+                        return "Nenhuma reclamada encontrada";
+                    },
+                    searching: function() {
+                        return "Buscando...";
+                    }
+                }
+            });
+
+            $('#reclamante_id').select2({
+                placeholder: 'Selecione o Reclamante',
+                allowClear: true,
+                width: '100%',
+                language: {
+                    noResults: function() {
+                        return "Nenhum reclamante encontrado";
+                    },
+                    searching: function() {
+                        return "Buscando...";
+                    }
+                }
+            });
+
+            // Inicializar Bootstrap Tags Input para Emails CC
+            $('#email_cliente_cc').tagsinput({
+                trimValue: true,
+                confirmKeys: [44], // Enter e vírgula
+                tagClass: 'badge badge-primary'
+            });
+
+            // Validar email antes de adicionar tag
+            $('#email_cliente_cc').on('beforeItemAdd', function(event) {
+                const email = event.item.trim();
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                
+                if (!emailRegex.test(email)) {
+                    event.cancel = true;
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Email inválido',
+                        text: 'Por favor, digite um email válido.',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                }
+            });
+        });
 
         const form = document.getElementById('formQuesito');
         if (!form) return;

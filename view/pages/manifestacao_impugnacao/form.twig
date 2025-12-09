@@ -45,12 +45,18 @@
 
                                 <div class="col-12 col-lg-3 mb-3">
                                     <label class="form-label">Tipo <span class="text-danger">*</span></label>
-                                    <input type="text"
-                                           class="form-control text-uppercase"
-                                           name="tipo"
-                                           value="{{ action == 'editar' ? manifestacao.tipo : '' }}"
-                                           placeholder="Tipo"
-                                           required>
+                                    <select class="form-control select2-tipo" name="tipo" id="tipo" required>
+                                        {% if action == 'editar' and manifestacao.tipo %}
+                                            <option value="{{ manifestacao.tipo }}" selected>{{ manifestacao.tipo }}</option>
+                                        {% endif %}
+                                        {% if tipos is defined and tipos is not empty %}
+                                            {% for tipo in tipos %}
+                                                {% if action != 'editar' or manifestacao.tipo != tipo.tipo %}
+                                                    <option value="{{ tipo.tipo }}">{{ tipo.tipo }}</option>
+                                                {% endif %}
+                                            {% endfor %}
+                                        {% endif %}
+                                    </select>
                                 </div>
 
                                 <div class="col-12 col-lg-3 mb-3">
@@ -92,6 +98,7 @@
                                         <option value="">Selecione</option>
                                         <option value="Favorável" {{ action == 'editar' and manifestacao.favoravel == 'Favorável' ? 'selected' : '' }}>Favorável</option>
                                         <option value="Desfavorável" {{ action == 'editar' and manifestacao.favoravel == 'Desfavorável' ? 'selected' : '' }}>Desfavorável</option>
+                                        <option value="Parcialmente Favorável" {{ action == 'editar' and manifestacao.favoravel == 'Parcialmente Favorável' ? 'selected' : '' }}>Parcialmente Favorável</option>
                                     </select>
                                 </div>
 
@@ -143,6 +150,33 @@
 
     (function() {
         'use strict';
+
+        // Inicializar Select2 para Tipo com tags (criar/buscar) e uppercase
+        const tipoSelect = $('#tipo');
+        tipoSelect.select2({
+            tags: true,
+            placeholder: 'Selecione ou digite um tipo',
+            allowClear: true,
+            width: '100%',
+            language: {
+                noResults: function() {
+                    return "Digite para criar um novo tipo";
+                },
+                searching: function() {
+                    return "Buscando...";
+                }
+            }
+        });
+
+        // Forçar uppercase ao criar novo valor
+        tipoSelect.on('select2:select', function (e) {
+            const data = e.params.data;
+            if (data && data.id && data.element === undefined) {
+                const upper = data.id.toUpperCase();
+                const newOption = new Option(upper, upper, true, true);
+                tipoSelect.append(newOption).trigger('change');
+            }
+        });
 
         // Inicializar Select2 para Perito com busca
         $(document).ready(function() {

@@ -52,6 +52,7 @@ class ManifestacaoImpugnacaoController extends Controller
         $reclamadaModel = new Reclamada();
         $reclamanteModel = new Reclamante();
         $peritoModel = new Perito();
+        $manifestacaoModel = new ManifestacaoImpugnacao();
 
         $this->render('pages/manifestacao_impugnacao/form.twig', [
             'titulo' => 'Nova Manifestação/Impugnação',
@@ -61,6 +62,7 @@ class ManifestacaoImpugnacaoController extends Controller
             'reclamadas' => $reclamadaModel->listar((int) $empresa)->getResult() ?? [],
             'reclamantes' => $reclamanteModel->listar((int) $empresa)->getResult() ?? [],
             'peritos' => $peritoModel->getPeritosAtivos((int) $empresa)->getResult() ?? [],
+            'tipos' => $manifestacaoModel->getTiposDistinct((int) $empresa)->getResult() ?? [],
         ]);
     }
 
@@ -88,6 +90,12 @@ class ManifestacaoImpugnacaoController extends Controller
             $tipo = mb_strtoupper($tipo, 'UTF-8');
         }
 
+        // Salvar o nome completo da situação (sem conversão)
+        $favoravel = $_POST['favoravel'] ?? null;
+        if (empty($favoravel)) {
+            $favoravel = null;
+        }
+
         $dados = [
             'empresa' => (int) $empresa,
             'data' => $data,
@@ -95,7 +103,7 @@ class ManifestacaoImpugnacaoController extends Controller
             'numero' => $_POST['numero'] !== '' ? $_POST['numero'] : null,
             'reclamada_id' => !empty($_POST['reclamada_id']) ? (int) $_POST['reclamada_id'] : null,
             'reclamante_id' => !empty($_POST['reclamante_id']) ? (int) $_POST['reclamante_id'] : null,
-            'favoravel' => $_POST['favoravel'] ?? null,
+            'favoravel' => $favoravel,
             'perito_id' => !empty($_POST['perito_id']) ? (int) $_POST['perito_id'] : null,
             'funcao_observacao' => $_POST['funcao_observacao'] !== '' ? $_POST['funcao_observacao'] : null,
         ];
@@ -136,6 +144,7 @@ class ManifestacaoImpugnacaoController extends Controller
         $reclamadaModel = new Reclamada();
         $reclamanteModel = new Reclamante();
         $peritoModel = new Perito();
+        $manifestacaoModel = new ManifestacaoImpugnacao();
 
         $this->render('pages/manifestacao_impugnacao/form.twig', [
             'titulo' => 'Editar Manifestação/Impugnação',
@@ -145,6 +154,7 @@ class ManifestacaoImpugnacaoController extends Controller
             'reclamadas' => $reclamadaModel->listar((int) $empresa)->getResult() ?? [],
             'reclamantes' => $reclamanteModel->listar((int) $empresa)->getResult() ?? [],
             'peritos' => $peritoModel->getPeritosAtivos((int) $empresa)->getResult() ?? [],
+            'tipos' => $manifestacaoModel->getTiposDistinct((int) $empresa)->getResult() ?? [],
         ]);
     }
 
@@ -173,13 +183,19 @@ class ManifestacaoImpugnacaoController extends Controller
             $tipo = mb_strtoupper($tipo, 'UTF-8');
         }
 
+        // Salvar o nome completo da situação (sem conversão)
+        $favoravel = $_POST['favoravel'] ?? null;
+        if (empty($favoravel)) {
+            $favoravel = null;
+        }
+
         $dados = [
             'data' => $data,
             'tipo' => $tipo,
             'numero' => $_POST['numero'] !== '' ? $_POST['numero'] : null,
             'reclamada_id' => !empty($_POST['reclamada_id']) ? (int) $_POST['reclamada_id'] : null,
             'reclamante_id' => !empty($_POST['reclamante_id']) ? (int) $_POST['reclamante_id'] : null,
-            'favoravel' => $_POST['favoravel'] ?? null,
+            'favoravel' => $favoravel,
             'perito_id' => !empty($_POST['perito_id']) ? (int) $_POST['perito_id'] : null,
             'funcao_observacao' => $_POST['funcao_observacao'] !== '' ? $_POST['funcao_observacao'] : null,
         ];
@@ -328,10 +344,17 @@ class ManifestacaoImpugnacaoController extends Controller
             return '<span class="opacity-50">-</span>';
         }
 
-        $badgeClass = $favoravel === 'FAV' ? 'bg-success' : 'bg-danger';
-        $texto = $favoravel === 'FAV' ? 'FAV' : 'DESFAV';
+        // Determinar cor do badge baseado no nome completo
+        $badgeClass = 'bg-secondary'; // Padrão
+        if ($favoravel === 'Favorável') {
+            $badgeClass = 'bg-success';
+        } elseif ($favoravel === 'Desfavorável') {
+            $badgeClass = 'bg-danger';
+        } elseif ($favoravel === 'Parcialmente Favorável') {
+            $badgeClass = 'bg-warning';
+        }
 
-        return '<span class="badge ' . $badgeClass . '">' . htmlspecialchars($texto, ENT_QUOTES, 'UTF-8') . '</span>';
+        return '<span class="badge ' . $badgeClass . '">' . htmlspecialchars($favoravel, ENT_QUOTES, 'UTF-8') . '</span>';
     }
 
     private function formatAcoesCell(?int $id): string

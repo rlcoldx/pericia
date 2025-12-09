@@ -53,6 +53,25 @@ class Quesito extends Model
         return $this->delete;
     }
 
+    /**
+     * Retorna lista distinta de tipos para Select2 com tags
+     */
+    public function getTiposDistinct(int $empresa): Read
+    {
+        $this->read = new Read();
+        $this->read->FullRead(
+            "SELECT DISTINCT tipo 
+             FROM quesitos 
+             WHERE empresa = :empresa 
+               AND tipo IS NOT NULL 
+               AND tipo <> '' 
+             ORDER BY tipo ASC",
+            "empresa={$empresa}"
+        );
+
+        return $this->read;
+    }
+
     public function getPorId(int $id, int $empresa): Read
     {
         $this->read = new Read();

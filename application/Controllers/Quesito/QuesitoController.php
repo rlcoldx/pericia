@@ -211,6 +211,7 @@ class QuesitoController extends Controller
 
         $reclamadaModel = new Reclamada();
         $reclamanteModel = new Reclamante();
+        $quesitoModel = new Quesito();
 
         $this->render('pages/quesito/form.twig', [
             'titulo' => 'Cadastrar Quesito',
@@ -219,6 +220,7 @@ class QuesitoController extends Controller
             'quesito' => null,
             'reclamadas' => $reclamadaModel->listar((int) $empresa)->getResult() ?? [],
             'reclamantes' => $reclamanteModel->listar((int) $empresa)->getResult() ?? [],
+            'tipos' => $quesitoModel->getTiposDistinct((int) $empresa)->getResult() ?? [],
         ]);
     }
 
@@ -241,6 +243,25 @@ class QuesitoController extends Controller
         $reclamanteId = !empty($_POST['reclamante_id']) ? (int) $_POST['reclamante_id'] : null;
         $reclamadaId = !empty($_POST['reclamada_id']) ? (int) $_POST['reclamada_id'] : null;
         $emailCliente = $_POST['email_cliente'] ?? '';
+        
+        // Processar emails CC (vem como string do Bootstrap Tags Input ou array)
+        $emailsCc = $_POST['email_cliente_cc'] ?? '';
+        $emailClienteCc = null;
+        
+        // Se for string (Bootstrap Tags Input), converter para array
+        if (is_string($emailsCc) && !empty($emailsCc)) {
+            $emailsCc = array_filter(array_map('trim', explode(',', $emailsCc)));
+        }
+        
+        if (is_array($emailsCc) && !empty($emailsCc)) {
+            // Filtrar emails vazios e validar
+            $emailsValidos = array_filter(array_map('trim', $emailsCc), function($email) {
+                return !empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL);
+            });
+            if (!empty($emailsValidos)) {
+                $emailClienteCc = implode(',', $emailsValidos);
+            }
+        }
 
         // Força o tipo em letras maiúsculas
         if (!empty($tipo)) {
@@ -260,6 +281,7 @@ class QuesitoController extends Controller
             'reclamante_id' => $reclamanteId,
             'codigo_reclamante' => $_POST['codigo_reclamante'] !== '' ? $_POST['codigo_reclamante'] : null,
             'email_cliente' => $emailCliente !== '' ? $emailCliente : null,
+            'email_cliente_cc' => $emailClienteCc,
             'reclamada_id' => $reclamadaId,
             'link_pasta_drive' => $_POST['link_pasta_drive'] !== '' ? $_POST['link_pasta_drive'] : null,
             'enviar_para_cliente' => isset($_POST['enviar_para_cliente']) ? 1 : 0,
@@ -318,6 +340,7 @@ class QuesitoController extends Controller
             'quesito' => $quesito->getResult()[0],
             'reclamadas' => $reclamadaModel->listar((int) $empresa)->getResult() ?? [],
             'reclamantes' => $reclamanteModel->listar((int) $empresa)->getResult() ?? [],
+            'tipos' => $model->getTiposDistinct((int) $empresa)->getResult() ?? [],
         ]);
     }
 
@@ -341,6 +364,25 @@ class QuesitoController extends Controller
         $reclamadaId = !empty($_POST['reclamada_id']) ? (int) $_POST['reclamada_id'] : null;
         $emailCliente = $_POST['email_cliente'] ?? '';
         $status = $_POST['status'] ?? 'Pendente';
+        
+        // Processar emails CC (vem como string do Bootstrap Tags Input ou array)
+        $emailsCc = $_POST['email_cliente_cc'] ?? '';
+        $emailClienteCc = null;
+        
+        // Se for string (Bootstrap Tags Input), converter para array
+        if (is_string($emailsCc) && !empty($emailsCc)) {
+            $emailsCc = array_filter(array_map('trim', explode(',', $emailsCc)));
+        }
+        
+        if (is_array($emailsCc) && !empty($emailsCc)) {
+            // Filtrar emails vazios e validar
+            $emailsValidos = array_filter(array_map('trim', $emailsCc), function($email) {
+                return !empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL);
+            });
+            if (!empty($emailsValidos)) {
+                $emailClienteCc = implode(',', $emailsValidos);
+            }
+        }
 
         $statusValidos = ['Pendente', 'Finalizado', 'Pendente de Envio', 'Recusado'];
         if (!in_array($status, $statusValidos, true)) {
@@ -364,6 +406,7 @@ class QuesitoController extends Controller
             'reclamante_id' => $reclamanteId,
             'codigo_reclamante' => $_POST['codigo_reclamante'] !== '' ? $_POST['codigo_reclamante'] : null,
             'email_cliente' => $emailCliente !== '' ? $emailCliente : null,
+            'email_cliente_cc' => $emailClienteCc,
             'reclamada_id' => $reclamadaId,
             'link_pasta_drive' => $_POST['link_pasta_drive'] !== '' ? $_POST['link_pasta_drive'] : null,
             'enviar_para_cliente' => isset($_POST['enviar_para_cliente']) ? 1 : 0,
@@ -383,7 +426,15 @@ class QuesitoController extends Controller
 
         // Verificar se deve enviar email ao cliente
         if (isset($_POST['enviar_para_cliente']) && $_POST['enviar_para_cliente'] == '1' && !empty($emailCliente)) {
-            $emailEnviado = $this->enviarEmailClienteQuesito($empresa, $id, $dados, $emailCliente);
+            // Buscar emails CC do quesito atualizado
+            $quesitoAtualizado = $model->getPorId($id, (int) $empresa);
+            $quesitoData = $quesitoAtualizado->getResult()[0] ?? [];
+            $emailsCcArray = [];
+            if (!empty($quesitoData['email_cliente_cc'])) {
+                $emailsCcArray = array_filter(array_map('trim', explode(',', $quesitoData['email_cliente_cc'])));
+            }
+            
+            $emailEnviado = $this->enviarEmailClienteQuesito($empresa, $id, $dados, $emailCliente, $emailsCcArray);
             
             if ($emailEnviado) {
                 // Atualizar status de envio
@@ -496,7 +547,7 @@ class QuesitoController extends Controller
         }
     }
 
-    private function enviarEmailClienteQuesito(int $empresa, int $idQuesito, array $dadosQuesito, string $emailCliente): bool
+    private function enviarEmailClienteQuesito(int $empresa, int $idQuesito, array $dadosQuesito, string $emailCliente, array $emailsCc = []): bool
     {
         try {
             $reclamanteModel = new Reclamante();
@@ -551,6 +602,12 @@ class QuesitoController extends Controller
             // Enviar email usando EmailAdapter
             $emailAdapter = new \Agencia\Close\Adapters\EmailAdapter();
             $emailAdapter->addAddress($emailCliente);
+            
+            // Adicionar emails CC se houver
+            if (!empty($emailsCc)) {
+                $emailAdapter->addMultipleCC($emailsCc);
+            }
+            
             $emailAdapter->setSubject($assunto);
             $emailAdapter->setBodyHtml($corpo);
             
@@ -559,7 +616,8 @@ class QuesitoController extends Controller
                 $result = $emailAdapter->getResult();
                 
                 if (!$result->getError()) {
-                    error_log("Email enviado com sucesso para o cliente: {$emailCliente}");
+                    $ccInfo = !empty($emailsCc) ? ' (CC: ' . implode(', ', $emailsCc) . ')' : '';
+                    error_log("Email enviado com sucesso para o cliente: {$emailCliente}{$ccInfo}");
                     return true;
                 } else {
                     error_log("Erro ao enviar email para o cliente: {$emailCliente} - " . $result->getMessage());
