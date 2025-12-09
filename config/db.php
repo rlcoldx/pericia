@@ -11,7 +11,7 @@
 		}
 	}
 
-    define('DOMAIN', 'http://localhost/pericia');
-    define('PATH', 'http://localhost/pericia');
+    define('DOMAIN', 'https://fast4.com.br');
+    define('PATH', 'https://fast4.com.br');
     define('NAME', 'Pericia');
     define('PRODUCTION', false);
