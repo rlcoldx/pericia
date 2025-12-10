@@ -263,67 +263,124 @@
                     </div>
                     {% endif %}
                     
-                    <!-- SEÇÃO MARCELO -->
+                    <!-- SEÇÃO MARCELO / PARECER -->
                     {% if 'agendamento_segundo_passo_data_realizada'|verifyPermission or 'agendamento_segundo_passo_data_fatal'|verifyPermission or 'agendamento_segundo_passo_data_entrega_parecer'|verifyPermission or 'agendamento_segundo_passo_status_parecer'|verifyPermission or 'agendamento_segundo_passo_obs_parecer'|verifyPermission %}
+                    {% set parecerValores = parecer_agendamento ?? {} %}
                     <div class="card mb-3">
                         <div class="card-header">
-                            <h4 class="card-title mb-0"><i class="fa fa-file-alt me-2"></i>Dados do Parecer - Segundo Passo</h4>
+                            <div class="d-flex justify-content-between flex-wrap align-items-center w-100">
+                                <h4 class="card-title mb-0"><i class="fa fa-file-alt me-2"></i>Dados do Parecer - Segundo Passo</h4>
+                                <div class="alert alert-info mb-0 py-2 px-3" style="font-size: 0.875rem;">
+                                    <i class="fa fa-info-circle me-2"></i>
+                                    <strong>Atenção:</strong> Ao preencher este card, os dados serão salvos automaticamente na lista de Pareceres.
+                                </div>
+                            </div>
                         </div>
                         <div class="card-body">
                             <div class="row">
-                                {% if 'agendamento_segundo_passo_data_realizada'|verifyPermission %}
-                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
-                                    <label class="form-label">Data Realizada</label>
+                                <div class="col-12 col-lg-3 mb-3">
+                                    <label class="form-label">Data da Realização</label>
                                     <input type="date" 
                                            class="form-control" 
-                                           name="data_realizada" 
-                                           value="{{ action == 'editar' ? agendamento.data_realizada : '' }}">
+                                           name="parecer_data_realizacao" 
+                                           value="{{ parecerValores.data_realizacao ?? agendamento.data_realizada ?? '' }}">
                                 </div>
-                                {% endif %}
-                                
-                                {% if 'agendamento_segundo_passo_data_fatal'|verifyPermission %}
-                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
+
+                                <div class="col-12 col-lg-3 mb-3">
                                     <label class="form-label">Data Fatal</label>
-                                    <input type="date" 
-                                           class="form-control" 
-                                           name="data_fatal" 
-                                           value="{{ action == 'editar' ? agendamento.data_fatal : '' }}">
+                                    <input type="date"
+                                           class="form-control"
+                                           name="parecer_data_fatal"
+                                           value="{{ parecerValores.data_fatal ?? agendamento.data_fatal ?? '' }}">
                                 </div>
-                                {% endif %}
-                                
-                                {% if 'agendamento_segundo_passo_data_entrega_parecer'|verifyPermission %}
-                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
+
+                                <div class="col-12 col-lg-3 mb-3">
                                     <label class="form-label">Data de Entrega do Parecer</label>
-                                    <input type="date" 
-                                           class="form-control" 
-                                           name="data_entrega_parecer" 
-                                           value="{{ action == 'editar' ? agendamento.data_entrega_parecer : '' }}">
+                                    <input type="date"
+                                           class="form-control"
+                                           name="parecer_data_entrega_parecer"
+                                           value="{{ parecerValores.data_entrega_parecer ?? agendamento.data_entrega_parecer ?? '' }}">
                                 </div>
-                                {% endif %}
-                                
-                                {% if 'agendamento_segundo_passo_status_parecer'|verifyPermission %}
-                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
+
+                                <div class="col-12 col-lg-3 mb-3">
                                     <label class="form-label">Status do Parecer</label>
-                                    <select class="form-control" name="status_parecer">
+                                    <select class="form-control" name="parecer_status_parecer">
                                         <option value="">Selecione</option>
-                                        <option value="OK" {{ (action == 'editar' and agendamento.status_parecer == 'OK') ? 'selected' : '' }}>OK</option>
-                                        <option value="FAVORAVEL" {{ (action == 'editar' and agendamento.status_parecer == 'FAVORAVEL') ? 'selected' : '' }}>FAVORAVEL</option>
-                                        <option value="DESFAVORAVEL" {{ (action == 'editar' and agendamento.status_parecer == 'DESFAVORAVEL') ? 'selected' : '' }}>DESFAVORAVEL</option>
-                                        <option value="PARCIAL FAVORAVEL" {{ (action == 'editar' and agendamento.status_parecer == 'PARCIAL FAVORAVEL') ? 'selected' : '' }}>PARCIAL FAVORAVEL</option>
-                                        <option value="NR (NÃO REALIZADO)" {{ (action == 'editar' and agendamento.status_parecer == 'NR (NÃO REALIZADO)') ? 'selected' : '' }}>NR (NÃO REALIZADO)</option>
+                                        {% set statusAtual = parecerValores.status_parecer ?? agendamento.status_parecer ?? '' %}
+                                        <option value="OK" {{ statusAtual == 'OK' ? 'selected' : '' }}>OK</option>
+                                        <option value="FAVORAVEL" {{ statusAtual == 'FAVORAVEL' ? 'selected' : '' }}>Favorável</option>
+                                        <option value="DESFAVORAVEL" {{ statusAtual == 'DESFAVORAVEL' ? 'selected' : '' }}>Desfavorável</option>
+                                        <option value="PARCIAL FAVORAVEL" {{ statusAtual == 'PARCIAL FAVORAVEL' ? 'selected' : '' }}>Parcial Favorável</option>
+                                        <option value="NR (NÃO REALIZADO)" {{ statusAtual == 'NR (NÃO REALIZADO)' ? 'selected' : '' }}>NR (Não Realizado)</option>
                                     </select>
                                 </div>
-                                {% endif %}
-                                
-                                {% if 'agendamento_segundo_passo_obs_parecer'|verifyPermission %}
-                                <div class="col-12 col-lg-12 col-xl-12 mb-3">
-                                    <label class="form-label">Função/OBS</label>
-                                    <textarea class="form-control" 
-                                              name="obs_parecer" 
-                                              rows="3"
-                                              placeholder="Observações referentes ao status">{{ action == 'editar' ? agendamento.obs_parecer : '' }}</textarea>
+
+                                <div class="col-12 col-lg-3 mb-3">
+                                    <label class="form-label">Tipo</label>
+                                    <select class="form-control select2-tags" name="parecer_tipo" id="parecer_tipo">
+                                        {% set tipoAtual = parecerValores.tipo ?? '' %}
+                                        {% if tipoAtual %}
+                                        <option value="{{ tipoAtual }}" selected>{{ tipoAtual }}</option>
+                                        {% endif %}
+                                        {% for tipo in tipos_parecer %}
+                                            {% if not (tipoAtual == tipo.nome) %}
+                                            <option value="{{ tipo.nome }}">{{ tipo.nome }}</option>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </select>
                                 </div>
-                                {% endif %}
+
+                                <div class="col-12 col-lg-3 mb-3">
+                                    <label class="form-label">Assistente</label>
+                                    <select class="form-control" name="parecer_assistente_id" id="parecer_assistente_id">
+                                        <option value="">Selecione o Assistente</option>
+                                        {% for assistente in assistentes %}
+                                        <option value="{{ assistente.id }}" {{ (parecerValores.assistente_id is defined and parecerValores.assistente_id == assistente.id) or (parecerValores.assistente_id is not defined and agendamento.assistente_id is defined and agendamento.assistente_id == assistente.id) ? 'selected' : '' }}>
+                                            {{ assistente.nome }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="col-12 col-lg-3 mb-3">
+                                    <label class="form-label">Reclamada</label>
+                                    <select class="form-control" name="parecer_reclamada_id" id="parecer_reclamada_id">
+                                        <option value="">Selecione a Reclamada</option>
+                                        {% for reclamada in reclamadas %}
+                                        <option value="{{ reclamada.id }}" {{ parecerValores.reclamada_id is defined and parecerValores.reclamada_id == reclamada.id ? 'selected' : '' }}>
+                                            {{ reclamada.nome }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="col-12 col-lg-3 mb-3">
+                                    <label class="form-label">Reclamante</label>
+                                    <select class="form-control" name="parecer_reclamante_id" id="parecer_reclamante_id">
+                                        <option value="">Selecione o Reclamante</option>
+                                        {% for reclamante in reclamantes %}
+                                        <option value="{{ reclamante.id }}" {{ parecerValores.reclamante_id is defined and parecerValores.reclamante_id == reclamante.id ? 'selected' : '' }}>
+                                            {{ reclamante.nome }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="col-12 col-lg-6 mb-3">
+                                    <label class="form-label">Função(ões)</label>
+                                    <textarea class="form-control"
+                                              name="parecer_funcoes"
+                                              rows="2"
+                                              placeholder="Descreva a(s) função(ões) do parecer">{{ parecerValores.funcoes ?? '' }}</textarea>
+                                </div>
+
+                                <div class="col-12 col-lg-6 mb-3">
+                                    <label class="form-label">Observações</label>
+                                    <textarea class="form-control"
+                                              name="parecer_observacoes"
+                                              rows="2"
+                                              placeholder="Observações sobre o parecer">{{ parecerValores.observacoes ?? agendamento.obs_parecer ?? '' }}</textarea>
+                                </div>
                             </div>
                         </div>
                     </div>

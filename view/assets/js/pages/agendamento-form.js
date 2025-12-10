@@ -51,21 +51,101 @@
             return;
         }
 
-        // Select2 para Assistente
-        const assistenteSelect = jQuery('#assistente_id');
-        if (assistenteSelect.length) {
-            assistenteSelect.select2({
-                placeholder: 'Selecione o Assistente',
+        // Select2 para Assistente (agendamento) e Assistente do Parecer
+        ['#assistente_id', '#parecer_assistente_id'].forEach(function(selector) {
+            const select = jQuery(selector);
+            if (select.length) {
+                select.select2({
+                    placeholder: 'Selecione o Assistente',
+                    allowClear: true,
+                    width: '100%',
+                    language: {
+                        noResults: function() {
+                            return "Nenhum assistente encontrado";
+                        },
+                        searching: function() {
+                            return "Buscando...";
+                        }
+                    }
+                });
+            }
+        });
+
+        // Select2 para Reclamada do Parecer
+        const reclamadaParecerSelect = jQuery('#parecer_reclamada_id');
+        if (reclamadaParecerSelect.length) {
+            reclamadaParecerSelect.select2({
+                placeholder: 'Selecione a Reclamada',
                 allowClear: true,
                 width: '100%',
                 language: {
                     noResults: function() {
-                        return "Nenhum assistente encontrado";
+                        return "Nenhuma reclamada encontrada";
                     },
                     searching: function() {
                         return "Buscando...";
                     }
                 }
+            });
+        }
+
+        // Select2 para Reclamante do Parecer
+        const reclamanteParecerSelect = jQuery('#parecer_reclamante_id');
+        if (reclamanteParecerSelect.length) {
+            reclamanteParecerSelect.select2({
+                placeholder: 'Selecione o Reclamante',
+                allowClear: true,
+                width: '100%',
+                language: {
+                    noResults: function() {
+                        return "Nenhum reclamante encontrado";
+                    },
+                    searching: function() {
+                        return "Buscando...";
+                    }
+                }
+            });
+        }
+
+        // Select2 com tags para Tipo de Parecer (força maiúsculas)
+        const tipoParecerSelect = jQuery('#parecer_tipo');
+        if (tipoParecerSelect.length) {
+            tipoParecerSelect.select2({
+                tags: true,
+                placeholder: 'Selecione ou digite um tipo',
+                allowClear: true,
+                width: '100%',
+                language: {
+                    noResults: function() {
+                        return "Digite para criar um novo tipo";
+                    },
+                    searching: function() {
+                        return "Buscando...";
+                    }
+                },
+                createTag: function (params) {
+                    const term = jQuery.trim(params.term);
+                    if (term === '') {
+                        return null;
+                    }
+                    return {
+                        id: term.toUpperCase(),
+                        text: term.toUpperCase(),
+                        newTag: true
+                    };
+                }
+            });
+
+            // Forçar maiúsculas ao digitar
+            tipoParecerSelect.on('select2:open', function() {
+                setTimeout(function() {
+                    jQuery('.select2-search__field').on('input', function() {
+                        const val = jQuery(this).val();
+                        if (val && val !== val.toUpperCase()) {
+                            jQuery(this).val(val.toUpperCase());
+                        }
+                    });
+                }, 0);
             });
         }
 

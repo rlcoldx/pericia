@@ -8,6 +8,9 @@ use Agencia\Close\Models\Equipe\Equipe;
 use Agencia\Close\Models\User\User;
 use Agencia\Close\Models\Perito\Perito;
 use Agencia\Close\Models\Assistente\Assistente;
+use Agencia\Close\Models\Reclamada\Reclamada;
+use Agencia\Close\Models\Reclamante\Reclamante;
+use Agencia\Close\Models\Parecer\Parecer;
 use Agencia\Close\Services\Notificacao\EmailNotificationService;
 use Agencia\Close\Helpers\DataTableResponse;
 use Agencia\Close\Models\Tarefa\Tarefa;
@@ -86,6 +89,16 @@ class AgendamentoController extends Controller
     // Busca assistentes disponíveis
     $assistenteModel = new Assistente();
     $assistentes = $assistenteModel->listar((int) $empresa);
+
+    // Busca reclamadas e reclamantes para o card de parecer
+    $reclamadaModel = new Reclamada();
+    $reclamanteModel = new Reclamante();
+    $reclamadas = $reclamadaModel->listar((int) $empresa);
+    $reclamantes = $reclamanteModel->listar((int) $empresa);
+
+    // Busca tipos de parecer existentes para o select2
+    $parecerModel = new Parecer();
+    $tiposParecer = $parecerModel->listarTipos((int) $empresa);
     
     // Busca usuários para tarefas
     $equipeModel = new Equipe();
@@ -96,8 +109,12 @@ class AgendamentoController extends Controller
       'action' => 'criar',
       'peritos' => $peritos->getResult() ?? [],
       'assistentes' => $assistentes->getResult() ?? [],
+      'reclamadas' => $reclamadas->getResult() ?? [],
+      'reclamantes' => $reclamantes->getResult() ?? [],
+      'tipos_parecer' => $tiposParecer->getResult() ?? [],
       'usuarios' => $equipeModel->getUsuariosAtivos((int) $empresa)->getResult() ?? [],
       'agendamento' => null,
+      'parecer_agendamento' => null,
       'tarefa' => null,
     ]);
   }
@@ -131,14 +148,34 @@ class AgendamentoController extends Controller
     // Busca assistentes disponíveis
     $assistenteModel = new Assistente();
     $assistentes = $assistenteModel->listar((int) $empresa);
+
+    // Busca reclamadas e reclamantes para o card de parecer
+    $reclamadaModel = new Reclamada();
+    $reclamanteModel = new Reclamante();
+    $reclamadas = $reclamadaModel->listar((int) $empresa);
+    $reclamantes = $reclamanteModel->listar((int) $empresa);
+
+    // Busca tipos de parecer existentes para o select2
+    $parecerModel = new Parecer();
+    $tiposParecer = $parecerModel->listarTipos((int) $empresa);
+
+    // Busca parecer já vinculado ao agendamento (se houver)
+    $parecerAgendamento = $parecerModel->getPorAgendamento((int) $id, (int) $empresa)->getResult()[0] ?? null;
     
     // Busca usuários para tarefas
     $equipeModel = new Equipe();
     $tarefaModel = new Tarefa();
     
-    // Buscar tarefa existente
-    $tarefaRead = $tarefaModel->getPorModuloRegistro('agendamento', $id, (int) $empresa);
-    $tarefa = $tarefaRead->getResult()[0] ?? null;
+    // Busca tarefa existente (prioriza tarefa do parecer se existir)
+    $tarefa = null;
+    if (!empty($parecerAgendamento)) {
+      $tarefaRead = $tarefaModel->getPorModuloRegistro('parecer', (int) $parecerAgendamento['id'], (int) $empresa);
+      $tarefa = $tarefaRead->getResult()[0] ?? null;
+    }
+    if (!$tarefa) {
+      $tarefaRead = $tarefaModel->getPorModuloRegistro('agendamento', $id, (int) $empresa);
+      $tarefa = $tarefaRead->getResult()[0] ?? null;
+    }
     
     $this->render('pages/agendamento/form.twig', [
       'titulo' => 'Editar Agendamento',
@@ -147,7 +184,11 @@ class AgendamentoController extends Controller
       'agendamento' => $agendamento->getResult()[0] ?? null,
       'peritos' => $peritos->getResult() ?? [],
       'assistentes' => $assistentes->getResult() ?? [],
+      'reclamadas' => $reclamadas->getResult() ?? [],
+      'reclamantes' => $reclamantes->getResult() ?? [],
+      'tipos_parecer' => $tiposParecer->getResult() ?? [],
       'usuarios' => $equipeModel->getUsuariosAtivos((int) $empresa)->getResult() ?? [],
+      'parecer_agendamento' => $parecerAgendamento,
       'tarefa' => $tarefa,
     ]);
   }
@@ -281,11 +322,11 @@ class AgendamentoController extends Controller
       'status' => $status,
       'observacoes' => $_POST['observacoes'] ?? null,
       // MARCELO
-      'data_realizada' => $_POST['data_realizada'] ?? null,
-      'data_fatal' => $_POST['data_fatal'] ?? null,
-      'data_entrega_parecer' => $_POST['data_entrega_parecer'] ?? null,
-      'status_parecer' => $_POST['status_parecer'] ?? null,
-      'obs_parecer' => $_POST['obs_parecer'] ?? null,
+      'data_realizada' => $_POST['parecer_data_realizacao'] ?? null,
+      'data_fatal' => $_POST['parecer_data_fatal'] ?? null,
+      'data_entrega_parecer' => $_POST['parecer_data_entrega_parecer'] ?? null,
+      'status_parecer' => $_POST['parecer_status_parecer'] ?? null,
+      'obs_parecer' => $_POST['parecer_observacoes'] ?? null,
       // MAURO
       'data_pagamento_assistente' => $_POST['data_pagamento_assistente'] ?? null,
       'numero_pedido_cliente' => $_POST['numero_pedido_cliente'] ?? null,
@@ -311,13 +352,19 @@ class AgendamentoController extends Controller
 
     $idAgendamento = (int) $result->getResult();
 
+    // Salva/atualiza parecer vinculado se os campos foram preenchidos
+    $parecerId = $this->salvarOuAtualizarParecerDoAgendamento((int) $empresa, $idAgendamento);
+
     // Salvar tarefa se fornecida (não bloqueia o cadastro se falhar)
     try {
       $temDadosTarefa = isset($_POST['tarefa_concluido']) || !empty($_POST['tarefa_usuario_responsavel_id']) || !empty($_POST['tarefa_data_conclusao']);
       
       if ($temDadosTarefa) {
         $tarefaModel = new Tarefa();
-        $tarefaModel->salvarTarefa('agendamento', $idAgendamento, (int) $empresa, [
+        $moduloTarefa = $parecerId ? 'parecer' : 'agendamento';
+        $registroTarefa = $parecerId ?: $idAgendamento;
+
+        $tarefaModel->salvarTarefa($moduloTarefa, $registroTarefa, (int) $empresa, [
           'concluido' => isset($_POST['tarefa_concluido']) && $_POST['tarefa_concluido'] == '1',
           'usuario_responsavel_id' => $_POST['tarefa_usuario_responsavel_id'] ?? null,
           'data_conclusao' => $_POST['tarefa_data_conclusao'] ?? null,
@@ -418,11 +465,11 @@ class AgendamentoController extends Controller
       'status' => isset($_POST['status']) && $_POST['status'] !== '' ? $_POST['status'] : null,
       'observacoes' => isset($_POST['observacoes']) && $_POST['observacoes'] !== '' ? $_POST['observacoes'] : null,
       // MARCELO
-      'data_realizada' => isset($_POST['data_realizada']) && $_POST['data_realizada'] !== '' ? $_POST['data_realizada'] : null,
-      'data_fatal' => isset($_POST['data_fatal']) && $_POST['data_fatal'] !== '' ? $_POST['data_fatal'] : null,
-      'data_entrega_parecer' => isset($_POST['data_entrega_parecer']) && $_POST['data_entrega_parecer'] !== '' ? $_POST['data_entrega_parecer'] : null,
-      'status_parecer' => isset($_POST['status_parecer']) && $_POST['status_parecer'] !== '' ? $_POST['status_parecer'] : null,
-      'obs_parecer' => isset($_POST['obs_parecer']) && $_POST['obs_parecer'] !== '' ? $_POST['obs_parecer'] : null,
+      'data_realizada' => isset($_POST['parecer_data_realizacao']) && $_POST['parecer_data_realizacao'] !== '' ? $_POST['parecer_data_realizacao'] : null,
+      'data_fatal' => isset($_POST['parecer_data_fatal']) && $_POST['parecer_data_fatal'] !== '' ? $_POST['parecer_data_fatal'] : null,
+      'data_entrega_parecer' => isset($_POST['parecer_data_entrega_parecer']) && $_POST['parecer_data_entrega_parecer'] !== '' ? $_POST['parecer_data_entrega_parecer'] : null,
+      'status_parecer' => isset($_POST['parecer_status_parecer']) && $_POST['parecer_status_parecer'] !== '' ? $_POST['parecer_status_parecer'] : null,
+      'obs_parecer' => isset($_POST['parecer_observacoes']) && $_POST['parecer_observacoes'] !== '' ? $_POST['parecer_observacoes'] : null,
       // MAURO
       'data_pagamento_assistente' => isset($_POST['data_pagamento_assistente']) && $_POST['data_pagamento_assistente'] !== '' ? $_POST['data_pagamento_assistente'] : null,
       'numero_pedido_cliente' => isset($_POST['numero_pedido_cliente']) && $_POST['numero_pedido_cliente'] !== '' ? $_POST['numero_pedido_cliente'] : null,
@@ -448,13 +495,19 @@ class AgendamentoController extends Controller
         return;
       }
 
+      // Salva/atualiza parecer vinculado se os campos foram preenchidos
+      $parecerId = $this->salvarOuAtualizarParecerDoAgendamento((int) $empresa, (int) $id);
+
       // Salvar tarefa se fornecida (não bloqueia a atualização se falhar)
       try {
         $temDadosTarefa = isset($_POST['tarefa_concluido']) || !empty($_POST['tarefa_usuario_responsavel_id']) || !empty($_POST['tarefa_data_conclusao']);
         
         if ($temDadosTarefa) {
           $tarefaModel = new Tarefa();
-          $tarefaModel->salvarTarefa('agendamento', $id, (int) $empresa, [
+          $moduloTarefa = $parecerId ? 'parecer' : 'agendamento';
+          $registroTarefa = $parecerId ?: $id;
+
+          $tarefaModel->salvarTarefa($moduloTarefa, $registroTarefa, (int) $empresa, [
             'concluido' => isset($_POST['tarefa_concluido']) && $_POST['tarefa_concluido'] == '1',
             'usuario_responsavel_id' => $_POST['tarefa_usuario_responsavel_id'] ?? null,
             'data_conclusao' => $_POST['tarefa_data_conclusao'] ?? null,
@@ -780,6 +833,56 @@ class AgendamentoController extends Controller
     $cleanValue = str_replace(['.', ','], ['', '.'], $value);
     $floatValue = filter_var($cleanValue, FILTER_VALIDATE_FLOAT);
     return $floatValue !== false ? $floatValue : null;
+  }
+
+  /**
+   * Cria ou atualiza um parecer vinculado ao agendamento, se os campos do card foram preenchidos.
+   * Retorna o ID do parecer salvo ou null se não houve criação/atualização.
+   */
+  private function salvarOuAtualizarParecerDoAgendamento(int $empresa, int $agendamentoId): ?int
+  {
+    try {
+      $dataRealizacao = $_POST['parecer_data_realizacao'] ?? '';
+      $tipoParecer = $_POST['parecer_tipo'] ?? '';
+
+      // Se não preencher os campos principais, não cria/atualiza
+      if (empty($dataRealizacao) || empty($tipoParecer)) {
+        return null;
+      }
+
+      $tipoParecer = mb_strtoupper($tipoParecer, 'UTF-8');
+
+      $dadosParecer = [
+        'empresa' => $empresa,
+        'agendamento_id' => $agendamentoId,
+        'data_realizacao' => $dataRealizacao,
+        'data_fatal' => $_POST['parecer_data_fatal'] ?? null,
+        'data_entrega_parecer' => $_POST['parecer_data_entrega_parecer'] ?? null,
+        'status_parecer' => $_POST['parecer_status_parecer'] ?? null,
+        'tipo' => $tipoParecer,
+        'assistente' => null,
+        'assistente_id' => !empty($_POST['parecer_assistente_id']) ? (int) $_POST['parecer_assistente_id'] : null,
+        'reclamada_id' => !empty($_POST['parecer_reclamada_id']) ? (int) $_POST['parecer_reclamada_id'] : null,
+        'reclamante_id' => !empty($_POST['parecer_reclamante_id']) ? (int) $_POST['parecer_reclamante_id'] : null,
+        'funcoes' => isset($_POST['parecer_funcoes']) && $_POST['parecer_funcoes'] !== '' ? $_POST['parecer_funcoes'] : null,
+        'observacoes' => isset($_POST['parecer_observacoes']) && $_POST['parecer_observacoes'] !== '' ? $_POST['parecer_observacoes'] : null,
+      ];
+
+      $parecerModel = new Parecer();
+      $parecerExistente = $parecerModel->getPorAgendamento($agendamentoId, $empresa)->getResult()[0] ?? null;
+
+      if ($parecerExistente) {
+        $parecerModel->atualizar((int) $parecerExistente['id'], $empresa, $dadosParecer);
+        return (int) $parecerExistente['id'];
+      }
+
+      $result = $parecerModel->criar($dadosParecer);
+      return $result->getResult() ? (int) $result->getResult() : null;
+    } catch (\Exception $e) {
+      return null;
+    } catch (\Error $e) {
+      return null;
+    }
   }
 
   /**

@@ -69,6 +69,24 @@ class Parecer extends Model
         return $this->read;
     }
 
+    public function getPorAgendamento(int $agendamentoId, int $empresa): Read
+    {
+        $this->read = new Read();
+        $this->read->FullRead(
+            "SELECT p.*, 
+                    r.nome as reclamada_nome,
+                    r2.nome as reclamante_nome
+             FROM pareceres p
+             LEFT JOIN reclamadas r ON p.reclamada_id = r.id AND p.empresa = r.empresa
+             LEFT JOIN reclamantes r2 ON p.reclamante_id = r2.id AND p.empresa = r2.empresa
+             WHERE p.agendamento_id = :agendamento_id AND p.empresa = :empresa
+             ORDER BY p.id DESC
+             LIMIT 1",
+            "agendamento_id={$agendamentoId}&empresa={$empresa}"
+        );
+        return $this->read;
+    }
+
     public function getPareceresDataTable(int $empresa, array $params, array $filtros = []): array
     {
         $start = $params['start'] ?? 0;
