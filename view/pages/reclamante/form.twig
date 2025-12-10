@@ -24,60 +24,82 @@
                 <input type="hidden" name="id" value="{{ reclamante.id }}">
             {% endif %}
 
-            <div class="card">
-                <div class="card-header">
-                    <h4 class="card-title mb-0">{{ titulo }}</h4>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-12 col-md-6 mb-3">
-                            <label class="form-label">Nome <span class="text-danger">*</span></label>
-                            <input type="text"
-                                   class="form-control"
-                                   name="nome"
-                                   value="{{ action == 'editar' ? reclamante.nome : '' }}"
-                                   placeholder="Nome do reclamante"
-                                   required>
+            <div class="row">
+                <div class="col-12">
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h4 class="card-title mb-0">
+                                <i class="fa fa-user-tie me-2"></i>Dados do Reclamante
+                            </h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-12 col-md-8 mb-3">
+                                    <label class="form-label">
+                                        <i class="fa fa-tag me-1"></i>Nome <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text"
+                                           class="form-control"
+                                           name="nome"
+                                           id="nome"
+                                           value="{{ action == 'editar' ? reclamante.nome : '' }}"
+                                           placeholder="Digite o nome do reclamante"
+                                           required>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-12">
-                            <h5 class="mb-3">Dados de Contato</h5>
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h4 class="card-title mb-0">
+                                <i class="fa fa-address-book me-2"></i>Dados de Contato
+                            </h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-12 col-md-6 mb-3">
+                                    <label class="form-label">
+                                        <i class="fa fa-user me-1"></i>Nome de Contato
+                                    </label>
+                                    <input type="text"
+                                           class="form-control"
+                                           name="nome_contato"
+                                           id="nome_contato"
+                                           value="{{ action == 'editar' ? reclamante.nome_contato : '' }}"
+                                           placeholder="Nome completo do contato">
+                                </div>
+
+                                <div class="col-12 col-md-6 mb-3">
+                                    <label class="form-label">
+                                        <i class="fa fa-envelope me-1"></i>Email de Contato
+                                    </label>
+                                    <input type="email"
+                                           class="form-control"
+                                           name="email_contato"
+                                           id="email_contato"
+                                           value="{{ action == 'editar' ? reclamante.email_contato : '' }}"
+                                           placeholder="contato@exemplo.com">
+                                </div>
+
+                                <div class="col-12 col-md-6 mb-3">
+                                    <label class="form-label">
+                                        <i class="fa fa-phone me-1"></i>Telefone de Contato
+                                    </label>
+                                    <input type="text"
+                                           class="form-control"
+                                           name="telefone_contato"
+                                           id="telefone_contato"
+                                           value="{{ action == 'editar' ? reclamante.telefone_contato : '' }}"
+                                           placeholder="(00) 00000-0000"
+                                           maxlength="15">
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-12 col-md-6 mb-3">
-                            <label class="form-label">Nome de Contato</label>
-                            <input type="text"
-                                   class="form-control"
-                                   name="nome_contato"
-                                   value="{{ action == 'editar' ? reclamante.nome_contato : '' }}"
-                                   placeholder="Nome do contato">
-                        </div>
-
-                        <div class="col-12 col-md-6 mb-3">
-                            <label class="form-label">Email de Contato</label>
-                            <input type="email"
-                                   class="form-control"
-                                   name="email_contato"
-                                   value="{{ action == 'editar' ? reclamante.email_contato : '' }}"
-                                   placeholder="email@exemplo.com">
-                        </div>
-
-                        <div class="col-12 col-md-6 mb-3">
-                            <label class="form-label">Telefone de Contato</label>
-                            <input type="text"
-                                   class="form-control"
-                                   name="telefone_contato"
-                                   value="{{ action == 'editar' ? reclamante.telefone_contato : '' }}"
-                                   placeholder="(00) 00000-0000">
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
                             <button type="submit" class="btn btn-primary">
                                 <i class="fa fa-save me-2"></i>
                                 {{ action == 'criar' ? 'Cadastrar Reclamante' : 'Salvar Alterações' }}
@@ -101,6 +123,21 @@ window.DOMAIN = '{{ DOMAIN }}';
 
 (function() {
     'use strict';
+    
+    // Máscara para telefone
+    const telefoneInput = document.getElementById('telefone_contato');
+    if (telefoneInput) {
+        telefoneInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length <= 10) {
+                value = value.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
+            } else {
+                value = value.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3');
+            }
+            e.target.value = value;
+        });
+    }
+
     const form = document.getElementById('formReclamante');
     if (!form) return;
 

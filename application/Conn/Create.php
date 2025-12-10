@@ -48,8 +48,22 @@ class Create extends Conn {
             $this->Result = $this->Conn->lastInsertId();
         } catch (PDOException $e) {
             $this->Result = null;
-            EchoMsg("<b>Erro ao cadastrar:</b> {$e->getMessage()}", $e->getCode());
+            // Só usa EchoMsg se não for uma requisição AJAX/JSON
+            if (!isset($_SERVER['HTTP_X_REQUESTED_WITH']) && !isset($_GET['ajax'])) {
+                EchoMsg("<b>Erro ao cadastrar:</b> {$e->getMessage()}", $e->getCode());
+            }
         }
+    }
+    
+    /**
+     * Retorna informações de erro do PDO
+     */
+    public function getErrorInfo(): ?array
+    {
+        if ($this->Create && method_exists($this->Create, 'errorInfo')) {
+            return $this->Create->errorInfo();
+        }
+        return null;
     }
 
 }

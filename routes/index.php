@@ -14,6 +14,7 @@ require  __DIR__ . '/equipes.php';
 require  __DIR__ . '/perito.php';
 require  __DIR__ . '/reclamadas.php';
 require  __DIR__ . '/reclamantes.php';
+require  __DIR__ . '/assistentes.php';
 require  __DIR__ . '/quesito.php';
 require  __DIR__ . '/manifestacao_impugnacao.php';
 require  __DIR__ . '/parecer.php';
@@ -21,6 +22,7 @@ require  __DIR__ . '/agendamento.php';
 require  __DIR__ . '/financeiro.php';
 require  __DIR__ . '/notificacao.php';
 require  __DIR__ . '/email_template.php';
+require  __DIR__ . '/configuracao.php';
 require  __DIR__ . '/migration.php';
 
 // ERROR

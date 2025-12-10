@@ -6,6 +6,9 @@
 	let draw = Chart.controllers.line.__super__.draw; //draw shadow
 	var screenWidth = $(window).width();
 	var donutChart = function(){
+		var donutElement = document.querySelector("#donutChart");
+		if (!donutElement) return; // Elemento não existe, não criar gráfico
+		
 		var options = {
           series: [45, 30, 25],
           chart: {
@@ -53,13 +56,14 @@
         }] */
         };
 
-        var chart = new ApexCharts(document.querySelector("#donutChart"), options);
+        var chart = new ApexCharts(donutElement, options);
         chart.render();
 	}
 	
 	
 	
 	var donutChart1 = function(){
+		if ($("span.donut").length === 0) return; // Elementos não existem, não criar gráficos
 		$("span.donut").peity("donut", {
 			width: "90",
 			height: "90"
@@ -152,7 +156,9 @@
 	
 	var revenueChart = function(){
 		var revenue = document.getElementById("revenue");
-			if (revenue !== null) {
+		if (revenue === null) return; // Elemento não existe, não criar gráfico
+		
+		if (revenue !== null) {
 				var activityData = [{
 						first: [ 60, 40, 70, 40, 60, 80, 50, 45, 70, 45, 70, 40]
 					},
@@ -252,12 +258,14 @@
 				var myLine = new Chart(ctx, config);
 
 				var items = document.querySelectorAll("#sales-revenue .nav-tabs .nav-item");
-				items.forEach(function(item, index) {
-					item.addEventListener("click", function() {
-						config.data.datasets[0].data = activityData[index].first;
-						myLine.update();
+				if (items.length > 0) {
+					items.forEach(function(item, index) {
+						item.addEventListener("click", function() {
+							config.data.datasets[0].data = activityData[index].first;
+							myLine.update();
+						});
 					});
-				});
+				}
 			}
 	
 		

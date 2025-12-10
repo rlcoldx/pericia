@@ -36,8 +36,56 @@
         // Inicializa validação de data
         initDateValidation();
         
+        // Inicializa Select2 para campos com busca
+        initSelect2();
+        
         // Inicializa submissão do formulário
         initFormSubmit(form);
+    }
+
+    /**
+     * Inicializa Select2 para campos com busca (Assistente, Perito, etc)
+     */
+    function initSelect2() {
+        if (typeof jQuery === 'undefined' || typeof jQuery.fn.select2 === 'undefined') {
+            return;
+        }
+
+        // Select2 para Assistente
+        const assistenteSelect = jQuery('#assistente_id');
+        if (assistenteSelect.length) {
+            assistenteSelect.select2({
+                placeholder: 'Selecione o Assistente',
+                allowClear: true,
+                width: '100%',
+                language: {
+                    noResults: function() {
+                        return "Nenhum assistente encontrado";
+                    },
+                    searching: function() {
+                        return "Buscando...";
+                    }
+                }
+            });
+        }
+
+        // Select2 para Usuário Responsável (Tarefas)
+        const usuarioResponsavelSelect = jQuery('#tarefa_usuario_responsavel_id');
+        if (usuarioResponsavelSelect.length) {
+            usuarioResponsavelSelect.select2({
+                placeholder: 'Selecione o usuário responsável',
+                allowClear: true,
+                width: '100%',
+                language: {
+                    noResults: function() {
+                        return "Nenhum usuário encontrado";
+                    },
+                    searching: function() {
+                        return "Buscando...";
+                    }
+                }
+            });
+        }
     }
 
     /**

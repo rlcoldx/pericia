@@ -9,6 +9,8 @@ use Agencia\Close\Models\Reclamante\Reclamante;
 use Agencia\Close\Models\Perito\Perito;
 use Agencia\Close\Services\Notificacao\EmailNotificationService;
 use Agencia\Close\Helpers\DataTableResponse;
+use Agencia\Close\Models\Equipe\Equipe;
+use Agencia\Close\Models\Tarefa\Tarefa;
 
 class ManifestacaoImpugnacaoController extends Controller
 {
@@ -53,6 +55,7 @@ class ManifestacaoImpugnacaoController extends Controller
         $reclamanteModel = new Reclamante();
         $peritoModel = new Perito();
         $manifestacaoModel = new ManifestacaoImpugnacao();
+        $equipeModel = new Equipe();
 
         $this->render('pages/manifestacao_impugnacao/form.twig', [
             'titulo' => 'Nova Manifestação/Impugnação',
@@ -63,17 +66,26 @@ class ManifestacaoImpugnacaoController extends Controller
             'reclamantes' => $reclamanteModel->listar((int) $empresa)->getResult() ?? [],
             'peritos' => $peritoModel->getPeritosAtivos((int) $empresa)->getResult() ?? [],
             'tipos' => $manifestacaoModel->getTiposDistinct((int) $empresa)->getResult() ?? [],
+            'usuarios' => $equipeModel->getUsuariosAtivos((int) $empresa)->getResult() ?? [],
+            'tarefa' => null,
         ]);
     }
 
     public function salvarCriar($params)
     {
+        // Definir header JSON no início para evitar corrupção
+        header('Content-Type: application/json; charset=utf-8');
+        
         $this->setParams($params);
         $this->requirePermission('manifestacao_impugnacao_criar');
 
         $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
 
         if (!$empresa) {
+            // Limpar qualquer output buffer antes de enviar JSON
+            if (ob_get_level() > 0) {
+                ob_clean();
+            }
             $this->responseJson(['success' => false, 'message' => 'Sessão expirada.']);
             return;
         }
@@ -111,13 +123,47 @@ class ManifestacaoImpugnacaoController extends Controller
         $model = new ManifestacaoImpugnacao();
         $result = $model->criar($dados);
 
-        if ($result->getResult()) {
-            $idManifestacao = (int) $result->getResult();
-            $this->enviarNotificacaoEmailManifestacao($empresa, $idManifestacao, $dados, 'criar');
-            $this->responseJson(['success' => true, 'message' => 'Manifestação/Impugnação cadastrada com sucesso.']);
-        } else {
+        if (!$result->getResult()) {
+            // Limpar qualquer output buffer antes de enviar JSON
+            if (ob_get_level() > 0) {
+                ob_clean();
+            }
             $this->responseJson(['success' => false, 'message' => 'Erro ao cadastrar.']);
+            return;
         }
+
+        $idManifestacao = (int) $result->getResult();
+
+        // Salvar tarefa se fornecida (não bloqueia o cadastro se falhar)
+        try {
+            $temDadosTarefa = isset($_POST['tarefa_concluido']) || !empty($_POST['tarefa_usuario_responsavel_id']) || !empty($_POST['tarefa_data_conclusao']);
+            
+            if ($temDadosTarefa) {
+                $tarefaModel = new Tarefa();
+                $tarefaModel->salvarTarefa('manifestacao', $idManifestacao, (int) $empresa, [
+                    'concluido' => isset($_POST['tarefa_concluido']) && $_POST['tarefa_concluido'] == '1',
+                    'usuario_responsavel_id' => $_POST['tarefa_usuario_responsavel_id'] ?? null,
+                    'data_conclusao' => $_POST['tarefa_data_conclusao'] ?? null,
+                ]);
+            }
+        } catch (\Exception $e) {
+            // Não bloqueia o cadastro se a tarefa falhar
+        } catch (\Error $e) {
+            // Não bloqueia o cadastro se a tarefa falhar
+        }
+
+        try {
+            $this->enviarNotificacaoEmailManifestacao($empresa, $idManifestacao, $dados, 'criar');
+        } catch (\Exception $e) {
+            // Erro silencioso no envio de email
+        }
+
+        // Limpar qualquer output buffer antes de enviar JSON
+        if (ob_get_level() > 0) {
+            ob_clean();
+        }
+        
+        $this->responseJson(['success' => true, 'message' => 'Manifestação/Impugnação cadastrada com sucesso.']);
     }
 
     public function editar($params)
@@ -145,6 +191,12 @@ class ManifestacaoImpugnacaoController extends Controller
         $reclamanteModel = new Reclamante();
         $peritoModel = new Perito();
         $manifestacaoModel = new ManifestacaoImpugnacao();
+        $equipeModel = new Equipe();
+        $tarefaModel = new Tarefa();
+
+        // Buscar tarefa existente
+        $tarefaRead = $tarefaModel->getPorModuloRegistro('manifestacao', $id, (int) $empresa);
+        $tarefa = $tarefaRead->getResult()[0] ?? null;
 
         $this->render('pages/manifestacao_impugnacao/form.twig', [
             'titulo' => 'Editar Manifestação/Impugnação',
@@ -155,11 +207,16 @@ class ManifestacaoImpugnacaoController extends Controller
             'reclamantes' => $reclamanteModel->listar((int) $empresa)->getResult() ?? [],
             'peritos' => $peritoModel->getPeritosAtivos((int) $empresa)->getResult() ?? [],
             'tipos' => $manifestacaoModel->getTiposDistinct((int) $empresa)->getResult() ?? [],
+            'usuarios' => $equipeModel->getUsuariosAtivos((int) $empresa)->getResult() ?? [],
+            'tarefa' => $tarefa,
         ]);
     }
 
     public function salvarEditar($params)
     {
+        // Definir header JSON no início para evitar corrupção
+        header('Content-Type: application/json; charset=utf-8');
+        
         $this->setParams($params);
         $this->requirePermission('manifestacao_impugnacao_editar');
 
@@ -167,6 +224,10 @@ class ManifestacaoImpugnacaoController extends Controller
         $id = isset($_POST['id']) ? (int) $_POST['id'] : null;
 
         if (!$empresa || !$id) {
+            // Limpar qualquer output buffer antes de enviar JSON
+            if (ob_get_level() > 0) {
+                ob_clean();
+            }
             $this->responseJson(['success' => false, 'message' => 'Dados inválidos.']);
             return;
         }
@@ -175,6 +236,10 @@ class ManifestacaoImpugnacaoController extends Controller
         $tipo = $_POST['tipo'] ?? '';
 
         if (empty($data) || empty($tipo)) {
+            // Limpar qualquer output buffer antes de enviar JSON
+            if (ob_get_level() > 0) {
+                ob_clean();
+            }
             $this->responseJson(['success' => false, 'message' => 'Data e Tipo são obrigatórios.']);
             return;
         }
@@ -203,12 +268,45 @@ class ManifestacaoImpugnacaoController extends Controller
         $model = new ManifestacaoImpugnacao();
         $result = $model->atualizar($id, (int) $empresa, $dados);
 
-        if ($result->getResult()) {
-            $this->enviarNotificacaoEmailManifestacao($empresa, $id, $dados, 'editar');
-            $this->responseJson(['success' => true, 'message' => 'Manifestação/Impugnação atualizada com sucesso.']);
-        } else {
+        if (!$result->getResult()) {
+            // Limpar qualquer output buffer antes de enviar JSON
+            if (ob_get_level() > 0) {
+                ob_clean();
+            }
             $this->responseJson(['success' => false, 'message' => 'Erro ao atualizar.']);
+            return;
         }
+
+        // Salvar tarefa se fornecida (não bloqueia a atualização se falhar)
+        try {
+            $temDadosTarefa = isset($_POST['tarefa_concluido']) || !empty($_POST['tarefa_usuario_responsavel_id']) || !empty($_POST['tarefa_data_conclusao']);
+            
+            if ($temDadosTarefa) {
+                $tarefaModel = new Tarefa();
+                $tarefaModel->salvarTarefa('manifestacao', $id, (int) $empresa, [
+                    'concluido' => isset($_POST['tarefa_concluido']) && $_POST['tarefa_concluido'] == '1',
+                    'usuario_responsavel_id' => $_POST['tarefa_usuario_responsavel_id'] ?? null,
+                    'data_conclusao' => $_POST['tarefa_data_conclusao'] ?? null,
+                ]);
+            }
+        } catch (\Exception $e) {
+            // Não bloqueia a atualização se a tarefa falhar
+        } catch (\Error $e) {
+            // Não bloqueia a atualização se a tarefa falhar
+        }
+
+        try {
+            $this->enviarNotificacaoEmailManifestacao($empresa, $id, $dados, 'editar');
+        } catch (\Exception $e) {
+            // Erro silencioso no envio de email
+        }
+
+        // Limpar qualquer output buffer antes de enviar JSON
+        if (ob_get_level() > 0) {
+            ob_clean();
+        }
+        
+        $this->responseJson(['success' => true, 'message' => 'Manifestação/Impugnação atualizada com sucesso.']);
     }
 
     private function enviarNotificacaoEmailManifestacao(int $empresa, int $idManifestacao, array $dados, string $acao): void

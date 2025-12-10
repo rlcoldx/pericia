@@ -94,23 +94,36 @@
             </div>
         </div>
 
-        <!-- Gráficos -->
+        <!-- Gráficos e Tarefas -->
         <div class="row">
-            <!-- Quesitos por Status -->
-            <div class="col-xl-6 col-lg-12">
+            <!-- Coluna Esquerda: Tarefas -->
+            <div class="col-xl-8 col-lg-12">
                 <div class="card">
                     <div class="card-header">
-                        <h4 class="card-title">Quesitos por Status</h4>
+                        <h4 class="card-title">Minhas Tarefas</h4>
                     </div>
                     <div class="card-body">
-                        <div id="chartQuesitosStatus" style="min-height: 350px;"></div>
+                        <div class="table-responsive">
+                            <table class="table table-striped" id="tabelaTarefas">
+                                <thead>
+                                    <tr>
+                                        <th>Módulo</th>
+                                        <th>Reclamada</th>
+                                        <th>Status</th>
+                                        <th>Data para Conclusão</th>
+                                        <th>Data de Criação</th>
+                                        <th class="text-center">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Quesitos por Dia -->
-            <div class="col-xl-6 col-lg-12">
-                <div class="card">
+                <!-- Quesitos por Dia -->
+                <div class="card mt-4">
                     <div class="card-header">
                         <h4 class="card-title">Quesitos por Dia do Mês</h4>
                     </div>
@@ -118,47 +131,9 @@
                         <div id="chartQuesitosDia" style="min-height: 350px;"></div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Manifestações/Impugnações -->
-            <div class="col-xl-6 col-lg-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h4 class="card-title">Manifestações/Impugnações por Dia</h4>
-                    </div>
-                    <div class="card-body">
-                        <div id="chartManifestacoesDia" style="min-height: 350px;"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Pareceres por Tipo -->
-            <div class="col-xl-6 col-lg-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h4 class="card-title">Pareceres por Tipo</h4>
-                    </div>
-                    <div class="card-body">
-                        <div id="chartPareceresTipo" style="min-height: 350px;"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Agendamentos por Status -->
-            <div class="col-xl-6 col-lg-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h4 class="card-title">Agendamentos por Status</h4>
-                    </div>
-                    <div class="card-body">
-                        <div id="chartAgendamentosStatus" style="min-height: 350px;"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Financeiro -->
-            <div class="col-xl-6 col-lg-12">
-                <div class="card">
+                <!-- Financeiro -->
+                <div class="card mt-4">
                     <div class="card-header">
                         <h4 class="card-title">Financeiro - Contas a Receber</h4>
                     </div>
@@ -181,6 +156,39 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Coluna Direita: Gráficos -->
+            <div class="col-xl-4 col-lg-12">
+                <!-- Quesitos por Status -->
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="card-title">Quesitos por Status</h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="chartQuesitosStatus" style="min-height: 350px;"></div>
+                    </div>
+                </div>
+
+                <!-- Manifestações/Impugnações -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h4 class="card-title">Manifestações/Impugnações por Dia</h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="chartManifestacoesDia" style="min-height: 350px;"></div>
+                    </div>
+                </div>
+
+                <!-- Agendamentos por Status -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h4 class="card-title">Agendamentos por Status</h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="chartAgendamentosStatus" style="min-height: 350px;"></div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -193,5 +201,6 @@
     window.STATISTICS_DATA = {{ estatisticas|json_encode|raw }};
 </script>
 <script src="{{ PATH }}/view/assets/vendor/apexchart/apexchart.js"></script>
+<script src="{{ PATH }}/view/assets/js/pages/datatables/tarefas-datatable.js"></script>
 <script src="{{ PATH }}/view/assets/js/pages/home.js"></script>
 {% endblock %}

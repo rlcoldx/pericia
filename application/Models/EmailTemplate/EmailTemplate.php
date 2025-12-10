@@ -103,4 +103,34 @@ class EmailTemplate extends Model
         );
         return $this->delete;
     }
+
+    /**
+     * Ativa todos os templates da empresa
+     */
+    public function ativarTodos(int $empresa): Update
+    {
+        $this->update = new Update();
+        $this->update->ExeUpdate(
+            'email_templates',
+            ['ativo' => 1],
+            'WHERE empresa = :empresa',
+            "empresa={$empresa}"
+        );
+        return $this->update;
+    }
+
+    /**
+     * Desativa todos os templates da empresa
+     */
+    public function desativarTodos(int $empresa): Update
+    {
+        $this->update = new Update();
+        $this->update->ExeUpdate(
+            'email_templates',
+            ['ativo' => 0],
+            'WHERE empresa = :empresa',
+            "empresa={$empresa}"
+        );
+        return $this->update;
+    }
 }

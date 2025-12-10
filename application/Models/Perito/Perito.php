@@ -133,8 +133,7 @@ class Perito extends Model
             1 => 'email',
             2 => 'telefone',
             3 => 'especialidade',
-            4 => 'registro_profissional',
-            5 => 'status'
+            4 => 'status'
         ];
 
         $orderBy = 'nome ASC';
@@ -165,8 +164,7 @@ class Perito extends Model
                 email LIKE :search OR 
                 telefone LIKE :search OR 
                 documento LIKE :search OR 
-                especialidade LIKE :search OR 
-                registro_profissional LIKE :search
+                especialidade LIKE :search
             )";
             $searchParams .= "&search=%{$search}%";
         }

@@ -1,0 +1,267 @@
+{% extends "layout/layoutMaster.twig" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block body %}
+
+<div class="content-body">
+    <div class="container-fluid">
+        <div class="page-titles">
+            <div class="d-flex flex-wrap align-items-center justify-content-between">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}/assistentes">Assistentes</a></li>
+                    <li class="breadcrumb-item active"><a href="javascript:void(0)">{{ titulo }}</a></li>
+                </ol>
+                <a href="{{ DOMAIN }}/assistentes" class="btn btn-secondary">
+                    <i class="fa fa-arrow-left me-2"></i>Voltar
+                </a>
+            </div>
+        </div>
+
+        <form id="formAssistente" method="POST">
+            {% if action == 'editar' %}
+                <input type="hidden" name="id" value="{{ assistente.id }}">
+            {% endif %}
+
+            <div class="row">
+                <div class="col-12">
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h4 class="card-title mb-0">
+                                <i class="fa fa-user-md me-2"></i>Dados do Assistente
+                            </h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-12 col-md-8 mb-3">
+                                    <label class="form-label">
+                                        <i class="fa fa-tag me-1"></i>Nome <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text"
+                                           class="form-control"
+                                           name="nome"
+                                           id="nome"
+                                           value="{{ action == 'editar' ? assistente.nome : '' }}"
+                                           placeholder="Digite o nome do assistente"
+                                           required>
+                                </div>
+
+                                <div class="col-12 col-md-4 mb-3">
+                                    <label class="form-label">
+                                        <i class="fa fa-briefcase me-1"></i>Profissão
+                                    </label>
+                                    <input type="text"
+                                           class="form-control"
+                                           name="profissao"
+                                           id="profissao"
+                                           value="{{ action == 'editar' ? assistente.profissao : '' }}"
+                                           placeholder="Ex: Médico, Engenheiro, etc.">
+                                </div>
+
+                                <div class="col-12 col-md-4 mb-3">
+                                    <label class="form-label">
+                                        <i class="fa fa-id-card me-1"></i>Credencial
+                                    </label>
+                                    <select class="form-control" name="credencial" id="credencial">
+                                        {% if action == 'editar' and assistente.credencial %}
+                                            <option value="{{ assistente.credencial }}" selected>{{ assistente.credencial }}</option>
+                                        {% endif %}
+                                        {% if credenciais is defined and credenciais is not empty %}
+                                            {% for cred in credenciais %}
+                                                {% if action != 'editar' or assistente.credencial != cred.credencial %}
+                                                    <option value="{{ cred.credencial }}">{{ cred.credencial }}</option>
+                                                {% endif %}
+                                            {% endfor %}
+                                        {% endif %}
+                                    </select>
+                                </div>
+
+                                <div class="col-12 col-md-4 mb-3">
+                                    <label class="form-label">
+                                        <i class="fa fa-hashtag me-1"></i>Nº da Credencial
+                                    </label>
+                                    <input type="text"
+                                           class="form-control"
+                                           name="numero_credencial"
+                                           id="numero_credencial"
+                                           value="{{ action == 'editar' ? assistente.numero_credencial : '' }}"
+                                           placeholder="Número da credencial">
+                                </div>
+
+                                <div class="col-12 col-md-4 mb-3">
+                                    <label class="form-label">
+                                        <i class="fa fa-map-marker-alt me-1"></i>Cidade/Estado
+                                    </label>
+                                    <input type="text"
+                                           class="form-control"
+                                           name="cidade_estado"
+                                           id="cidade_estado"
+                                           value="{{ action == 'editar' ? assistente.cidade_estado : '' }}"
+                                           placeholder="Ex: São Paulo/SP">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h4 class="card-title mb-0">
+                                <i class="fa fa-address-book me-2"></i>Dados de Contato
+                            </h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-12 col-md-4 mb-3">
+                                    <label class="form-label">
+                                        <i class="fa fa-user me-1"></i>Nome de Contato
+                                    </label>
+                                    <input type="text"
+                                           class="form-control"
+                                           name="nome_contato"
+                                           id="nome_contato"
+                                           value="{{ action == 'editar' ? assistente.nome_contato : '' }}"
+                                           placeholder="Nome completo do contato">
+                                </div>
+
+                                <div class="col-12 col-md-4 mb-3">
+                                    <label class="form-label">
+                                        <i class="fa fa-envelope me-1"></i>Email de Contato
+                                    </label>
+                                    <input type="email"
+                                           class="form-control"
+                                           name="email_contato"
+                                           id="email_contato"
+                                           value="{{ action == 'editar' ? assistente.email_contato : '' }}"
+                                           placeholder="contato@exemplo.com">
+                                </div>
+
+                                <div class="col-12 col-md-4 mb-3">
+                                    <label class="form-label">
+                                        <i class="fa fa-phone me-1"></i>Telefone de Contato
+                                    </label>
+                                    <input type="text"
+                                           class="form-control"
+                                           name="telefone_contato"
+                                           id="telefone_contato"
+                                           value="{{ action == 'editar' ? assistente.telefone_contato : '' }}"
+                                           placeholder="(00) 00000-0000"
+                                           maxlength="15">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-body">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fa fa-save me-2"></i>
+                                {{ action == 'criar' ? 'Cadastrar Assistente' : 'Salvar Alterações' }}
+                            </button>
+                            <a href="{{ DOMAIN }}/assistentes" class="btn btn-secondary ms-2">
+                                <i class="fa fa-times me-2"></i>Cancelar
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+window.DOMAIN = '{{ DOMAIN }}';
+
+(function() {
+    'use strict';
+    
+    // Máscara para telefone
+    const telefoneInput = document.getElementById('telefone_contato');
+    if (telefoneInput) {
+        telefoneInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length <= 10) {
+                value = value.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
+            } else {
+                value = value.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3');
+            }
+            e.target.value = value;
+        });
+    }
+
+    // Inicializar Select2 para Credencial com tags
+    $(document).ready(function() {
+        const credencialSelect = $('#credencial');
+        credencialSelect.select2({
+            tags: true,
+            placeholder: 'Selecione ou digite uma credencial',
+            allowClear: true,
+            width: '100%',
+            language: {
+                noResults: function() {
+                    return "Digite para criar uma nova credencial";
+                },
+                searching: function() {
+                    return "Buscando...";
+                }
+            }
+        });
+
+        // Força uppercase quando cria um novo valor
+        credencialSelect.on('select2:select', function (e) {
+            const data = e.params.data;
+            if (data && data.id && data.element === undefined) {
+                const upper = data.id.toUpperCase();
+                const newOption = new Option(upper, upper, true, true);
+                credencialSelect.append(newOption).trigger('change');
+            }
+        });
+    });
+
+    const form = document.getElementById('formAssistente');
+    if (!form) return;
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin me-2"></i>Salvando...';
+        submitBtn.disabled = true;
+
+        const formData = new FormData(form);
+        const isEdit = !!form.querySelector('input[name="id"]');
+        const url = window.DOMAIN + (isEdit ? '/assistentes/editar/save' : '/assistentes/add/save');
+
+        fetch(url, { method: 'POST', body: formData })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Sucesso!',
+                    text: data.message,
+                    timer: 2000,
+                    showConfirmButton: false
+                }).then(() => {
+                    window.location.href = window.DOMAIN + '/assistentes';
+                });
+            } else {
+                Swal.fire({ icon: 'error', title: 'Erro!', text: data.message });
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            Swal.fire({ icon: 'error', title: 'Erro!', text: 'Ocorreu um erro ao salvar.' });
+        })
+        .finally(() => {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        });
+    });
+})();
+</script>
+{% endblock %}

@@ -7,3 +7,4 @@ $router->post("/reclamadas/add/save", "ReclamadaController:salvarCriar");
 $router->get("/reclamadas/editar/{id}", "ReclamadaController:editar");
 $router->post("/reclamadas/editar/save", "ReclamadaController:salvarEditar");
 $router->post("/reclamadas/remover", "ReclamadaController:remover");
+$router->get("/reclamadas/datatable", "ReclamadaController:datatable");

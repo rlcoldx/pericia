@@ -38,6 +38,19 @@ class Equipe extends Model
     }
 
     /**
+     * Lista todos os usuários ativos da empresa (para tarefas)
+     */
+    public function getUsuariosAtivos($company): Read
+    {
+        $this->read = new Read();
+        $this->read->ExeRead("usuarios", 
+            "WHERE empresa = :empresa AND status = 'Ativo' ORDER BY nome ASC", 
+            "empresa={$company}"
+        );
+        return $this->read;
+    }
+
+    /**
      * Busca um membro da equipe por ID
      */
     public function getMembroEquipe($id, $company): Read

@@ -88,7 +88,7 @@ class EmailNotificationService
                 }
 
                 try {
-                    $emailAdapter = new EmailAdapter();
+                    $emailAdapter = new EmailAdapter($empresa);
                     $emailAdapter->addAddress($destinatario['email']);
                     $emailAdapter->setSubject($assunto);
                     $emailAdapter->setBodyHtml($corpo); // Usar corpo direto

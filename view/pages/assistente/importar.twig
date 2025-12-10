@@ -1,0 +1,162 @@
+{% extends "layout/layoutMaster.twig" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block body %}
+
+<div class="content-body">
+    <div class="container-fluid">
+        <div class="page-titles">
+            <div class="d-flex flex-wrap align-items-center justify-content-between">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}/assistentes">Assistentes</a></li>
+                    <li class="breadcrumb-item active"><a href="javascript:void(0)">{{ titulo }}</a></li>
+                </ol>
+                <a href="{{ DOMAIN }}/assistentes" class="btn btn-secondary">
+                    <i class="fa fa-arrow-left me-2"></i>Voltar
+                </a>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title">
+                    <i class="fa fa-file-excel me-2"></i>Importar Assistentes via Excel
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <h5 class="alert-heading">
+                        <i class="fa fa-info-circle me-2"></i>Instruções de Importação
+                    </h5>
+                    <p class="mb-2"><strong>Formato do arquivo:</strong> Excel (.xlsx, .xls) ou CSV</p>
+                    <p class="mb-2"><strong>Ordem das colunas na planilha:</strong></p>
+                    <ol class="mb-0">
+                        <li><strong>Nome</strong> (obrigatório) - Será convertido para MAIÚSCULAS</li>
+                        <li>Nome de Contato - Será convertido para MAIÚSCULAS</li>
+                        <li>Email de Contato</li>
+                        <li>Telefone de Contato</li>
+                        <li>Profissão - Será convertido para MAIÚSCULAS</li>
+                        <li>Credencial - Será convertido para MAIÚSCULAS</li>
+                        <li>Nº da Credencial</li>
+                        <li>Cidade/Estado - Será convertido para MAIÚSCULAS</li>
+                    </ol>
+                    <p class="mt-2 mb-0"><strong>Nota:</strong> A primeira linha da planilha será ignorada (cabeçalho). Apenas o campo Nome é obrigatório.</p>
+                </div>
+
+                <form id="formImportar" method="POST" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="arquivo" class="form-label">
+                            <i class="fa fa-file me-1"></i>Selecione o arquivo Excel
+                        </label>
+                        <input type="file"
+                               class="form-control"
+                               id="arquivo"
+                               name="arquivo"
+                               accept=".xlsx,.xls,.csv"
+                               required>
+                        <div class="form-text">
+                            Formatos aceitos: .xlsx, .xls, .csv
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa fa-upload me-2"></i>Importar
+                        </button>
+                        <a href="{{ DOMAIN }}/assistentes" class="btn btn-secondary">
+                            <i class="fa fa-times me-2"></i>Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+window.DOMAIN = '{{ DOMAIN }}';
+
+(function() {
+    'use strict';
+
+    const form = document.getElementById('formImportar');
+    if (!form) return;
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const arquivoInput = document.getElementById('arquivo');
+        if (!arquivoInput.files || arquivoInput.files.length === 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Atenção!',
+                text: 'Por favor, selecione um arquivo.'
+            });
+            return;
+        }
+
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin me-2"></i>Importando...';
+        submitBtn.disabled = true;
+
+        const formData = new FormData();
+        formData.append('arquivo', arquivoInput.files[0]);
+
+        fetch(window.DOMAIN + '/assistentes/importar/processar', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                let mensagem = data.message;
+                
+                if (data.erros > 0 && data.erros_detalhes && data.erros_detalhes.length > 0) {
+                    let detalhes = data.erros_detalhes.slice(0, 10).join('\\n');
+                    if (data.erros_detalhes.length > 10) {
+                        detalhes += '\\n... e mais ' + (data.erros_detalhes.length - 10) + ' erro(s)';
+                    }
+                    mensagem += '\\n\\nDetalhes dos erros:\\n' + detalhes;
+                }
+
+                Swal.fire({
+                    icon: data.erros > 0 ? 'warning' : 'success',
+                    title: data.erros > 0 ? 'Importação Parcial' : 'Sucesso!',
+                    text: mensagem,
+                    width: '600px',
+                    confirmButtonText: 'OK'
+                }).then(() => {
+                    if (data.sucessos > 0) {
+                        window.location.href = window.DOMAIN + '/assistentes';
+                    }
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro!',
+                    text: data.message
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro!',
+                text: 'Ocorreu um erro ao processar o arquivo.'
+            });
+        })
+        .finally(() => {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        });
+    });
+})();
+</script>
+{% endblock %}

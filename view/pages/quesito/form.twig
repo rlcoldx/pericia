@@ -173,6 +173,57 @@
                         </div>
                     </div>
 
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <div class="d-flex justify-content-between flex-wrap align-items-center w-100">
+                                <h4 class="card-title mb-0">
+                                    <i class="fa fa-tasks me-2"></i>Tarefas
+                                </h4>
+                                <span>Aqui você pode definir qual usuário será responsável pela próxima tarefa e a data prevista para conclusão da tarefa</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-12 col-lg-3 mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input"
+                                               type="checkbox"
+                                               id="tarefa_concluido"
+                                               name="tarefa_concluido"
+                                               {{ action == 'editar' and tarefa and tarefa.concluido ? 'checked' : '' }}>
+                                        <label class="form-check-label" for="tarefa_concluido">
+                                            <strong>Marcar como concluído</strong>
+                                        </label>
+                                    </div>
+                                    <div class="form-text">Marcar que você concluiu a tarefa</div>
+                                </div>
+
+                                <div class="col-12 col-lg-6 mb-3">
+                                    <label class="form-label">Usuário Responsável</label>
+                                    <select class="form-control" name="tarefa_usuario_responsavel_id" id="tarefa_usuario_responsavel_id">
+                                        <option value="">Selecione o usuário responsável</option>
+                                        {% for usuario in usuarios %}
+                                        <option value="{{ usuario.id }}" {{ action == 'editar' and tarefa and tarefa.usuario_responsavel_id == usuario.id ? 'selected' : '' }}>
+                                            {{ usuario.nome }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">Usuário que será responsável pela próxima tarefa</div>
+                                </div>
+
+                                <div class="col-12 col-lg-3 mb-3">
+                                    <label class="form-label">Data de Conclusão</label>
+                                    <input type="date"
+                                           class="form-control"
+                                           name="tarefa_data_conclusao"
+                                           id="tarefa_data_conclusao"
+                                           value="{{ action == 'editar' and tarefa and tarefa.data_conclusao ? tarefa.data_conclusao : '' }}">
+                                    <div class="form-text">Data prevista para conclusão da próxima tarefa</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="card">
                         <div class="card-body">
                             <button type="submit" class="btn btn-primary">
@@ -256,6 +307,21 @@
                 }
             });
 
+            // Select2 para Usuário Responsável (Tarefas)
+            $('#tarefa_usuario_responsavel_id').select2({
+                placeholder: 'Selecione o usuário responsável',
+                allowClear: true,
+                width: '100%',
+                language: {
+                    noResults: function() {
+                        return "Nenhum usuário encontrado";
+                    },
+                    searching: function() {
+                        return "Buscando...";
+                    }
+                }
+            });
+
             // Inicializar Bootstrap Tags Input para Emails CC
             $('#email_cliente_cc').tagsinput({
                 trimValue: true,
@@ -300,7 +366,12 @@
                 method: 'POST',
                 body: formData
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.success) {
                     Swal.fire({
@@ -313,19 +384,21 @@
                         window.location.href = window.DOMAIN + '/quesitos';
                     });
                 } else {
+                    console.error('Erro do servidor:', data);
                     Swal.fire({
                         icon: 'error',
                         title: 'Erro!',
-                        text: data.message
+                        text: data.message || 'Erro ao salvar o quesito. Verifique o console para mais detalhes.'
                     });
                 }
             })
             .catch(error => {
-                console.error('Erro:', error);
+                console.error('Erro na requisição:', error);
+                console.error('URL:', url);
                 Swal.fire({
                     icon: 'error',
                     title: 'Erro!',
-                    text: 'Ocorreu um erro ao salvar o quesito.'
+                    text: 'Ocorreu um erro ao salvar o quesito. Verifique o console do navegador (F12) para mais detalhes.'
                 });
             })
             .finally(() => {

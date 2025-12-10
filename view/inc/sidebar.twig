@@ -7,6 +7,9 @@
 					<span class="nav-text">Página Inicial</span>
 				</a>
             </li>
+			<li class="separator">
+				<span>Gestão</span>
+			</li>
             {% if 'equipe_ver'|verifyPermission or 'cargos_ver'|verifyPermission %}
 			<li>
 				<a class="has-arrow ai-icon" href="javascript:void(0)" aria-expanded="false">
@@ -73,6 +76,23 @@
 					{% endif %}
 					{% if 'reclamante_criar'|verifyPermission %}
 					<li><a href="{{ DOMAIN }}/reclamantes/add">Novo Reclamante</a></li>
+					{% endif %}
+				</ul>
+			</li>
+			{% endif %}
+
+			{% if 'assistentes_ver'|verifyPermission or 'assistentes_criar'|verifyPermission %}
+			<li>
+				<a class="has-arrow ai-icon" href="javascript:void(0)" aria-expanded="false">
+					<i class="fa-light fa-user-md"></i>
+					<span class="nav-text">Assistentes</span>
+				</a>
+				<ul aria-expanded="false">
+					{% if 'assistentes_ver'|verifyPermission %}
+					<li><a href="{{ DOMAIN }}/assistentes">Listar Todos</a></li>
+					{% endif %}
+					{% if 'assistentes_criar'|verifyPermission %}
+					<li><a href="{{ DOMAIN }}/assistentes/add">Novo Assistente</a></li>
 					{% endif %}
 				</ul>
 			</li>
@@ -217,7 +237,7 @@
 			</li>
 			{% endif %}
 
-			{% if 'email_template_ver'|verifyPermission or 'email_template_criar'|verifyPermission %}
+			{% if 'email_template_ver'|verifyPermission or 'email_template_criar'|verifyPermission or 'configuracao_ver'|verifyPermission %}
 			<li class="separator">
 				<span>Configurações</span>
 			</li>
@@ -226,6 +246,14 @@
 				<a class="ai-icon" href="{{ DOMAIN }}/email-templates">
 					<i class="fa-light fa-envelope"></i>
 					<span class="nav-text">Templates de E-mail</span>
+				</a>
+			</li>
+			{% endif %}
+			{% if 'configuracao_ver'|verifyPermission %}
+			<li>
+				<a class="ai-icon" href="{{ DOMAIN }}/configuracao">
+					<i class="fa-light fa-cog"></i>
+					<span class="nav-text">Configurações</span>
 				</a>
 			</li>
 			{% endif %}

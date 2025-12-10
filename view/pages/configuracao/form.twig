@@ -1,0 +1,168 @@
+{% extends "layout/layoutMaster.twig" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block body %}
+
+<div class="content-body">
+    <div class="container-fluid">
+        <div class="page-titles">
+            <div class="d-flex flex-wrap align-items-center justify-content-between">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}">Home</a></li>
+                    <li class="breadcrumb-item active"><a href="javascript:void(0)">{{ titulo }}</a></li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title">
+                    <i class="fa fa-cog me-2"></i>{{ titulo }}
+                </h4>
+            </div>
+            <div class="card-body">
+                <form id="formConfiguracao" method="POST">
+                    <div class="row">
+                        <div class="col-12 mb-4">
+                            <h5 class="mb-3">
+                                <i class="fa fa-envelope me-2"></i>Configurações de E-mail
+                            </h5>
+                        </div>
+
+                        <div class="col-12 col-lg-6 mb-3">
+                            <label class="form-label">
+                                Host do Servidor SMTP <span class="text-danger">*</span>
+                            </label>
+                            <input type="text"
+                                   class="form-control"
+                                   name="mail_host"
+                                   value="{{ configuracao.mail_host ?: 'smtp.gmail.com' }}"
+                                   placeholder="smtp.gmail.com"
+                                   required>
+                            <div class="form-text">Exemplo: smtp.gmail.com, smtp.outlook.com</div>
+                        </div>
+
+                        <div class="col-12 col-lg-6 mb-3">
+                            <label class="form-label">
+                                Email <span class="text-danger">*</span>
+                            </label>
+                            <input type="email"
+                                   class="form-control"
+                                   name="mail_email"
+                                   value="{{ configuracao.mail_email ?: '' }}"
+                                   placeholder="seu-email@exemplo.com"
+                                   required>
+                            <div class="form-text">Email que será usado como remetente</div>
+                        </div>
+
+                        <div class="col-12 col-lg-6 mb-3">
+                            <label class="form-label">
+                                Usuário SMTP <span class="text-danger">*</span>
+                            </label>
+                            <input type="text"
+                                   class="form-control"
+                                   name="mail_user"
+                                   value="{{ configuracao.mail_user ?: '' }}"
+                                   placeholder="seu-email@exemplo.com"
+                                   required>
+                            <div class="form-text">Geralmente é o mesmo email</div>
+                        </div>
+
+                        <div class="col-12 col-lg-6 mb-3">
+                            <label class="form-label">
+                                Senha SMTP <span class="text-danger">*</span>
+                            </label>
+                            <input type="password"
+                                   class="form-control"
+                                   name="mail_password"
+                                   value="{{ configuracao.mail_password ?: '' }}"
+                                   placeholder="Digite a senha"
+                                   required>
+                            <div class="form-text">Senha do email ou senha de aplicativo</div>
+                        </div>
+
+                        <div class="col-12 mb-3">
+                            <label class="form-label">
+                                Emails CC Padrão
+                            </label>
+                            <input type="text"
+                                   class="form-control"
+                                   name="mail_cc"
+                                   value="{{ configuracao.mail_cc ?: '' }}"
+                                   placeholder="email1@exemplo.com, email2@exemplo.com">
+                            <div class="form-text">Emails que receberão cópia em todos os e-mails enviados. Separe múltiplos emails por vírgula.</div>
+                        </div>
+
+                        <div class="col-12 mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fa fa-save me-2"></i>Salvar Configurações
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+window.DOMAIN = '{{ DOMAIN }}';
+
+(function() {
+    'use strict';
+
+    const form = document.getElementById('formConfiguracao');
+    if (!form) return;
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin me-2"></i>Salvando...';
+        submitBtn.disabled = true;
+
+        const formData = new FormData(form);
+
+        fetch(window.DOMAIN + '/configuracao/salvar', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Sucesso!',
+                    text: data.message,
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro!',
+                    text: data.message
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro!',
+                text: 'Ocorreu um erro ao salvar as configurações.'
+            });
+        })
+        .finally(() => {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        });
+    });
+})();
+</script>
+{% endblock %}

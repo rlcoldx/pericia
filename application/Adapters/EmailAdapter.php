@@ -3,6 +3,7 @@
 namespace Agencia\Close\Adapters;
 
 use Agencia\Close\Helpers\Result;
+use Agencia\Close\Models\Configuracao\Configuracao;
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\SMTP;
 use PHPMailer\PHPMailer\Exception;
@@ -11,31 +12,47 @@ class EmailAdapter
 {
     private PHPMailer $mail;
     private Result $result;
-    const Host = MAIL_HOST;
-    const Email = MAIL_EMAIL;
-    const User = MAIL_USER;
-    const Password = MAIL_PASSWORD;
+    private array $configuracao;
     const name_site = NAME;
 
     /**
      * @throws Exception
      */
-    public function __construct()
+    public function __construct(?int $empresa = null)
     {
         $this->result = new Result();
         $this->mail = new PHPMailer(false);
+        
+        // Busca configurações do banco de dados
+        if ($empresa === null) {
+            $empresa = $_SESSION['pericia_perfil_empresa'] ?? 0;
+        }
+        
+        $configModel = new Configuracao();
+        $this->configuracao = $configModel->getConfiguracoesOuPadrao((int) $empresa);
+        
         //Server settings
 //        $this->mail->SMTPDebug = SMTP::DEBUG_SERVER;                      //Enable verbose debug output
         $this->mail->isSMTP();
         $this->mail->CharSet = 'UTF-8';//Send using SMTP
-        $this->mail->Host = self::Host;                     //Set the SMTP server to send through
+        $this->mail->Host = $this->configuracao['mail_host'] ?? 'smtp.gmail.com';                     //Set the SMTP server to send through
         $this->mail->SMTPAuth = true;                                   //Enable SMTP authentication
-        $this->mail->Username = self::User;                     //SMTP username
-        $this->mail->Password = self::Password;                               //SMTP password
+        $this->mail->Username = $this->configuracao['mail_user'] ?? '';                     //SMTP username
+        $this->mail->Password = $this->configuracao['mail_password'] ?? '';                               //SMTP password
         $this->mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;         //Enable TLS encryption; `PHPMailer::ENCRYPTION_SMTPS` encouraged
         $this->mail->Port = 587;
-        $this->mail->setFrom(self::Email, self::name_site);
+        $this->mail->setFrom($this->configuracao['mail_email'] ?? '', self::name_site);
         $this->mail->isHTML(true);
+        
+        // Adiciona CC padrão se configurado
+        if (!empty($this->configuracao['mail_cc'])) {
+            $emailsCc = array_map('trim', explode(',', $this->configuracao['mail_cc']));
+            foreach ($emailsCc as $email) {
+                if (!empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    $this->mail->addCC($email);
+                }
+            }
+        }
     }
 
     public function addAddress(string $email)

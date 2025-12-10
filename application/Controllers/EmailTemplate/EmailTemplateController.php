@@ -194,4 +194,46 @@ class EmailTemplateController extends Controller
             'reclamante_editar' => 'Reclamante - Editar',
         ];
     }
+
+    public function ativarTodos($params = [])
+    {
+        $this->setParams($params);
+        $this->requirePermission('email_template_gerenciar');
+
+        $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
+
+        if (!$empresa) {
+            $this->responseJson(['success' => false, 'message' => 'Sessão expirada.']);
+            return;
+        }
+
+        $result = $this->model->ativarTodos((int) $empresa);
+
+        if ($result->getResult()) {
+            $this->responseJson(['success' => true, 'message' => 'Todos os templates foram ativados com sucesso!']);
+        } else {
+            $this->responseJson(['success' => false, 'message' => 'Erro ao ativar templates.']);
+        }
+    }
+
+    public function desativarTodos($params = [])
+    {
+        $this->setParams($params);
+        $this->requirePermission('email_template_gerenciar');
+
+        $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
+
+        if (!$empresa) {
+            $this->responseJson(['success' => false, 'message' => 'Sessão expirada.']);
+            return;
+        }
+
+        $result = $this->model->desativarTodos((int) $empresa);
+
+        if ($result->getResult()) {
+            $this->responseJson(['success' => true, 'message' => 'Todos os templates foram desativados com sucesso!']);
+        } else {
+            $this->responseJson(['success' => false, 'message' => 'Erro ao desativar templates.']);
+        }
+    }
 }

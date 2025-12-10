@@ -7,8 +7,10 @@ use Agencia\Close\Models\Agendamento\Agendamento;
 use Agencia\Close\Models\Equipe\Equipe;
 use Agencia\Close\Models\User\User;
 use Agencia\Close\Models\Perito\Perito;
+use Agencia\Close\Models\Assistente\Assistente;
 use Agencia\Close\Services\Notificacao\EmailNotificationService;
 use Agencia\Close\Helpers\DataTableResponse;
+use Agencia\Close\Models\Tarefa\Tarefa;
 
 class AgendamentoController extends Controller
 {	
@@ -81,12 +83,22 @@ class AgendamentoController extends Controller
     $peritoModel = new Perito();
     $peritos = $peritoModel->getPeritosAtivos($empresa);
     
+    // Busca assistentes disponíveis
+    $assistenteModel = new Assistente();
+    $assistentes = $assistenteModel->listar((int) $empresa);
+    
+    // Busca usuários para tarefas
+    $equipeModel = new Equipe();
+    
     $this->render('pages/agendamento/form.twig', [
       'titulo' => 'Novo Agendamento',
       'page' => 'agendamento',
       'action' => 'criar',
       'peritos' => $peritos->getResult() ?? [],
-      'agendamento' => null
+      'assistentes' => $assistentes->getResult() ?? [],
+      'usuarios' => $equipeModel->getUsuariosAtivos((int) $empresa)->getResult() ?? [],
+      'agendamento' => null,
+      'tarefa' => null,
     ]);
   }
 
@@ -116,12 +128,27 @@ class AgendamentoController extends Controller
     $peritoModel = new Perito();
     $peritos = $peritoModel->getPeritosAtivos($empresa);
     
+    // Busca assistentes disponíveis
+    $assistenteModel = new Assistente();
+    $assistentes = $assistenteModel->listar((int) $empresa);
+    
+    // Busca usuários para tarefas
+    $equipeModel = new Equipe();
+    $tarefaModel = new Tarefa();
+    
+    // Buscar tarefa existente
+    $tarefaRead = $tarefaModel->getPorModuloRegistro('agendamento', $id, (int) $empresa);
+    $tarefa = $tarefaRead->getResult()[0] ?? null;
+    
     $this->render('pages/agendamento/form.twig', [
       'titulo' => 'Editar Agendamento',
       'page' => 'agendamento',
       'action' => 'editar',
       'agendamento' => $agendamento->getResult()[0] ?? null,
-      'peritos' => $peritos->getResult() ?? []
+      'peritos' => $peritos->getResult() ?? [],
+      'assistentes' => $assistentes->getResult() ?? [],
+      'usuarios' => $equipeModel->getUsuariosAtivos((int) $empresa)->getResult() ?? [],
+      'tarefa' => $tarefa,
     ]);
   }
 
@@ -176,12 +203,19 @@ class AgendamentoController extends Controller
 
   public function criarSalvar($params)
   {
+    // Definir header JSON no início para evitar corrupção
+    header('Content-Type: application/json; charset=utf-8');
+    
     $this->setParams($params);
     $this->requirePermission('agendamento_criar');
     
     $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
     
     if (!$empresa) {
+      // Limpar qualquer output buffer antes de enviar JSON
+      if (ob_get_level() > 0) {
+        ob_clean();
+      }
       $this->responseJson(['success' => false, 'message' => 'Empresa não encontrada']);
       return;
     }
@@ -193,6 +227,10 @@ class AgendamentoController extends Controller
     $peritoId = $_POST['perito_id'] ?? null;
 
     if (empty($clienteNome) || empty($dataAgendamento) || empty($horaAgendamento)) {
+      // Limpar qualquer output buffer antes de enviar JSON
+      if (ob_get_level() > 0) {
+        ob_clean();
+      }
       $this->responseJson(['success' => false, 'message' => 'Preencha todos os campos obrigatórios']);
       return;
     }
@@ -203,6 +241,10 @@ class AgendamentoController extends Controller
       $conflito = $model->verificarConflitoHorario($peritoId, $dataAgendamento, $horaAgendamento);
       
       if ($conflito->getResult()) {
+        // Limpar qualquer output buffer antes de enviar JSON
+        if (ob_get_level() > 0) {
+          ob_clean();
+        }
         $this->responseJson(['success' => false, 'message' => 'Já existe um agendamento para este perito no mesmo horário']);
         return;
       }
@@ -233,6 +275,7 @@ class AgendamentoController extends Controller
       'hora_agendamento' => $horaAgendamento,
       'perito_id' => $peritoId ?: null,
       'assistente_nome' => $_POST['assistente_nome'] ?? null,
+      'assistente_id' => !empty($_POST['assistente_id']) ? (int) $_POST['assistente_id'] : null,
       'valor_pago_assistente' => !empty($_POST['valor_pago_assistente']) ? $this->parseCurrency($_POST['valor_pago_assistente']) : null,
       'local_pericia' => $_POST['local_pericia'] ?? null,
       'status' => $status,
@@ -257,17 +300,54 @@ class AgendamentoController extends Controller
     $model = new Agendamento();
     $result = $model->criarAgendamento($data);
     
-    if ($result->getResult()) {
-      $idAgendamento = (int) $result->getResult();
-      $this->enviarNotificacaoEmailAgendamento($empresa, $idAgendamento, $data, 'criar');
-      $this->responseJson(['success' => true, 'message' => 'Agendamento criado com sucesso']);
-    } else {
+    if (!$result->getResult()) {
+      // Limpar qualquer output buffer antes de enviar JSON
+      if (ob_get_level() > 0) {
+        ob_clean();
+      }
       $this->responseJson(['success' => false, 'message' => 'Erro ao criar agendamento']);
+      return;
     }
+
+    $idAgendamento = (int) $result->getResult();
+
+    // Salvar tarefa se fornecida (não bloqueia o cadastro se falhar)
+    try {
+      $temDadosTarefa = isset($_POST['tarefa_concluido']) || !empty($_POST['tarefa_usuario_responsavel_id']) || !empty($_POST['tarefa_data_conclusao']);
+      
+      if ($temDadosTarefa) {
+        $tarefaModel = new Tarefa();
+        $tarefaModel->salvarTarefa('agendamento', $idAgendamento, (int) $empresa, [
+          'concluido' => isset($_POST['tarefa_concluido']) && $_POST['tarefa_concluido'] == '1',
+          'usuario_responsavel_id' => $_POST['tarefa_usuario_responsavel_id'] ?? null,
+          'data_conclusao' => $_POST['tarefa_data_conclusao'] ?? null,
+        ]);
+      }
+    } catch (\Exception $e) {
+      // Não bloqueia o cadastro se a tarefa falhar
+    } catch (\Error $e) {
+      // Não bloqueia o cadastro se a tarefa falhar
+    }
+
+    try {
+      $this->enviarNotificacaoEmailAgendamento($empresa, $idAgendamento, $data, 'criar');
+    } catch (\Exception $e) {
+      // Erro silencioso no envio de email
+    }
+
+    // Limpar qualquer output buffer antes de enviar JSON
+    if (ob_get_level() > 0) {
+      ob_clean();
+    }
+    
+    $this->responseJson(['success' => true, 'message' => 'Agendamento criado com sucesso']);
   }
 
   public function editarSalvar($params)
   {
+    // Definir header JSON no início para evitar corrupção
+    header('Content-Type: application/json; charset=utf-8');
+    
     $this->setParams($params);
     $this->requirePermission('agendamento_editar');
     
@@ -275,6 +355,10 @@ class AgendamentoController extends Controller
     $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
     
     if (!$id || !$empresa) {
+      // Limpar qualquer output buffer antes de enviar JSON
+      if (ob_get_level() > 0) {
+        ob_clean();
+      }
       $this->responseJson(['success' => false, 'message' => 'Dados inválidos']);
       return;
     }
@@ -286,6 +370,10 @@ class AgendamentoController extends Controller
     $peritoId = $_POST['perito_id'] ?? null;
 
     if (empty($clienteNome) || empty($dataAgendamento) || empty($horaAgendamento)) {
+      // Limpar qualquer output buffer antes de enviar JSON
+      if (ob_get_level() > 0) {
+        ob_clean();
+      }
       $this->responseJson(['success' => false, 'message' => 'Preencha todos os campos obrigatórios']);
       return;
     }
@@ -296,6 +384,10 @@ class AgendamentoController extends Controller
       $conflito = $model->verificarConflitoHorario($peritoId, $dataAgendamento, $horaAgendamento, $id);
       
       if ($conflito->getResult()) {
+        // Limpar qualquer output buffer antes de enviar JSON
+        if (ob_get_level() > 0) {
+          ob_clean();
+        }
         $this->responseJson(['success' => false, 'message' => 'Já existe um agendamento para este perito no mesmo horário']);
         return;
       }
@@ -320,6 +412,7 @@ class AgendamentoController extends Controller
       'hora_agendamento' => $horaAgendamento,
       'perito_id' => !empty($peritoId) ? $peritoId : null,
       'assistente_nome' => isset($_POST['assistente_nome']) && $_POST['assistente_nome'] !== '' ? $_POST['assistente_nome'] : null,
+      'assistente_id' => !empty($_POST['assistente_id']) ? (int) $_POST['assistente_id'] : null,
       'valor_pago_assistente' => isset($_POST['valor_pago_assistente']) && $_POST['valor_pago_assistente'] !== '' ? $this->parseCurrency($_POST['valor_pago_assistente']) : null,
       'local_pericia' => isset($_POST['local_pericia']) && $_POST['local_pericia'] !== '' ? $_POST['local_pericia'] : null,
       'status' => isset($_POST['status']) && $_POST['status'] !== '' ? $_POST['status'] : null,
@@ -346,30 +439,58 @@ class AgendamentoController extends Controller
     try {
       $result = $model->atualizarAgendamento($id, $data, $empresa);
       
-      if ($result->getResult()) {
-        $this->enviarNotificacaoEmailAgendamento($empresa, (int)$id, $data, 'editar');
-        $this->responseJson(['success' => true, 'message' => 'Agendamento atualizado com sucesso']);
-      } else {
-        // Tenta obter mais informações sobre o erro
-        $errorInfo = method_exists($result, 'getErrorInfo') ? $result->getErrorInfo() : null;
-        $errorMessage = 'Erro ao atualizar agendamento';
-        
-        // Se houver informações de erro, adiciona ao log
-        if ($errorInfo) {
-          $errorDetails = $errorInfo['driver_message'] ?? $errorInfo['message'] ?? 'Erro desconhecido';
-          error_log("Erro ao atualizar agendamento ID {$id}: " . print_r($errorInfo, true));
-          
-          // Em ambiente de desenvolvimento, pode mostrar mais detalhes
-          if (defined('DEBUG') && DEBUG) {
-            $errorMessage .= ': ' . $errorDetails;
-          }
+      if (!$result->getResult()) {
+        // Limpar qualquer output buffer antes de enviar JSON
+        if (ob_get_level() > 0) {
+          ob_clean();
         }
-        
-        $this->responseJson(['success' => false, 'message' => $errorMessage]);
+        $this->responseJson(['success' => false, 'message' => 'Erro ao atualizar agendamento']);
+        return;
       }
+
+      // Salvar tarefa se fornecida (não bloqueia a atualização se falhar)
+      try {
+        $temDadosTarefa = isset($_POST['tarefa_concluido']) || !empty($_POST['tarefa_usuario_responsavel_id']) || !empty($_POST['tarefa_data_conclusao']);
+        
+        if ($temDadosTarefa) {
+          $tarefaModel = new Tarefa();
+          $tarefaModel->salvarTarefa('agendamento', $id, (int) $empresa, [
+            'concluido' => isset($_POST['tarefa_concluido']) && $_POST['tarefa_concluido'] == '1',
+            'usuario_responsavel_id' => $_POST['tarefa_usuario_responsavel_id'] ?? null,
+            'data_conclusao' => $_POST['tarefa_data_conclusao'] ?? null,
+          ]);
+        }
+      } catch (\Exception $e) {
+        // Não bloqueia a atualização se a tarefa falhar
+      } catch (\Error $e) {
+        // Não bloqueia a atualização se a tarefa falhar
+      }
+
+      try {
+        $this->enviarNotificacaoEmailAgendamento($empresa, (int)$id, $data, 'editar');
+      } catch (\Exception $e) {
+        // Erro silencioso no envio de email
+      }
+
+      // Limpar qualquer output buffer antes de enviar JSON
+      if (ob_get_level() > 0) {
+        ob_clean();
+      }
+      
+      $this->responseJson(['success' => true, 'message' => 'Agendamento atualizado com sucesso']);
     } catch (\Exception $e) {
-      error_log("Exceção ao atualizar agendamento ID {$id}: " . $e->getMessage());
-      $this->responseJson(['success' => false, 'message' => 'Erro ao atualizar agendamento: ' . $e->getMessage()]);
+      // Limpar qualquer output buffer antes de enviar JSON
+      if (ob_get_level() > 0) {
+        ob_clean();
+      }
+      
+    } catch (\Exception $e) {
+      // Limpar qualquer output buffer antes de enviar JSON
+      if (ob_get_level() > 0) {
+        ob_clean();
+      }
+      
+      $this->responseJson(['success' => false, 'message' => 'Erro ao atualizar agendamento']);
     }
   }
 

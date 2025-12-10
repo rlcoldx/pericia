@@ -53,19 +53,13 @@
                 searchable: true
             },
             {
-                data: 4, // Registro Profissional (HTML formatado)
-                name: 'registro_profissional',
-                orderable: true,
-                searchable: true
-            },
-            {
-                data: 5, // Status (HTML formatado)
+                data: 4, // Status (HTML formatado)
                 name: 'status',
                 orderable: true,
                 searchable: false
             },
             {
-                data: 6, // Ações (HTML formatado)
+                data: 5, // Ações (HTML formatado)
                 name: 'acoes',
                 orderable: false,
                 searchable: false,
@@ -101,6 +95,9 @@
 
         // Configura formulário de filtros
         setupFilterForm();
+        
+        // Configura função de remoção
+        setupRemoveFunction();
     }
 
     /**
@@ -154,80 +151,95 @@
     }
 
     /**
-     * Função global para remover perito (chamada pelos botões de ação)
+     * Configura função de remoção
      */
-    window.removerPerito = function(id, nomePerito) {
-        if (typeof peritoParaRemover === 'undefined') {
-            window.peritoParaRemover = null;
-        }
-        
-        window.peritoParaRemover = id;
-        const nomeElement = document.getElementById('nomePerito');
-        if (nomeElement) {
-            nomeElement.textContent = nomePerito;
-        }
-        
-        const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
-        modal.show();
-    };
+    function setupRemoveFunction() {
+        /**
+         * Função global para remover perito (chamada pelos botões de ação)
+         */
+        window.removerPerito = function(id, nomePerito) {
+            if (typeof window.peritoParaRemover === 'undefined') {
+                window.peritoParaRemover = null;
+            }
+            
+            window.peritoParaRemover = id;
+            const nomeElement = document.getElementById('nomePerito');
+            if (nomeElement) {
+                nomeElement.textContent = nomePerito;
+            }
+            
+            const modalElement = document.getElementById('confirmModal');
+            if (modalElement) {
+                const modal = new bootstrap.Modal(modalElement);
+                modal.show();
+            }
+        };
 
-    /**
-     * Confirma remoção do perito
-     */
-    const confirmRemover = document.getElementById('confirmRemover');
-    if (confirmRemover) {
-        confirmRemover.addEventListener('click', function() {
-            if (!window.peritoParaRemover) return;
-            
-            const btn = this;
-            btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Removendo...';
-            btn.disabled = true;
-            
-            fetch(window.DOMAIN + '/perito/remover', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: 'id=' + window.peritoParaRemover
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Sucesso!',
-                        text: data.message,
-                        timer: 2000,
-                        showConfirmButton: false
-                    }).then(() => {
-                        bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
-                        // Recarrega a tabela
-                        if (dataTableInstance) {
-                            dataTableInstance.reload();
-                        }
-                    });
-                } else {
+        /**
+         * Confirma remoção do perito
+         */
+        const confirmRemover = document.getElementById('confirmRemover');
+        if (confirmRemover) {
+            confirmRemover.addEventListener('click', function() {
+                if (!window.peritoParaRemover) return;
+                
+                const btn = this;
+                const originalHtml = btn.innerHTML;
+                btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Removendo...';
+                btn.disabled = true;
+                
+                fetch(window.DOMAIN + '/perito/remover', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: 'id=' + window.peritoParaRemover
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Sucesso!',
+                            text: data.message,
+                            timer: 2000,
+                            showConfirmButton: false
+                        }).then(() => {
+                            const modalElement = document.getElementById('confirmModal');
+                            if (modalElement) {
+                                const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                                if (modalInstance) {
+                                    modalInstance.hide();
+                                }
+                            }
+                            // Recarrega a tabela
+                            if (dataTableInstance) {
+                                dataTableInstance.reload();
+                            }
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Erro!',
+                            text: data.message
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
                     Swal.fire({
                         icon: 'error',
                         title: 'Erro!',
-                        text: data.message
+                        text: 'Ocorreu um erro ao remover o perito.'
                     });
-                }
-            })
-            .catch(error => {
-                console.error('Erro:', error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Erro!',
-                    text: 'Ocorreu um erro ao remover o perito.'
+                })
+                .finally(() => {
+                    btn.innerHTML = originalHtml;
+                    btn.disabled = false;
+                    window.peritoParaRemover = null;
                 });
-            })
-            .finally(() => {
-                btn.innerHTML = 'Sim, Remover';
-                btn.disabled = false;
-                window.peritoParaRemover = null;
             });
-        });
+        }
     }
 
 })();

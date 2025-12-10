@@ -296,11 +296,9 @@ class PeritoController extends Controller
         $this->formatTelefoneCell($perito),
         // Coluna 3: Especialidade
         $this->formatEspecialidadeCell($perito),
-        // Coluna 4: Registro Profissional
-        $this->formatRegistroCell($perito),
-        // Coluna 5: Status
+        // Coluna 4: Status
         $this->formatStatusCell($perito),
-        // Coluna 6: Ações
+        // Coluna 5: Ações
         $this->formatAcoesCell($perito)
       ];
     }
@@ -364,23 +362,6 @@ class PeritoController extends Controller
   }
 
   /**
-   * Formata célula de Registro Profissional
-   */
-  private function formatRegistroCell($perito): string
-  {
-    if (!empty($perito['registro_profissional'])) {
-      $html = '<div>';
-      $html .= '<strong>' . htmlspecialchars($perito['registro_profissional']) . '</strong>';
-      if (!empty($perito['tipo_registro'])) {
-        $html .= '<br><small>' . htmlspecialchars($perito['tipo_registro']) . '</small>';
-      }
-      $html .= '</div>';
-      return $html;
-    }
-    return '<span class="opacity-50">-</span>';
-  }
-
-  /**
    * Formata célula de Status
    */
   private function formatStatusCell($perito): string
@@ -396,14 +377,8 @@ class PeritoController extends Controller
    */
   private function formatAcoesCell($perito): string
   {
-    $html = '<div class="d-flex">';
-    
-    // Botão Visualizar
-    $html .= '<a href="' . DOMAIN . '/perito/view/' . $perito['id'] . '" ';
-    $html .= 'class="btn btn-info shadow btn-xs sharp me-1" ';
-    $html .= 'data-bs-toggle="tooltip" data-bs-title="Visualizar">';
-    $html .= '<i class="fa fa-eye"></i></a>';
-    
+    $html = '<div class="d-flex justify-content-end">';
+        
     // Botão Editar (se tiver permissão)
     if ($this->hasPermission('perito_editar')) {
       $html .= '<a href="' . DOMAIN . '/perito/edit/' . $perito['id'] . '" ';

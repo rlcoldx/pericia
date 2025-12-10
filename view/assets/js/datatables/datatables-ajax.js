@@ -46,10 +46,26 @@
                 dom: config.dom || 'lfrtip',
                 drawCallback: function(settings) {
                     // Reinicializa tooltips do Bootstrap após cada draw
-                    if (typeof bootstrap !== 'undefined') {
+                    if (typeof bootstrap !== 'undefined' && typeof bootstrap.Tooltip !== 'undefined') {
+                        // Remove tooltips existentes primeiro para evitar conflitos
+                        const existingTooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+                        existingTooltips.forEach(el => {
+                            const existingTooltip = bootstrap.Tooltip.getInstance(el);
+                            if (existingTooltip) {
+                                existingTooltip.dispose();
+                            }
+                        });
+                        
+                        // Cria novos tooltips
                         const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
                         tooltipTriggerList.forEach(tooltipTriggerEl => {
-                            new bootstrap.Tooltip(tooltipTriggerEl);
+                            if (tooltipTriggerEl && tooltipTriggerEl.nodeType === 1) {
+                                try {
+                                    new bootstrap.Tooltip(tooltipTriggerEl);
+                                } catch (e) {
+                                    console.warn('Erro ao criar tooltip:', e);
+                                }
+                            }
                         });
                     }
                     

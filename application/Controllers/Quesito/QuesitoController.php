@@ -10,6 +10,8 @@ use Agencia\Close\Models\Notificacao\NotificacaoUsuario;
 use Agencia\Close\Services\Notificacao\EmailNotificationService;
 use Agencia\Close\Conn\Read;
 use Agencia\Close\Helpers\DataTableResponse;
+use Agencia\Close\Models\Equipe\Equipe;
+use Agencia\Close\Models\Tarefa\Tarefa;
 
 class QuesitoController extends Controller
 {
@@ -212,6 +214,7 @@ class QuesitoController extends Controller
         $reclamadaModel = new Reclamada();
         $reclamanteModel = new Reclamante();
         $quesitoModel = new Quesito();
+        $equipeModel = new Equipe();
 
         $this->render('pages/quesito/form.twig', [
             'titulo' => 'Cadastrar Quesito',
@@ -221,11 +224,16 @@ class QuesitoController extends Controller
             'reclamadas' => $reclamadaModel->listar((int) $empresa)->getResult() ?? [],
             'reclamantes' => $reclamanteModel->listar((int) $empresa)->getResult() ?? [],
             'tipos' => $quesitoModel->getTiposDistinct((int) $empresa)->getResult() ?? [],
+            'usuarios' => $equipeModel->getUsuariosAtivos((int) $empresa)->getResult() ?? [],
+            'tarefa' => null,
         ]);
     }
 
     public function salvarCriar($params)
     {
+        // Definir header JSON no início para evitar corrupção
+        header('Content-Type: application/json; charset=utf-8');
+        
         $this->setParams($params);
         $this->requirePermission('quesito_cadastrar');
 
@@ -233,6 +241,10 @@ class QuesitoController extends Controller
         $usuarioId = $_SESSION['pericia_perfil_id'] ?? null;
 
         if (!$empresa || !$usuarioId) {
+            // Limpar qualquer output buffer antes de enviar JSON
+            if (ob_get_level() > 0) {
+                ob_clean();
+            }
             $this->responseJson(['success' => false, 'message' => 'Sessão expirada. Faça login novamente.']);
             return;
         }
@@ -269,8 +281,30 @@ class QuesitoController extends Controller
         }
 
         if (empty($data) || empty($tipo) || empty($vara) || !$reclamanteId || !$reclamadaId) {
+            // Limpar qualquer output buffer antes de enviar JSON
+            if (ob_get_level() > 0) {
+                ob_clean();
+            }
             $this->responseJson(['success' => false, 'message' => 'Preencha todos os campos obrigatórios.']);
             return;
+        }
+
+        // Buscar nomes de Reclamante e Reclamada para preencher campos antigos (se necessário)
+        $reclamanteNome = '';
+        $reclamadaNome = '';
+        
+        if ($reclamanteId) {
+            $reclamanteModel = new Reclamante();
+            $reclamante = $reclamanteModel->getPorId($reclamanteId, (int) $empresa);
+            $reclamanteData = $reclamante->getResult()[0] ?? null;
+            $reclamanteNome = $reclamanteData['nome'] ?? '';
+        }
+        
+        if ($reclamadaId) {
+            $reclamadaModel = new Reclamada();
+            $reclamada = $reclamadaModel->getPorId($reclamadaId, (int) $empresa);
+            $reclamadaData = $reclamada->getResult()[0] ?? null;
+            $reclamadaNome = $reclamadaData['nome'] ?? '';
         }
 
         $dados = [
@@ -278,10 +312,12 @@ class QuesitoController extends Controller
             'data' => $data,
             'tipo' => $tipo,
             'vara' => $vara,
+            'reclamante' => $reclamanteNome, // Campo antigo (NOT NULL na tabela)
             'reclamante_id' => $reclamanteId,
             'codigo_reclamante' => $_POST['codigo_reclamante'] !== '' ? $_POST['codigo_reclamante'] : null,
             'email_cliente' => $emailCliente !== '' ? $emailCliente : null,
             'email_cliente_cc' => $emailClienteCc,
+            'reclamada' => $reclamadaNome, // Campo antigo (NOT NULL na tabela)
             'reclamada_id' => $reclamadaId,
             'link_pasta_drive' => $_POST['link_pasta_drive'] !== '' ? $_POST['link_pasta_drive'] : null,
             'enviar_para_cliente' => isset($_POST['enviar_para_cliente']) ? 1 : 0,
@@ -292,17 +328,52 @@ class QuesitoController extends Controller
         $result = $model->criar($dados);
 
         if (!$result->getResult()) {
+            // Limpar qualquer output buffer antes de enviar JSON
+            if (ob_get_level() > 0) {
+                ob_clean();
+            }
             $this->responseJson(['success' => false, 'message' => 'Erro ao cadastrar o quesito.']);
             return;
         }
 
         $idQuesito = (int) $result->getResult();
 
-        $this->notificarResponsaveisQuesito($empresa, $idQuesito, $dados);
-        
-        // Enviar notificação por e-mail
-        $this->enviarNotificacaoEmailQuesito($empresa, $idQuesito, $dados, 'criar');
+        // Salvar tarefa se fornecida (não bloqueia o cadastro do quesito se falhar)
+        try {
+            $temDadosTarefa = isset($_POST['tarefa_concluido']) || !empty($_POST['tarefa_usuario_responsavel_id']) || !empty($_POST['tarefa_data_conclusao']);
+            
+            if ($temDadosTarefa) {
+                $tarefaModel = new Tarefa();
+                $tarefaModel->salvarTarefa('quesito', $idQuesito, (int) $empresa, [
+                    'concluido' => isset($_POST['tarefa_concluido']) && $_POST['tarefa_concluido'] == '1',
+                    'usuario_responsavel_id' => $_POST['tarefa_usuario_responsavel_id'] ?? null,
+                    'data_conclusao' => $_POST['tarefa_data_conclusao'] ?? null,
+                ]);
+            }
+        } catch (\Exception $e) {
+            // Não bloqueia o cadastro do quesito se a tarefa falhar
+        } catch (\Error $e) {
+            // Não bloqueia o cadastro do quesito se a tarefa falhar
+        }
 
+        try {
+            $this->notificarResponsaveisQuesito($empresa, $idQuesito, $dados);
+        } catch (\Exception $e) {
+            // Erro silencioso na notificação
+        }
+        
+        try {
+            // Enviar notificação por e-mail
+            $this->enviarNotificacaoEmailQuesito($empresa, $idQuesito, $dados, 'criar');
+        } catch (\Exception $e) {
+            // Erro silencioso no envio de email
+        }
+
+        // Limpar qualquer output buffer antes de enviar JSON
+        if (ob_get_level() > 0) {
+            ob_clean();
+        }
+        
         $this->responseJson([
             'success' => true,
             'message' => 'Quesito cadastrado com sucesso.',
@@ -346,6 +417,9 @@ class QuesitoController extends Controller
 
     public function salvarEditar($params)
     {
+        // Definir header JSON no início para evitar corrupção
+        header('Content-Type: application/json; charset=utf-8');
+        
         $this->setParams($params);
         $this->requirePermission('quesito_gerenciar');
 
@@ -395,18 +469,42 @@ class QuesitoController extends Controller
         }
 
         if (empty($data) || empty($tipo) || empty($vara) || !$reclamanteId || !$reclamadaId) {
+            // Limpar qualquer output buffer antes de enviar JSON
+            if (ob_get_level() > 0) {
+                ob_clean();
+            }
             $this->responseJson(['success' => false, 'message' => 'Preencha todos os campos obrigatórios.']);
             return;
+        }
+
+        // Buscar nomes de Reclamante e Reclamada para preencher campos antigos (se necessário)
+        $reclamanteNome = '';
+        $reclamadaNome = '';
+        
+        if ($reclamanteId) {
+            $reclamanteModel = new Reclamante();
+            $reclamante = $reclamanteModel->getPorId($reclamanteId, (int) $empresa);
+            $reclamanteData = $reclamante->getResult()[0] ?? null;
+            $reclamanteNome = $reclamanteData['nome'] ?? '';
+        }
+        
+        if ($reclamadaId) {
+            $reclamadaModel = new Reclamada();
+            $reclamada = $reclamadaModel->getPorId($reclamadaId, (int) $empresa);
+            $reclamadaData = $reclamada->getResult()[0] ?? null;
+            $reclamadaNome = $reclamadaData['nome'] ?? '';
         }
 
         $dados = [
             'data' => $data,
             'tipo' => $tipo,
             'vara' => $vara,
+            'reclamante' => $reclamanteNome, // Campo antigo (NOT NULL na tabela)
             'reclamante_id' => $reclamanteId,
             'codigo_reclamante' => $_POST['codigo_reclamante'] !== '' ? $_POST['codigo_reclamante'] : null,
             'email_cliente' => $emailCliente !== '' ? $emailCliente : null,
             'email_cliente_cc' => $emailClienteCc,
+            'reclamada' => $reclamadaNome, // Campo antigo (NOT NULL na tabela)
             'reclamada_id' => $reclamadaId,
             'link_pasta_drive' => $_POST['link_pasta_drive'] !== '' ? $_POST['link_pasta_drive'] : null,
             'enviar_para_cliente' => isset($_POST['enviar_para_cliente']) ? 1 : 0,
@@ -417,12 +515,38 @@ class QuesitoController extends Controller
         $result = $model->atualizar($id, (int) $empresa, $dados);
 
         if (!$result->getResult()) {
+            // Limpar qualquer output buffer antes de enviar JSON
+            if (ob_get_level() > 0) {
+                ob_clean();
+            }
             $this->responseJson(['success' => false, 'message' => 'Erro ao atualizar o quesito.']);
             return;
         }
 
-        // Enviar notificação por e-mail
-        $this->enviarNotificacaoEmailQuesito($empresa, $id, $dados, 'editar');
+        // Salvar tarefa se fornecida (não bloqueia a edição do quesito se falhar)
+        try {
+            $temDadosTarefa = isset($_POST['tarefa_concluido']) || !empty($_POST['tarefa_usuario_responsavel_id']) || !empty($_POST['tarefa_data_conclusao']);
+            
+            if ($temDadosTarefa) {
+                $tarefaModel = new Tarefa();
+                $tarefaModel->salvarTarefa('quesito', $id, (int) $empresa, [
+                    'concluido' => isset($_POST['tarefa_concluido']) && $_POST['tarefa_concluido'] == '1',
+                    'usuario_responsavel_id' => $_POST['tarefa_usuario_responsavel_id'] ?? null,
+                    'data_conclusao' => $_POST['tarefa_data_conclusao'] ?? null,
+                ]);
+            }
+        } catch (\Exception $e) {
+            // Não bloqueia a edição do quesito se a tarefa falhar
+        } catch (\Error $e) {
+            // Não bloqueia a edição do quesito se a tarefa falhar
+        }
+
+        try {
+            // Enviar notificação por e-mail
+            $this->enviarNotificacaoEmailQuesito($empresa, $id, $dados, 'editar');
+        } catch (\Exception $e) {
+            // Erro silencioso no envio de email
+        }
 
         // Verificar se deve enviar email ao cliente
         if (isset($_POST['enviar_para_cliente']) && $_POST['enviar_para_cliente'] == '1' && !empty($emailCliente)) {
@@ -445,6 +569,11 @@ class QuesitoController extends Controller
             }
         }
 
+        // Limpar qualquer output buffer antes de enviar JSON
+        if (ob_get_level() > 0) {
+            ob_clean();
+        }
+        
         $this->responseJson([
             'success' => true,
             'message' => 'Quesito atualizado com sucesso.',
@@ -543,7 +672,7 @@ class QuesitoController extends Controller
             );
         } catch (\Exception $e) {
             // Log do erro, mas não interrompe o fluxo
-            error_log('Erro ao enviar notificação por e-mail: ' . $e->getMessage());
+            // Erro ao enviar notificação por e-mail
         }
     }
 
@@ -586,7 +715,7 @@ class QuesitoController extends Controller
             $template = $emailService->getTemplate('quesito_enviar_cliente', $empresa);
             
             if (!$template || !$template['ativo']) {
-                error_log('Template quesito_enviar_cliente não encontrado ou inativo');
+                // Template quesito_enviar_cliente não encontrado ou inativo
                 return false;
             }
 
@@ -600,10 +729,11 @@ class QuesitoController extends Controller
             }
 
             // Enviar email usando EmailAdapter
-            $emailAdapter = new \Agencia\Close\Adapters\EmailAdapter();
+            $empresa = $_SESSION['pericia_perfil_empresa'] ?? 0;
+            $emailAdapter = new \Agencia\Close\Adapters\EmailAdapter((int) $empresa);
             $emailAdapter->addAddress($emailCliente);
             
-            // Adicionar emails CC se houver
+            // Adicionar emails CC se houver (além do CC padrão que já é adicionado automaticamente)
             if (!empty($emailsCc)) {
                 $emailAdapter->addMultipleCC($emailsCc);
             }
@@ -617,18 +747,18 @@ class QuesitoController extends Controller
                 
                 if (!$result->getError()) {
                     $ccInfo = !empty($emailsCc) ? ' (CC: ' . implode(', ', $emailsCc) . ')' : '';
-                    error_log("Email enviado com sucesso para o cliente: {$emailCliente}{$ccInfo}");
+                    // Email enviado com sucesso para o cliente
                     return true;
                 } else {
-                    error_log("Erro ao enviar email para o cliente: {$emailCliente} - " . $result->getMessage());
+                    // Erro ao enviar email para o cliente
                     return false;
                 }
             } catch (\Exception $e) {
-                error_log("Exceção ao enviar email para cliente: " . $e->getMessage());
+                // Exceção ao enviar email para cliente
                 return false;
             }
         } catch (\Exception $e) {
-            error_log('Erro ao enviar email para cliente: ' . $e->getMessage());
+            // Erro ao enviar email para cliente
             return false;
         }
     }

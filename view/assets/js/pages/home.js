@@ -134,7 +134,6 @@
         renderQuesitosStatusChart();
         renderQuesitosDiaChart();
         renderManifestacoesDiaChart();
-        renderPareceresTipoChart();
         renderAgendamentosStatusChart();
         renderFinanceiroStatusChart();
     }
@@ -283,52 +282,6 @@
 
         charts.manifestacoesDia = new ApexCharts(el, options);
         charts.manifestacoesDia.render();
-    }
-
-    // Pareceres por Tipo (Bar)
-    function renderPareceresTipoChart() {
-        const el = document.getElementById('chartPareceresTipo');
-        if (!el) return;
-
-        const porTipo = currentData.pareceres?.por_tipo || [];
-        const labels = porTipo.map(item => item.tipo);
-        const valores = porTipo.map(item => parseInt(item.total));
-
-        if (valores.length === 0) {
-            el.innerHTML = '<div class="text-center p-5"><p>Nenhum dado disponível</p></div>';
-            return;
-        }
-
-        const options = {
-            series: [{
-                name: 'Pareceres',
-                data: valores
-            }],
-            chart: {
-                type: 'bar',
-                height: 350,
-                toolbar: { show: false },
-                horizontal: true
-            },
-            colors: ['#28a745'],
-            xaxis: {
-                categories: labels
-            },
-            yaxis: {
-                title: { text: 'Quantidade' }
-            },
-            dataLabels: {
-                enabled: true
-            },
-            plotOptions: {
-                bar: {
-                    borderRadius: 4
-                }
-            }
-        };
-
-        charts.pareceresTipo = new ApexCharts(el, options);
-        charts.pareceresTipo.render();
     }
 
     // Agendamentos por Status (Donut)

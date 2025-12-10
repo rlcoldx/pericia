@@ -52,6 +52,26 @@
                                 </div>
 
                                 <div class="col-12 col-lg-3 mb-3">
+                                    <label class="form-label">Data de Entrega do Parecer</label>
+                                    <input type="date"
+                                           class="form-control"
+                                           name="data_entrega_parecer"
+                                           value="{{ action == 'editar' ? parecer.data_entrega_parecer : '' }}">
+                                </div>
+
+                                <div class="col-12 col-lg-3 mb-3">
+                                    <label class="form-label">Status do Parecer</label>
+                                    <select class="form-control" name="status_parecer">
+                                        <option value="">Selecione</option>
+                                        <option value="OK" {{ action == 'editar' and parecer.status_parecer == 'OK' ? 'selected' : '' }}>OK</option>
+                                        <option value="FAVORAVEL" {{ action == 'editar' and parecer.status_parecer == 'FAVORAVEL' ? 'selected' : '' }}>Favorável</option>
+                                        <option value="DESFAVORAVEL" {{ action == 'editar' and parecer.status_parecer == 'DESFAVORAVEL' ? 'selected' : '' }}>Desfavorável</option>
+                                        <option value="PARCIAL FAVORAVEL" {{ action == 'editar' and parecer.status_parecer == 'PARCIAL FAVORAVEL' ? 'selected' : '' }}>Parcial Favorável</option>
+                                        <option value="NR (NÃO REALIZADO)" {{ action == 'editar' and parecer.status_parecer == 'NR (NÃO REALIZADO)' ? 'selected' : '' }}>NR (Não Realizado)</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-12 col-lg-3 mb-3">
                                     <label class="form-label">Tipo <span class="text-danger">*</span></label>
                                     <select class="form-control select2-tags" name="tipo" id="tipo" required>
                                         {% if action == 'editar' %}
@@ -63,16 +83,18 @@
                                         {% endif %}
                                         {% endfor %}
                                     </select>
-                                    <small class="form-text">Digite para buscar ou criar um novo tipo</small>
                                 </div>
 
                                 <div class="col-12 col-lg-3 mb-3">
                                     <label class="form-label">Assistente</label>
-                                    <input type="text"
-                                           class="form-control"
-                                           name="assistente"
-                                           value="{{ action == 'editar' ? parecer.assistente : '' }}"
-                                           placeholder="Nome do assistente">
+                                    <select class="form-control" name="assistente_id" id="assistente_id">
+                                        <option value="">Selecione o Assistente</option>
+                                        {% for assistente in assistentes %}
+                                        <option value="{{ assistente.id }}" {{ action == 'editar' and parecer.assistente_id == assistente.id ? 'selected' : '' }}>
+                                            {{ assistente.nome }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
                                 </div>
 
                                 <div class="col-12 col-lg-3 mb-3">
@@ -99,20 +121,71 @@
                                     </select>
                                 </div>
 
-                                <div class="col-12 mb-3">
+                                <div class="col-12 col-lg-6 mb-3">
                                     <label class="form-label">Função(ões)</label>
                                     <textarea class="form-control"
-                                              name="funcoes"
-                                              rows="3"
-                                              placeholder="Descreva a(s) função(ões) do parecer">{{ action == 'editar' ? parecer.funcoes : '' }}</textarea>
+                                            name="funcoes"
+                                            rows="2"
+                                            placeholder="Descreva a(s) função(ões) do parecer">{{ action == 'editar' ? parecer.funcoes : '' }}</textarea>
                                 </div>
 
-                                <div class="col-12 mb-3">
+                                <div class="col-12 col-lg-6 mb-3">
                                     <label class="form-label">Observações</label>
                                     <textarea class="form-control"
-                                              name="observacoes"
-                                              rows="4"
-                                              placeholder="Observações sobre o parecer">{{ action == 'editar' ? parecer.observacoes : '' }}</textarea>
+                                            name="observacoes"
+                                            rows="2"
+                                            placeholder="Observações sobre o parecer">{{ action == 'editar' ? parecer.observacoes : '' }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <div class="d-flex justify-content-between flex-wrap align-items-center w-100">
+                                <h4 class="card-title mb-0">
+                                    <i class="fa fa-tasks me-2"></i>Tarefas
+                                </h4>
+                                <span>Aqui você pode definir qual usuário será responsável pela próxima tarefa e a data prevista para conclusão da tarefa</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-12 col-lg-3 mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input"
+                                               type="checkbox"
+                                               id="tarefa_concluido"
+                                               name="tarefa_concluido"
+                                               {{ action == 'editar' and tarefa and tarefa.concluido ? 'checked' : '' }}>
+                                        <label class="form-check-label" for="tarefa_concluido">
+                                            <strong>Marcar como concluído</strong>
+                                        </label>
+                                    </div>
+                                    <div class="form-text">Marcar que você concluiu a tarefa</div>
+                                </div>
+
+                                <div class="col-12 col-lg-6 mb-3">
+                                    <label class="form-label">Usuário Responsável</label>
+                                    <select class="form-control" name="tarefa_usuario_responsavel_id" id="tarefa_usuario_responsavel_id">
+                                        <option value="">Selecione o usuário responsável</option>
+                                        {% for usuario in usuarios %}
+                                        <option value="{{ usuario.id }}" {{ action == 'editar' and tarefa and tarefa.usuario_responsavel_id == usuario.id ? 'selected' : '' }}>
+                                            {{ usuario.nome }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">Usuário que será responsável pela próxima tarefa</div>
+                                </div>
+
+                                <div class="col-12 col-lg-3 mb-3">
+                                    <label class="form-label">Data de Conclusão</label>
+                                    <input type="date"
+                                           class="form-control"
+                                           name="tarefa_data_conclusao"
+                                           id="tarefa_data_conclusao"
+                                           value="{{ action == 'editar' and tarefa and tarefa.data_conclusao ? tarefa.data_conclusao : '' }}">
+                                    <div class="form-text">Data prevista para conclusão da próxima tarefa</div>
                                 </div>
                             </div>
                         </div>
@@ -197,17 +270,62 @@
                 }, 100);
             });
 
-            // Inicializar Select2 para Reclamada e Reclamante
+            // Inicializar Select2 para Reclamada, Reclamante e Assistente com busca
             $('#reclamada_id').select2({
                 placeholder: 'Selecione a Reclamada',
                 allowClear: true,
-                width: '100%'
+                width: '100%',
+                language: {
+                    noResults: function() {
+                        return "Nenhuma reclamada encontrada";
+                    },
+                    searching: function() {
+                        return "Buscando...";
+                    }
+                }
             });
 
             $('#reclamante_id').select2({
                 placeholder: 'Selecione o Reclamante',
                 allowClear: true,
-                width: '100%'
+                width: '100%',
+                language: {
+                    noResults: function() {
+                        return "Nenhum reclamante encontrado";
+                    },
+                    searching: function() {
+                        return "Buscando...";
+                    }
+                }
+            });
+
+            $('#assistente_id').select2({
+                placeholder: 'Selecione o Assistente',
+                allowClear: true,
+                width: '100%',
+                language: {
+                    noResults: function() {
+                        return "Nenhum assistente encontrado";
+                    },
+                    searching: function() {
+                        return "Buscando...";
+                    }
+                }
+            });
+
+            // Select2 para Usuário Responsável (Tarefas)
+            $('#tarefa_usuario_responsavel_id').select2({
+                placeholder: 'Selecione o usuário responsável',
+                allowClear: true,
+                width: '100%',
+                language: {
+                    noResults: function() {
+                        return "Nenhum usuário encontrado";
+                    },
+                    searching: function() {
+                        return "Buscando...";
+                    }
+                }
             });
         });
 

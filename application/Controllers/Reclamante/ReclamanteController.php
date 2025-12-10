@@ -5,6 +5,7 @@ namespace Agencia\Close\Controllers\Reclamante;
 use Agencia\Close\Controllers\Controller;
 use Agencia\Close\Models\Reclamante\Reclamante;
 use Agencia\Close\Services\Notificacao\EmailNotificationService;
+use Agencia\Close\Helpers\DataTableResponse;
 
 class ReclamanteController extends Controller
 {
@@ -176,5 +177,74 @@ class ReclamanteController extends Controller
         } else {
             $this->responseJson(['success' => false, 'message' => 'Erro ao remover reclamante.']);
         }
+    }
+
+    public function datatable($params)
+    {
+        $this->setParams($params);
+        $this->requirePermission('reclamantes_ver');
+
+        $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
+
+        if (!$empresa) {
+            $this->responseJson([
+                'draw' => (int) ($_GET['draw'] ?? 1),
+                'recordsTotal' => 0,
+                'recordsFiltered' => 0,
+                'data' => []
+            ]);
+            return;
+        }
+
+        $dtParams = DataTableResponse::getParams();
+        $filtros = [];
+
+        $model = new Reclamante();
+        $result = $model->getReclamantesDataTable((int) $empresa, $dtParams, $filtros);
+
+        $formattedData = [];
+        foreach ($result['data'] as $r) {
+            $formattedData[] = [
+                htmlspecialchars($r['nome'] ?? '-', ENT_QUOTES, 'UTF-8'),
+                htmlspecialchars($r['nome_contato'] ?: '-', ENT_QUOTES, 'UTF-8'),
+                htmlspecialchars($r['email_contato'] ?: '-', ENT_QUOTES, 'UTF-8'),
+                htmlspecialchars($r['telefone_contato'] ?: '-', ENT_QUOTES, 'UTF-8'),
+                $this->formatAcoesCell($r['id'] ?? null),
+            ];
+        }
+
+        $response = DataTableResponse::format(
+            $formattedData,
+            (int) $result['total'],
+            (int) $result['filtered'],
+            (int) $dtParams['draw']
+        );
+
+        $this->responseJson($response);
+    }
+
+    private function formatAcoesCell(?int $id): string
+    {
+        if (!$id) {
+            return '';
+        }
+
+        $permissionService = new \Agencia\Close\Services\Login\PermissionsService();
+
+        $html = '<div class="d-flex">';
+        if ($permissionService->verifyPermissions('reclamantes_editar')) {
+            $html .= '<a href="' . DOMAIN . '/reclamantes/editar/' . $id . '" ';
+            $html .= 'class="btn btn-success shadow btn-xs sharp me-1" ';
+            $html .= 'data-bs-toggle="tooltip" data-bs-title="Editar">';
+            $html .= '<i class="fa fa-pencil"></i></a>';
+        }
+        if ($permissionService->verifyPermissions('reclamantes_deletar')) {
+            $html .= '<button type="button" class="btn btn-danger shadow btn-xs sharp" ';
+            $html .= 'onclick="removerReclamante(' . $id . ', \'' . htmlspecialchars('Reclamante', ENT_QUOTES) . '\')" ';
+            $html .= 'data-bs-toggle="tooltip" data-bs-title="Remover">';
+            $html .= '<i class="fa fa-trash"></i></button>';
+        }
+        $html .= '</div>';
+        return $html;
     }
 }

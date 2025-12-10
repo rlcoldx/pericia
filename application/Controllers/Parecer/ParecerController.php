@@ -6,8 +6,11 @@ use Agencia\Close\Controllers\Controller;
 use Agencia\Close\Models\Parecer\Parecer;
 use Agencia\Close\Models\Reclamada\Reclamada;
 use Agencia\Close\Models\Reclamante\Reclamante;
+use Agencia\Close\Models\Assistente\Assistente;
 use Agencia\Close\Services\Notificacao\EmailNotificationService;
 use Agencia\Close\Helpers\DataTableResponse;
+use Agencia\Close\Models\Equipe\Equipe;
+use Agencia\Close\Models\Tarefa\Tarefa;
 
 class ParecerController extends Controller
 {
@@ -51,6 +54,8 @@ class ParecerController extends Controller
         $reclamadaModel = new Reclamada();
         $reclamanteModel = new Reclamante();
         $parecerModel = new Parecer();
+        $assistenteModel = new Assistente();
+        $equipeModel = new Equipe();
 
         $this->render('pages/parecer/form.twig', [
             'titulo' => 'Novo Parecer',
@@ -59,18 +64,28 @@ class ParecerController extends Controller
             'parecer' => null,
             'reclamadas' => $reclamadaModel->listar((int) $empresa)->getResult() ?? [],
             'reclamantes' => $reclamanteModel->listar((int) $empresa)->getResult() ?? [],
+            'assistentes' => $assistenteModel->listar((int) $empresa)->getResult() ?? [],
             'tipos' => $parecerModel->listarTipos((int) $empresa)->getResult() ?? [],
+            'usuarios' => $equipeModel->getUsuariosAtivos((int) $empresa)->getResult() ?? [],
+            'tarefa' => null,
         ]);
     }
 
     public function salvarCriar($params)
     {
+        // Definir header JSON no início para evitar corrupção
+        header('Content-Type: application/json; charset=utf-8');
+        
         $this->setParams($params);
         $this->requirePermission('parecer_cadastrar');
 
         $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
 
         if (!$empresa) {
+            // Limpar qualquer output buffer antes de enviar JSON
+            if (ob_get_level() > 0) {
+                ob_clean();
+            }
             $this->responseJson(['success' => false, 'message' => 'Sessão expirada.']);
             return;
         }
@@ -101,8 +116,11 @@ class ParecerController extends Controller
             'empresa' => (int) $empresa,
             'data_realizacao' => $dataRealizacao,
             'data_fatal' => $_POST['data_fatal'] !== '' ? $_POST['data_fatal'] : null,
+            'data_entrega_parecer' => $_POST['data_entrega_parecer'] !== '' ? $_POST['data_entrega_parecer'] : null,
+            'status_parecer' => $_POST['status_parecer'] !== '' ? $_POST['status_parecer'] : null,
             'tipo' => $tipo,
             'assistente' => $_POST['assistente'] !== '' ? $_POST['assistente'] : null,
+            'assistente_id' => !empty($_POST['assistente_id']) ? (int) $_POST['assistente_id'] : null,
             'reclamada_id' => !empty($_POST['reclamada_id']) ? (int) $_POST['reclamada_id'] : null,
             'reclamante_id' => !empty($_POST['reclamante_id']) ? (int) $_POST['reclamante_id'] : null,
             'funcoes' => $_POST['funcoes'] !== '' ? $_POST['funcoes'] : null,
@@ -111,13 +129,47 @@ class ParecerController extends Controller
 
         $result = $parecerModel->criar($dados);
 
-        if ($result->getResult()) {
-            $idParecer = (int) $result->getResult();
-            $this->enviarNotificacaoEmailParecer($empresa, $idParecer, $dados, 'criar');
-            $this->responseJson(['success' => true, 'message' => 'Parecer cadastrado com sucesso.']);
-        } else {
+        if (!$result->getResult()) {
+            // Limpar qualquer output buffer antes de enviar JSON
+            if (ob_get_level() > 0) {
+                ob_clean();
+            }
             $this->responseJson(['success' => false, 'message' => 'Erro ao cadastrar.']);
+            return;
         }
+
+        $idParecer = (int) $result->getResult();
+
+        // Salvar tarefa se fornecida (não bloqueia o cadastro se falhar)
+        try {
+            $temDadosTarefa = isset($_POST['tarefa_concluido']) || !empty($_POST['tarefa_usuario_responsavel_id']) || !empty($_POST['tarefa_data_conclusao']);
+            
+            if ($temDadosTarefa) {
+                $tarefaModel = new Tarefa();
+                $tarefaModel->salvarTarefa('parecer', $idParecer, (int) $empresa, [
+                    'concluido' => isset($_POST['tarefa_concluido']) && $_POST['tarefa_concluido'] == '1',
+                    'usuario_responsavel_id' => $_POST['tarefa_usuario_responsavel_id'] ?? null,
+                    'data_conclusao' => $_POST['tarefa_data_conclusao'] ?? null,
+                ]);
+            }
+        } catch (\Exception $e) {
+            // Não bloqueia o cadastro se a tarefa falhar
+        } catch (\Error $e) {
+            // Não bloqueia o cadastro se a tarefa falhar
+        }
+
+        try {
+            $this->enviarNotificacaoEmailParecer($empresa, $idParecer, $dados, 'criar');
+        } catch (\Exception $e) {
+            // Erro silencioso no envio de email
+        }
+
+        // Limpar qualquer output buffer antes de enviar JSON
+        if (ob_get_level() > 0) {
+            ob_clean();
+        }
+        
+        $this->responseJson(['success' => true, 'message' => 'Parecer cadastrado com sucesso.']);
     }
 
     public function editar($params)
@@ -143,6 +195,13 @@ class ParecerController extends Controller
 
         $reclamadaModel = new Reclamada();
         $reclamanteModel = new Reclamante();
+        $assistenteModel = new Assistente();
+        $equipeModel = new Equipe();
+        $tarefaModel = new Tarefa();
+
+        // Buscar tarefa existente
+        $tarefaRead = $tarefaModel->getPorModuloRegistro('parecer', $id, (int) $empresa);
+        $tarefa = $tarefaRead->getResult()[0] ?? null;
 
         $this->render('pages/parecer/form.twig', [
             'titulo' => 'Editar Parecer',
@@ -151,12 +210,18 @@ class ParecerController extends Controller
             'parecer' => $parecer->getResult()[0],
             'reclamadas' => $reclamadaModel->listar((int) $empresa)->getResult() ?? [],
             'reclamantes' => $reclamanteModel->listar((int) $empresa)->getResult() ?? [],
+            'assistentes' => $assistenteModel->listar((int) $empresa)->getResult() ?? [],
             'tipos' => $parecerModel->listarTipos((int) $empresa)->getResult() ?? [],
+            'usuarios' => $equipeModel->getUsuariosAtivos((int) $empresa)->getResult() ?? [],
+            'tarefa' => $tarefa,
         ]);
     }
 
     public function salvarEditar($params)
     {
+        // Definir header JSON no início para evitar corrupção
+        header('Content-Type: application/json; charset=utf-8');
+        
         $this->setParams($params);
         $this->requirePermission('parecer_gerenciar');
 
@@ -164,6 +229,10 @@ class ParecerController extends Controller
         $id = isset($_POST['id']) ? (int) $_POST['id'] : null;
 
         if (!$empresa || !$id) {
+            // Limpar qualquer output buffer antes de enviar JSON
+            if (ob_get_level() > 0) {
+                ob_clean();
+            }
             $this->responseJson(['success' => false, 'message' => 'Dados inválidos.']);
             return;
         }
@@ -172,6 +241,10 @@ class ParecerController extends Controller
         $tipo = $_POST['tipo'] ?? '';
 
         if (empty($dataRealizacao) || empty($tipo)) {
+            // Limpar qualquer output buffer antes de enviar JSON
+            if (ob_get_level() > 0) {
+                ob_clean();
+            }
             $this->responseJson(['success' => false, 'message' => 'Data da Realização e Tipo são obrigatórios.']);
             return;
         }
@@ -193,8 +266,11 @@ class ParecerController extends Controller
         $dados = [
             'data_realizacao' => $dataRealizacao,
             'data_fatal' => $_POST['data_fatal'] !== '' ? $_POST['data_fatal'] : null,
+            'data_entrega_parecer' => $_POST['data_entrega_parecer'] !== '' ? $_POST['data_entrega_parecer'] : null,
+            'status_parecer' => $_POST['status_parecer'] !== '' ? $_POST['status_parecer'] : null,
             'tipo' => $tipo,
             'assistente' => $_POST['assistente'] !== '' ? $_POST['assistente'] : null,
+            'assistente_id' => !empty($_POST['assistente_id']) ? (int) $_POST['assistente_id'] : null,
             'reclamada_id' => !empty($_POST['reclamada_id']) ? (int) $_POST['reclamada_id'] : null,
             'reclamante_id' => !empty($_POST['reclamante_id']) ? (int) $_POST['reclamante_id'] : null,
             'funcoes' => $_POST['funcoes'] !== '' ? $_POST['funcoes'] : null,
@@ -203,12 +279,45 @@ class ParecerController extends Controller
 
         $result = $parecerModel->atualizar($id, (int) $empresa, $dados);
 
-        if ($result->getResult()) {
-            $this->enviarNotificacaoEmailParecer($empresa, $id, $dados, 'editar');
-            $this->responseJson(['success' => true, 'message' => 'Parecer atualizado com sucesso.']);
-        } else {
+        if (!$result->getResult()) {
+            // Limpar qualquer output buffer antes de enviar JSON
+            if (ob_get_level() > 0) {
+                ob_clean();
+            }
             $this->responseJson(['success' => false, 'message' => 'Erro ao atualizar.']);
+            return;
         }
+
+        // Salvar tarefa se fornecida (não bloqueia a atualização se falhar)
+        try {
+            $temDadosTarefa = isset($_POST['tarefa_concluido']) || !empty($_POST['tarefa_usuario_responsavel_id']) || !empty($_POST['tarefa_data_conclusao']);
+            
+            if ($temDadosTarefa) {
+                $tarefaModel = new Tarefa();
+                $tarefaModel->salvarTarefa('parecer', $id, (int) $empresa, [
+                    'concluido' => isset($_POST['tarefa_concluido']) && $_POST['tarefa_concluido'] == '1',
+                    'usuario_responsavel_id' => $_POST['tarefa_usuario_responsavel_id'] ?? null,
+                    'data_conclusao' => $_POST['tarefa_data_conclusao'] ?? null,
+                ]);
+            }
+        } catch (\Exception $e) {
+            // Não bloqueia a atualização se a tarefa falhar
+        } catch (\Error $e) {
+            // Não bloqueia a atualização se a tarefa falhar
+        }
+
+        try {
+            $this->enviarNotificacaoEmailParecer($empresa, $id, $dados, 'editar');
+        } catch (\Exception $e) {
+            // Erro silencioso no envio de email
+        }
+
+        // Limpar qualquer output buffer antes de enviar JSON
+        if (ob_get_level() > 0) {
+            ob_clean();
+        }
+        
+        $this->responseJson(['success' => true, 'message' => 'Parecer atualizado com sucesso.']);
     }
 
     private function enviarNotificacaoEmailParecer(int $empresa, int $idParecer, array $dados, string $acao): void

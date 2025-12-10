@@ -12,11 +12,21 @@
                     <li class="breadcrumb-item"><a href="{{ DOMAIN }}">Home</a></li>
                     <li class="breadcrumb-item active"><a href="javascript:void(0)">Templates de E-mail</a></li>
                 </ol>
-                {% if 'email_template_criar'|verifyPermission %}
-                <a href="{{ DOMAIN }}/email-templates/add" class="btn btn-primary">
-                    <i class="fa fa-plus me-2"></i>Novo Template
-                </a>
-                {% endif %}
+                <div class="d-flex gap-2">
+                    {% if 'email_template_gerenciar'|verifyPermission %}
+                    <button type="button" id="btnAtivarTodos" class="btn btn-success">
+                        <i class="fa fa-check-circle me-2"></i>Ativar Todos os Emails
+                    </button>
+                    <button type="button" id="btnDesativarTodos" class="btn btn-danger">
+                        <i class="fa fa-times-circle me-2"></i>Desativar Todos os Emails
+                    </button>
+                    {% endif %}
+                    {% if 'email_template_criar'|verifyPermission %}
+                    <a href="{{ DOMAIN }}/email-templates/add" class="btn btn-primary">
+                        <i class="fa fa-plus me-2"></i>Novo Template
+                    </a>
+                    {% endif %}
+                </div>
             </div>
         </div>
 
@@ -85,6 +95,104 @@
 
     (function() {
         'use strict';
+
+        // Ativar todos os templates
+        const btnAtivarTodos = document.getElementById('btnAtivarTodos');
+        if (btnAtivarTodos) {
+            btnAtivarTodos.addEventListener('click', function() {
+                Swal.fire({
+                    title: 'Ativar Todos os Templates?',
+                    text: 'Todos os templates de e-mail serão ativados. Deseja continuar?',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#28a745',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Sim, ativar todos!',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const btn = this;
+                        const originalText = btn.innerHTML;
+                        btn.innerHTML = '<i class="fa fa-spinner fa-spin me-2"></i>Ativando...';
+                        btn.disabled = true;
+
+                        fetch(window.DOMAIN + '/email-templates/ativar-todos', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                            }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                Swal.fire('Sucesso!', data.message, 'success').then(() => {
+                                    window.location.reload();
+                                });
+                            } else {
+                                Swal.fire('Erro!', data.message, 'error');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Erro:', error);
+                            Swal.fire('Erro!', 'Erro ao ativar templates.', 'error');
+                        })
+                        .finally(() => {
+                            btn.innerHTML = originalText;
+                            btn.disabled = false;
+                        });
+                    }
+                });
+            });
+        }
+
+        // Desativar todos os templates
+        const btnDesativarTodos = document.getElementById('btnDesativarTodos');
+        if (btnDesativarTodos) {
+            btnDesativarTodos.addEventListener('click', function() {
+                Swal.fire({
+                    title: 'Desativar Todos os Templates?',
+                    text: 'Todos os templates de e-mail serão desativados. Nenhum e-mail será enviado. Deseja continuar?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ffc107',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Sim, desativar todos!',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const btn = this;
+                        const originalText = btn.innerHTML;
+                        btn.innerHTML = '<i class="fa fa-spinner fa-spin me-2"></i>Desativando...';
+                        btn.disabled = true;
+
+                        fetch(window.DOMAIN + '/email-templates/desativar-todos', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                            }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                Swal.fire('Sucesso!', data.message, 'success').then(() => {
+                                    window.location.reload();
+                                });
+                            } else {
+                                Swal.fire('Erro!', data.message, 'error');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Erro:', error);
+                            Swal.fire('Erro!', 'Erro ao desativar templates.', 'error');
+                        })
+                        .finally(() => {
+                            btn.innerHTML = originalText;
+                            btn.disabled = false;
+                        });
+                    }
+                });
+            });
+        }
 
         // Remover template
         document.querySelectorAll('.btnRemover').forEach(btn => {
