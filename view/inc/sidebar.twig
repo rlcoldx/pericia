@@ -7,10 +7,10 @@
 					<span class="nav-text">Página Inicial</span>
 				</a>
             </li>
+            {% if 'equipe_ver'|verifyPermission or 'cargos_ver'|verifyPermission %}
 			<li class="separator">
 				<span>Gestão</span>
 			</li>
-            {% if 'equipe_ver'|verifyPermission or 'cargos_ver'|verifyPermission %}
 			<li>
 				<a class="has-arrow ai-icon" href="javascript:void(0)" aria-expanded="false">
 					<i class="fa-light fa-users"></i>
@@ -47,34 +47,34 @@
 			</li>
 			{% endif %}
 
-			{% if 'reclamada_ver'|verifyPermission or 'reclamada_criar'|verifyPermission %}
+			{% if 'reclamadas_ver'|verifyPermission or 'reclamadas_criar'|verifyPermission %}
 			<li>
 				<a class="has-arrow ai-icon" href="javascript:void(0)" aria-expanded="false">
 					<i class="fa-light fa-building"></i>
 					<span class="nav-text">Reclamadas</span>
 				</a>
 				<ul aria-expanded="false">
-					{% if 'reclamada_ver'|verifyPermission %}
+					{% if 'reclamadas_ver'|verifyPermission %}
 					<li><a href="{{ DOMAIN }}/reclamadas">Listar Todas</a></li>
 					{% endif %}
-					{% if 'reclamada_criar'|verifyPermission %}
+					{% if 'reclamadas_criar'|verifyPermission %}
 					<li><a href="{{ DOMAIN }}/reclamadas/add">Nova Reclamada</a></li>
 					{% endif %}
 				</ul>
 			</li>
 			{% endif %}
 
-			{% if 'reclamante_ver'|verifyPermission or 'reclamante_criar'|verifyPermission %}
+			{% if 'reclamantes_ver'|verifyPermission or 'reclamantes_criar'|verifyPermission %}
 			<li>
 				<a class="has-arrow ai-icon" href="javascript:void(0)" aria-expanded="false">
 					<i class="fa-light fa-user"></i>
 					<span class="nav-text">Reclamantes</span>
 				</a>
 				<ul aria-expanded="false">
-					{% if 'reclamante_ver'|verifyPermission %}
+					{% if 'reclamantes_ver'|verifyPermission %}
 					<li><a href="{{ DOMAIN }}/reclamantes">Listar Todos</a></li>
 					{% endif %}
-					{% if 'reclamante_criar'|verifyPermission %}
+					{% if 'reclamantes_criar'|verifyPermission %}
 					<li><a href="{{ DOMAIN }}/reclamantes/add">Novo Reclamante</a></li>
 					{% endif %}
 				</ul>

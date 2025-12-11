@@ -104,6 +104,19 @@ class Cargos extends Model
     }
 
     /**
+     * Busca um cargo por nome
+     */
+    public function getCargoPorNome($nome, $company): Read
+    {
+        $this->read = new Read();
+        $this->read->ExeRead("cargos", 
+            "WHERE nome = :nome AND empresa = :empresa AND status = 'Ativo'", 
+            "nome={$nome}&empresa={$company}"
+        );
+        return $this->read;
+    }
+
+    /**
      * Lista todas as permissões disponíveis
      */
     public function getPermissoesDisponiveis(): Read

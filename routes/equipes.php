@@ -17,3 +17,4 @@ $router->post("/cargos/add/save", "CargosController:criarSalvar");
 $router->post("/cargos/edit/save", "CargosController:editarSalvar");
 $router->post("/cargos/remover", "CargosController:remover");
 $router->get("/cargos/permissoes/{id}", "CargosController:verPermissoes");
+$router->post("/cargos/sincronizar-permissoes", "CargosController:sincronizarPermissoes");

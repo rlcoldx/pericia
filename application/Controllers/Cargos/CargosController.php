@@ -4,12 +4,14 @@ namespace Agencia\Close\Controllers\Cargos;
 
 use Agencia\Close\Controllers\Controller;
 use Agencia\Close\Models\Cargos\Cargos;
+use Agencia\Close\Models\Equipe\Equipe;
 
 class CargosController extends Controller
 {	
   public function index($params)
   {
     $this->setParams($params);
+    $this->requirePermission('cargos_ver');
     
     // Busca a empresa logada
     $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
@@ -33,6 +35,7 @@ class CargosController extends Controller
   public function criar($params)
   {
     $this->setParams($params);
+    $this->requirePermission('cargos_criar');
     
     // Busca todas as permissões disponíveis
     $model = new Cargos();
@@ -49,6 +52,7 @@ class CargosController extends Controller
   public function editar($params)
   {
     $this->setParams($params);
+    $this->requirePermission('cargos_editar');
     
     $id = $params['id'] ?? null;
     $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
@@ -132,6 +136,16 @@ class CargosController extends Controller
       // Salva as permissões do cargo
       $model->salvarPermissoesCargo($cargoId, $permissoes);
       
+      // Se já existirem usuários com esse cargo (improvável, mas possível), atualiza suas permissões
+      try {
+        $equipeModel = new Equipe();
+        $equipeModel->atualizarPermissoesUsuariosPorCargo($nome, $empresa);
+      } catch (\Exception $e) {
+        // Erro silencioso na atualização de permissões dos usuários
+      } catch (\Error $e) {
+        // Erro silencioso na atualização de permissões dos usuários
+      }
+      
       $this->responseJson(['success' => true, 'message' => 'Cargo criado com sucesso']);
     } else {
       $this->responseJson(['success' => false, 'message' => 'Erro ao criar cargo']);
@@ -141,6 +155,7 @@ class CargosController extends Controller
   public function editarSalvar($params)
   {
     $this->setParams($params);
+    $this->requirePermission('cargos_editar');
     
     $id = $_POST['id'] ?? null;
     $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
@@ -177,12 +192,28 @@ class CargosController extends Controller
       'status' => $status
     ];
 
+    // Busca o cargo para pegar o nome antes de atualizar
+    $cargoAtual = $model->getCargo($id, $empresa);
+    $cargoNome = $cargoAtual->getResult()[0]['nome'] ?? null;
+    
     // Atualiza o cargo
     $result = $model->atualizarCargo($id, $data, $empresa);
     
     if ($result->getResult()) {
       // Atualiza as permissões do cargo
       $model->salvarPermissoesCargo($id, $permissoes);
+      
+      // Atualiza permissões de todos os usuários com esse cargo
+      if ($cargoNome) {
+        try {
+          $equipeModel = new Equipe();
+          $equipeModel->atualizarPermissoesUsuariosPorCargo($cargoNome, $empresa);
+        } catch (\Exception $e) {
+          // Erro silencioso na atualização de permissões dos usuários
+        } catch (\Error $e) {
+          // Erro silencioso na atualização de permissões dos usuários
+        }
+      }
       
       $this->responseJson(['success' => true, 'message' => 'Cargo atualizado com sucesso']);
     } else {
@@ -193,6 +224,7 @@ class CargosController extends Controller
   public function remover($params)
   {
     $this->setParams($params);
+    $this->requirePermission('cargos_deletar');
     
     $id = $_POST['id'] ?? null;
     $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
@@ -253,6 +285,29 @@ class CargosController extends Controller
     }
     
     $this->responseJson(['success' => true, 'permissoes' => $permissoesDetalhes]);
+  }
+
+  public function sincronizarPermissoes($params)
+  {
+    $this->setParams($params);
+    $this->requirePermission('cargos_ver');
+    
+    $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
+    
+    if (!$empresa) {
+      $this->responseJson(['success' => false, 'message' => 'Empresa não encontrada']);
+      return;
+    }
+
+    // Sincroniza permissões de todos os usuários
+    $equipeModel = new Equipe();
+    $result = $equipeModel->sincronizarPermissoesTodosUsuarios($empresa);
+    
+    if ($result) {
+      $this->responseJson(['success' => true, 'message' => 'Permissões sincronizadas com sucesso! Todos os usuários tiveram suas permissões atualizadas baseadas nos cargos.']);
+    } else {
+      $this->responseJson(['success' => false, 'message' => 'Erro ao sincronizar permissões']);
+    }
   }
 
 }

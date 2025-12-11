@@ -11,6 +11,7 @@ class EquipeController extends Controller
   public function index($params)
   {
     $this->setParams($params);
+    $this->requirePermission('equipe_ver');
     
     // Busca a empresa logada
     $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
@@ -34,6 +35,7 @@ class EquipeController extends Controller
   public function criar($params)
   {
     $this->setParams($params);
+    $this->requirePermission('equipe_criar');
     
     // Busca cargos disponíveis
     $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
@@ -84,11 +86,19 @@ class EquipeController extends Controller
 
   public function criarSalvar($params)
   {
+    // Definir header JSON no início para evitar corrupção
+    header('Content-Type: application/json; charset=utf-8');
+    
     $this->setParams($params);
+    $this->requirePermission('equipe_criar');
     
     $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
     
     if (!$empresa) {
+      // Limpar qualquer output buffer antes de enviar JSON
+      if (ob_get_level() > 0) {
+        ob_clean();
+      }
       $this->responseJson(['success' => false, 'message' => 'Empresa não encontrada']);
       return;
     }
@@ -101,6 +111,10 @@ class EquipeController extends Controller
     $senha = $_POST['senha'] ?? '';
 
     if (empty($nome) || empty($email) || empty($senha)) {
+      // Limpar qualquer output buffer antes de enviar JSON
+      if (ob_get_level() > 0) {
+        ob_clean();
+      }
       $this->responseJson(['success' => false, 'message' => 'Preencha todos os campos obrigatórios']);
       return;
     }
@@ -110,6 +124,10 @@ class EquipeController extends Controller
     $emailExistente = $model->emailExiste($email, $empresa);
     
     if ($emailExistente->getResult()) {
+      // Limpar qualquer output buffer antes de enviar JSON
+      if (ob_get_level() > 0) {
+        ob_clean();
+      }
       $this->responseJson(['success' => false, 'message' => 'Este email já está em uso']);
       return;
     }
@@ -129,21 +147,52 @@ class EquipeController extends Controller
     // Cria o membro da equipe
     $result = $model->criarMembroEquipe($data);
     
-    if ($result->getResult()) {
-      $this->responseJson(['success' => true, 'message' => 'Membro da equipe criado com sucesso']);
-    } else {
+    if (!$result->getResult()) {
+      // Limpar qualquer output buffer antes de enviar JSON
+      if (ob_get_level() > 0) {
+        ob_clean();
+      }
       $this->responseJson(['success' => false, 'message' => 'Erro ao criar membro da equipe']);
+      return;
     }
+
+    $usuarioId = (int) $result->getResult();
+    
+    // Copia permissões do cargo para o usuário (não bloqueia o cadastro se falhar)
+    try {
+      if (!empty($cargo)) {
+        $model->copiarPermissoesDoCargo($usuarioId, $cargo, $empresa);
+      }
+    } catch (\Exception $e) {
+      // Erro silencioso na cópia de permissões
+    } catch (\Error $e) {
+      // Erro silencioso na cópia de permissões
+    }
+    
+    // Limpar qualquer output buffer antes de enviar JSON
+    if (ob_get_level() > 0) {
+      ob_clean();
+    }
+    
+    $this->responseJson(['success' => true, 'message' => 'Membro da equipe criado com sucesso']);
   }
 
   public function editarSalvar($params)
   {
+    // Definir header JSON no início para evitar corrupção
+    header('Content-Type: application/json; charset=utf-8');
+    
     $this->setParams($params);
+    $this->requirePermission('equipe_editar');
     
     $id = $_POST['id'] ?? null;
     $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
     
     if (!$id || !$empresa) {
+      // Limpar qualquer output buffer antes de enviar JSON
+      if (ob_get_level() > 0) {
+        ob_clean();
+      }
       $this->responseJson(['success' => false, 'message' => 'Dados inválidos']);
       return;
     }
@@ -156,6 +205,10 @@ class EquipeController extends Controller
     $senha = $_POST['senha'] ?? '';
 
     if (empty($nome) || empty($email)) {
+      // Limpar qualquer output buffer antes de enviar JSON
+      if (ob_get_level() > 0) {
+        ob_clean();
+      }
       $this->responseJson(['success' => false, 'message' => 'Preencha todos os campos obrigatórios']);
       return;
     }
@@ -165,6 +218,10 @@ class EquipeController extends Controller
     $emailExistente = $model->emailExiste($email, $empresa, $id);
     
     if ($emailExistente->getResult()) {
+      // Limpar qualquer output buffer antes de enviar JSON
+      if (ob_get_level() > 0) {
+        ob_clean();
+      }
       $this->responseJson(['success' => false, 'message' => 'Este email já está em uso']);
       return;
     }
@@ -182,19 +239,45 @@ class EquipeController extends Controller
       $data['senha'] = sha1($senha);
     }
 
+    // Busca o cargo anterior para verificar se mudou
+    $membroAtual = $model->getMembroEquipe($id, $empresa);
+    $cargoAnterior = $membroAtual->getResult()[0]['cargo'] ?? null;
+    
     // Atualiza o membro da equipe
     $result = $model->atualizarMembroEquipe($id, $data, $empresa);
     
-    if ($result->getResult()) {
-      $this->responseJson(['success' => true, 'message' => 'Membro da equipe atualizado com sucesso']);
-    } else {
+    if (!$result->getResult()) {
+      // Limpar qualquer output buffer antes de enviar JSON
+      if (ob_get_level() > 0) {
+        ob_clean();
+      }
       $this->responseJson(['success' => false, 'message' => 'Erro ao atualizar membro da equipe']);
+      return;
     }
+
+    // Se o cargo mudou, atualiza as permissões (não bloqueia a atualização se falhar)
+    try {
+      if ($cargo !== $cargoAnterior) {
+        $model->copiarPermissoesDoCargo((int) $id, $cargo, $empresa);
+      }
+    } catch (\Exception $e) {
+      // Erro silencioso na cópia de permissões
+    } catch (\Error $e) {
+      // Erro silencioso na cópia de permissões
+    }
+    
+    // Limpar qualquer output buffer antes de enviar JSON
+    if (ob_get_level() > 0) {
+      ob_clean();
+    }
+    
+    $this->responseJson(['success' => true, 'message' => 'Membro da equipe atualizado com sucesso']);
   }
 
   public function remover($params)
   {
     $this->setParams($params);
+    $this->requirePermission('equipe_deletar');
     
     $id = $_POST['id'] ?? null;
     $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;

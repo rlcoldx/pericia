@@ -17,6 +17,8 @@ class EmailTemplateController extends Controller
 
     public function index()
     {
+        $this->requirePermission('email_template_ver');
+        
         $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
 
         if (!$empresa) {
@@ -35,6 +37,8 @@ class EmailTemplateController extends Controller
 
     public function criar()
     {
+        $this->requirePermission('email_template_criar');
+        
         $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
 
         if (!$empresa) {
@@ -55,6 +59,8 @@ class EmailTemplateController extends Controller
 
     public function salvarCriar()
     {
+        $this->requirePermission('email_template_criar');
+        
         $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
 
         if (!$empresa) {
@@ -92,6 +98,8 @@ class EmailTemplateController extends Controller
     public function editar($params)
     {
         $this->setParams($params);
+        $this->requirePermission('email_template_editar');
+        
         $id = $params['id'] ?? null;
         $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
 
@@ -122,6 +130,8 @@ class EmailTemplateController extends Controller
     public function salvarEditar($params)
     {
         $this->setParams($params);
+        $this->requirePermission('email_template_editar');
+        
         $id = $params['id'] ?? null;
         $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
 
@@ -157,6 +167,8 @@ class EmailTemplateController extends Controller
     public function remover($params)
     {
         $this->setParams($params);
+        $this->requirePermission('email_template_deletar');
+        
         $id = $params['id'] ?? null;
         $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
 
