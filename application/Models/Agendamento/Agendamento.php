@@ -158,20 +158,20 @@ class Agendamento extends Model
 
         // Mapeamento de colunas do DataTable para colunas do banco
         $columnMap = [
-            0 => 'cliente_nome',
-            1 => 'data_agendamento',
-            2 => 'perito_id',
-            3 => 'tipo_pericia',
-            4 => 'status',
-            5 => 'local_pericia'
+            0 => 'a.cliente_nome',
+            1 => 'a.data_agendamento',
+            2 => 'a.perito_id',
+            3 => 'a.tipo_pericia',
+            4 => 'a.status',
+            5 => 'a.local_pericia'
         ];
 
-        $orderBy = 'data_agendamento DESC, hora_agendamento DESC';
+        $orderBy = 'a.data_agendamento DESC, a.hora_agendamento DESC';
         if (isset($columnMap[$orderColumn])) {
             $orderBy = $columnMap[$orderColumn] . ' ' . $orderDir;
         }
 
-        // Monta WHERE base
+        // Monta WHERE base (sem alias para contagens)
         $where = "WHERE empresa = :empresa";
         $whereParams = "empresa={$company}";
 
@@ -193,7 +193,7 @@ class Agendamento extends Model
             $whereParams .= "&perito_id={$filtros['perito_id']}";
         }
 
-        // Busca global
+        // Busca global (sem alias para contagens)
         $searchWhere = $where;
         $searchParams = $whereParams;
         if (!empty($search)) {
@@ -217,11 +217,52 @@ class Agendamento extends Model
         $this->read->ExeRead("agendamentos", $searchWhere, $searchParams);
         $filteredRecords = $this->read->getRowCount();
 
-        // Busca dados paginados
+        // Monta WHERE com alias para a query com JOIN
+        $whereWithAlias = "WHERE a.empresa = :empresa";
+        $whereParamsWithAlias = "empresa={$company}";
+
+        // Aplica filtros adicionais com alias
+        if (!empty($filtros['status'])) {
+            $whereWithAlias .= " AND a.status = :status";
+            $whereParamsWithAlias .= "&status={$filtros['status']}";
+        }
+        if (!empty($filtros['data_inicio'])) {
+            $whereWithAlias .= " AND a.data_agendamento >= :data_inicio";
+            $whereParamsWithAlias .= "&data_inicio={$filtros['data_inicio']}";
+        }
+        if (!empty($filtros['data_fim'])) {
+            $whereWithAlias .= " AND a.data_agendamento <= :data_fim";
+            $whereParamsWithAlias .= "&data_fim={$filtros['data_fim']}";
+        }
+        if (!empty($filtros['perito_id'])) {
+            $whereWithAlias .= " AND a.perito_id = :perito_id";
+            $whereParamsWithAlias .= "&perito_id={$filtros['perito_id']}";
+        }
+
+        // Busca global com alias
+        $searchWhereWithAlias = $whereWithAlias;
+        $searchParamsWithAlias = $whereParamsWithAlias;
+        if (!empty($search)) {
+            $searchWhereWithAlias .= " AND (
+                a.cliente_nome LIKE :search OR 
+                a.cliente_email LIKE :search OR 
+                a.cliente_cpf LIKE :search OR 
+                a.tipo_pericia LIKE :search OR 
+                a.local_pericia LIKE :search
+            )";
+            $searchParamsWithAlias .= "&search=%{$search}%";
+        }
+
+        // Busca dados paginados com JOIN para pegar nome do perito
         $this->read = new Read();
-        $limitClause = "LIMIT :limit OFFSET :offset";
-        $finalParams = $searchParams . "&limit={$length}&offset={$start}";
-        $this->read->ExeRead("agendamentos", $searchWhere . " ORDER BY " . $orderBy . " " . $limitClause, $finalParams);
+        $query = "SELECT a.*, p.nome as perito_nome 
+                  FROM agendamentos a 
+                  LEFT JOIN peritos p ON a.perito_id = p.id AND a.empresa = p.empresa 
+                  {$searchWhereWithAlias} 
+                  ORDER BY {$orderBy} 
+                  LIMIT :limit OFFSET :offset";
+        $finalParams = $searchParamsWithAlias . "&limit={$length}&offset={$start}";
+        $this->read->FullRead($query, $finalParams);
         
         return [
             'data' => $this->read->getResult() ?? [],

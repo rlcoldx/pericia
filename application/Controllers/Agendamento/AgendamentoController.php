@@ -299,42 +299,65 @@ class AgendamentoController extends Controller
       $status = 'Pendente';
     }
 
+    // Valida e normaliza status_parecer para o enum
+    $statusParecer = $_POST['parecer_status_parecer'] ?? null;
+    if ($statusParecer) {
+      $statusParecerValidos = ['OK', 'FAVORAVEL', 'DESFAVORAVEL', 'PARCIAL FAVORAVEL', 'NR (NÃO REALIZADO)'];
+      $statusParecerUpper = mb_strtoupper($statusParecer, 'UTF-8');
+      if (!in_array($statusParecerUpper, $statusParecerValidos, true)) {
+        // Se não estiver no enum válido, tenta mapear
+        $statusParecer = null;
+      } else {
+        $statusParecer = $statusParecerUpper;
+      }
+    }
+
+    // Função auxiliar para normalizar campos de data (converte string vazia para null)
+    $normalizeDate = function($value) {
+      return (!empty($value) && trim($value) !== '') ? $value : null;
+    };
+
+    // Função auxiliar para normalizar campos de texto (converte string vazia para null)
+    $normalizeText = function($value) {
+      return (!empty($value) && trim($value) !== '') ? $value : null;
+    };
+
     $data = [
       'empresa' => $empresa,
-      'data_entrada' => !empty($_POST['data_entrada']) ? $_POST['data_entrada'] : null,
+      'data_entrada' => $normalizeDate($_POST['data_entrada'] ?? null),
       'cliente_nome' => $clienteNome,
-      'cliente_email' => $_POST['cliente_email'] ?? null,
-      'cliente_telefone' => $_POST['cliente_telefone'] ?? null,
-      'cliente_cpf' => $_POST['cliente_cpf'] ?? $_POST['cliente_documento'] ?? null,
-      'numero_processo' => $_POST['numero_processo'] ?? null,
-      'vara' => $_POST['vara'] ?? null,
-      'reclamante_nome' => $_POST['reclamante_nome'] ?? null,
+      'cliente_email' => $normalizeText($_POST['cliente_email'] ?? null),
+      'cliente_telefone' => $normalizeText($_POST['cliente_telefone'] ?? null),
+      'cliente_cpf' => $normalizeText($_POST['cliente_cpf'] ?? $_POST['cliente_documento'] ?? null),
+      'numero_processo' => $normalizeText($_POST['numero_processo'] ?? null),
+      'vara' => $normalizeText($_POST['vara'] ?? null),
+      'reclamante_nome' => $normalizeText($_POST['reclamante_nome'] ?? null),
       'valor_pericia_cobrado' => !empty($_POST['valor_pericia_cobrado']) ? $this->parseCurrency($_POST['valor_pericia_cobrado']) : null,
-      'tipo_pericia' => $_POST['tipo_pericia'] ?? null,
-      'numero_tipo_pericia' => $_POST['numero_tipo_pericia'] ?? null,
+      'tipo_pericia' => $normalizeText($_POST['tipo_pericia'] ?? null),
+      'numero_tipo_pericia' => $normalizeText($_POST['numero_tipo_pericia'] ?? null),
       'data_agendamento' => $dataAgendamento,
       'hora_agendamento' => $horaAgendamento,
       'perito_id' => $peritoId ?: null,
-      'assistente_nome' => $_POST['assistente_nome'] ?? null,
+      'assistente_nome' => $normalizeText($_POST['assistente_nome'] ?? null),
       'assistente_id' => !empty($_POST['assistente_id']) ? (int) $_POST['assistente_id'] : null,
       'valor_pago_assistente' => !empty($_POST['valor_pago_assistente']) ? $this->parseCurrency($_POST['valor_pago_assistente']) : null,
-      'local_pericia' => $_POST['local_pericia'] ?? null,
+      'local_pericia' => $normalizeText($_POST['local_pericia'] ?? null),
       'status' => $status,
-      'observacoes' => $_POST['observacoes'] ?? null,
+      'observacoes' => $normalizeText($_POST['observacoes'] ?? null),
       // MARCELO
-      'data_realizada' => $_POST['parecer_data_realizacao'] ?? null,
-      'data_fatal' => $_POST['parecer_data_fatal'] ?? null,
-      'data_entrega_parecer' => $_POST['parecer_data_entrega_parecer'] ?? null,
-      'status_parecer' => $_POST['parecer_status_parecer'] ?? null,
-      'obs_parecer' => $_POST['parecer_observacoes'] ?? null,
+      'data_realizada' => $normalizeDate($_POST['parecer_data_realizacao'] ?? null),
+      'data_fatal' => $normalizeDate($_POST['parecer_data_fatal'] ?? null),
+      'data_entrega_parecer' => $normalizeDate($_POST['parecer_data_entrega_parecer'] ?? null),
+      'status_parecer' => $statusParecer,
+      'obs_parecer' => $normalizeText($_POST['parecer_observacoes'] ?? null),
       // MAURO
-      'data_pagamento_assistente' => $_POST['data_pagamento_assistente'] ?? null,
-      'numero_pedido_cliente' => $_POST['numero_pedido_cliente'] ?? null,
-      'numero_nota_fiscal' => $_POST['numero_nota_fiscal'] ?? null,
-      'numero_boleto' => $_POST['numero_boleto'] ?? null,
-      'data_envio_financeiro' => $_POST['data_envio_financeiro'] ?? null,
-      'data_vencimento_financeiro' => $_POST['data_vencimento_financeiro'] ?? null,
-      'status_pagamento' => $_POST['status_pagamento'] ?? null
+      'data_pagamento_assistente' => $normalizeDate($_POST['data_pagamento_assistente'] ?? null),
+      'numero_pedido_cliente' => $normalizeText($_POST['numero_pedido_cliente'] ?? null),
+      'numero_nota_fiscal' => $normalizeText($_POST['numero_nota_fiscal'] ?? null),
+      'numero_boleto' => $normalizeText($_POST['numero_boleto'] ?? null),
+      'data_envio_financeiro' => $normalizeDate($_POST['data_envio_financeiro'] ?? null),
+      'data_vencimento_financeiro' => $normalizeDate($_POST['data_vencimento_financeiro'] ?? null),
+      'status_pagamento' => $normalizeText($_POST['status_pagamento'] ?? null)
     ];
 
     // Cria o agendamento
@@ -441,43 +464,64 @@ class AgendamentoController extends Controller
     }
 
     // Prepara dados para atualização - Todos os campos
-    // Converte strings vazias para null
+    // Função auxiliar para normalizar campos de data (converte string vazia para null)
+    $normalizeDate = function($value) {
+      return (!empty($value) && trim($value) !== '') ? $value : null;
+    };
+
+    // Função auxiliar para normalizar campos de texto (converte string vazia para null)
+    $normalizeText = function($value) {
+      return (!empty($value) && trim($value) !== '') ? $value : null;
+    };
+
+    // Valida e normaliza status_parecer para o enum
+    $statusParecer = $_POST['parecer_status_parecer'] ?? null;
+    if ($statusParecer) {
+      $statusParecerValidos = ['OK', 'FAVORAVEL', 'DESFAVORAVEL', 'PARCIAL FAVORAVEL', 'NR (NÃO REALIZADO)'];
+      $statusParecerUpper = mb_strtoupper($statusParecer, 'UTF-8');
+      if (!in_array($statusParecerUpper, $statusParecerValidos, true)) {
+        $statusParecer = null;
+      } else {
+        $statusParecer = $statusParecerUpper;
+      }
+    }
+
     $data = [
       // CLOVIS
-      'data_entrada' => !empty($_POST['data_entrada']) ? $_POST['data_entrada'] : null,
+      'data_entrada' => $normalizeDate($_POST['data_entrada'] ?? null),
       'cliente_nome' => $clienteNome,
-      'cliente_email' => isset($_POST['cliente_email']) && $_POST['cliente_email'] !== '' ? $_POST['cliente_email'] : null,
-      'cliente_telefone' => isset($_POST['cliente_telefone']) && $_POST['cliente_telefone'] !== '' ? $_POST['cliente_telefone'] : null,
-      'cliente_cpf' => isset($_POST['cliente_cpf']) && $_POST['cliente_cpf'] !== '' ? $_POST['cliente_cpf'] : (isset($_POST['cliente_documento']) && $_POST['cliente_documento'] !== '' ? $_POST['cliente_documento'] : null),
-      'numero_processo' => isset($_POST['numero_processo']) && $_POST['numero_processo'] !== '' ? $_POST['numero_processo'] : null,
-      'vara' => isset($_POST['vara']) && $_POST['vara'] !== '' ? $_POST['vara'] : null,
-      'reclamante_nome' => isset($_POST['reclamante_nome']) && $_POST['reclamante_nome'] !== '' ? $_POST['reclamante_nome'] : null,
-      'valor_pericia_cobrado' => isset($_POST['valor_pericia_cobrado']) && $_POST['valor_pericia_cobrado'] !== '' ? $this->parseCurrency($_POST['valor_pericia_cobrado']) : null,
-      'tipo_pericia' => isset($_POST['tipo_pericia']) && $_POST['tipo_pericia'] !== '' ? $_POST['tipo_pericia'] : null,
-      'numero_tipo_pericia' => isset($_POST['numero_tipo_pericia']) && $_POST['numero_tipo_pericia'] !== '' ? $_POST['numero_tipo_pericia'] : null,
+      'cliente_email' => $normalizeText($_POST['cliente_email'] ?? null),
+      'cliente_telefone' => $normalizeText($_POST['cliente_telefone'] ?? null),
+      'cliente_cpf' => $normalizeText($_POST['cliente_cpf'] ?? $_POST['cliente_documento'] ?? null),
+      'numero_processo' => $normalizeText($_POST['numero_processo'] ?? null),
+      'vara' => $normalizeText($_POST['vara'] ?? null),
+      'reclamante_nome' => $normalizeText($_POST['reclamante_nome'] ?? null),
+      'valor_pericia_cobrado' => !empty($_POST['valor_pericia_cobrado']) ? $this->parseCurrency($_POST['valor_pericia_cobrado']) : null,
+      'tipo_pericia' => $normalizeText($_POST['tipo_pericia'] ?? null),
+      'numero_tipo_pericia' => $normalizeText($_POST['numero_tipo_pericia'] ?? null),
       'data_agendamento' => $dataAgendamento,
       'hora_agendamento' => $horaAgendamento,
       'perito_id' => !empty($peritoId) ? $peritoId : null,
-      'assistente_nome' => isset($_POST['assistente_nome']) && $_POST['assistente_nome'] !== '' ? $_POST['assistente_nome'] : null,
+      'assistente_nome' => $normalizeText($_POST['assistente_nome'] ?? null),
       'assistente_id' => !empty($_POST['assistente_id']) ? (int) $_POST['assistente_id'] : null,
-      'valor_pago_assistente' => isset($_POST['valor_pago_assistente']) && $_POST['valor_pago_assistente'] !== '' ? $this->parseCurrency($_POST['valor_pago_assistente']) : null,
-      'local_pericia' => isset($_POST['local_pericia']) && $_POST['local_pericia'] !== '' ? $_POST['local_pericia'] : null,
+      'valor_pago_assistente' => !empty($_POST['valor_pago_assistente']) ? $this->parseCurrency($_POST['valor_pago_assistente']) : null,
+      'local_pericia' => $normalizeText($_POST['local_pericia'] ?? null),
       'status' => isset($_POST['status']) && $_POST['status'] !== '' ? $_POST['status'] : null,
-      'observacoes' => isset($_POST['observacoes']) && $_POST['observacoes'] !== '' ? $_POST['observacoes'] : null,
+      'observacoes' => $normalizeText($_POST['observacoes'] ?? null),
       // MARCELO
-      'data_realizada' => isset($_POST['parecer_data_realizacao']) && $_POST['parecer_data_realizacao'] !== '' ? $_POST['parecer_data_realizacao'] : null,
-      'data_fatal' => isset($_POST['parecer_data_fatal']) && $_POST['parecer_data_fatal'] !== '' ? $_POST['parecer_data_fatal'] : null,
-      'data_entrega_parecer' => isset($_POST['parecer_data_entrega_parecer']) && $_POST['parecer_data_entrega_parecer'] !== '' ? $_POST['parecer_data_entrega_parecer'] : null,
-      'status_parecer' => isset($_POST['parecer_status_parecer']) && $_POST['parecer_status_parecer'] !== '' ? $_POST['parecer_status_parecer'] : null,
-      'obs_parecer' => isset($_POST['parecer_observacoes']) && $_POST['parecer_observacoes'] !== '' ? $_POST['parecer_observacoes'] : null,
+      'data_realizada' => $normalizeDate($_POST['parecer_data_realizacao'] ?? null),
+      'data_fatal' => $normalizeDate($_POST['parecer_data_fatal'] ?? null),
+      'data_entrega_parecer' => $normalizeDate($_POST['parecer_data_entrega_parecer'] ?? null),
+      'status_parecer' => $statusParecer,
+      'obs_parecer' => $normalizeText($_POST['parecer_observacoes'] ?? null),
       // MAURO
-      'data_pagamento_assistente' => isset($_POST['data_pagamento_assistente']) && $_POST['data_pagamento_assistente'] !== '' ? $_POST['data_pagamento_assistente'] : null,
-      'numero_pedido_cliente' => isset($_POST['numero_pedido_cliente']) && $_POST['numero_pedido_cliente'] !== '' ? $_POST['numero_pedido_cliente'] : null,
-      'numero_nota_fiscal' => isset($_POST['numero_nota_fiscal']) && $_POST['numero_nota_fiscal'] !== '' ? $_POST['numero_nota_fiscal'] : null,
-      'numero_boleto' => isset($_POST['numero_boleto']) && $_POST['numero_boleto'] !== '' ? $_POST['numero_boleto'] : null,
-      'data_envio_financeiro' => isset($_POST['data_envio_financeiro']) && $_POST['data_envio_financeiro'] !== '' ? $_POST['data_envio_financeiro'] : null,
-      'data_vencimento_financeiro' => isset($_POST['data_vencimento_financeiro']) && $_POST['data_vencimento_financeiro'] !== '' ? $_POST['data_vencimento_financeiro'] : null,
-      'status_pagamento' => isset($_POST['status_pagamento']) && $_POST['status_pagamento'] !== '' ? $_POST['status_pagamento'] : null
+      'data_pagamento_assistente' => $normalizeDate($_POST['data_pagamento_assistente'] ?? null),
+      'numero_pedido_cliente' => $normalizeText($_POST['numero_pedido_cliente'] ?? null),
+      'numero_nota_fiscal' => $normalizeText($_POST['numero_nota_fiscal'] ?? null),
+      'numero_boleto' => $normalizeText($_POST['numero_boleto'] ?? null),
+      'data_envio_financeiro' => $normalizeDate($_POST['data_envio_financeiro'] ?? null),
+      'data_vencimento_financeiro' => $normalizeDate($_POST['data_vencimento_financeiro'] ?? null),
+      'status_pagamento' => $normalizeText($_POST['status_pagamento'] ?? null)
     ];
 
     // Atualiza o agendamento
@@ -724,8 +768,8 @@ class AgendamentoController extends Controller
    */
   private function formatPeritoCell($agendamento): string
   {
-    if (!empty($agendamento['perito_id'])) {
-      return '<span class="badge bg-info">Perito #' . $agendamento['perito_id'] . '</span>';
+    if (!empty($agendamento['perito_nome'])) {
+      return '<span class="badge bg-info">' . htmlspecialchars($agendamento['perito_nome']) . '</span>';
     }
     return '<span class="opacity-50">Não definido</span>';
   }

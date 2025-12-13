@@ -219,45 +219,63 @@
                                 </div>
                                 {% endif %}
                                 
-                                {% if 'agendamento_primeiro_passo_numero_tipo'|verifyPermission %}
-                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
-                                    <label class="form-label">N° (Tipo)</label>
-                                    <input type="text" 
-                                           class="form-control" 
-                                           name="numero_tipo_pericia" 
-                                           value="{{ action == 'editar' ? agendamento.numero_tipo_pericia : '' }}"
-                                           placeholder="Número do tipo">
-                                </div>
-                                {% endif %}
-                                
-                                {% if 'agendamento_primeiro_passo_assistente'|verifyPermission %}
-                                <div class="col-12 col-lg-6 col-xl-6 mb-3">
-                                    <label class="form-label">Assistente (Prestador de Serviço Técnico/Médico)</label>
-                                    <select class="form-control" name="assistente_id" id="assistente_id">
-                                        <option value="">Selecione o Assistente</option>
-                                        {% for assistente in assistentes %}
-                                        <option value="{{ assistente.id }}" {{ action == 'editar' and agendamento.assistente_id == assistente.id ? 'selected' : '' }}>
-                                            {{ assistente.nome }}
-                                        </option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                                {% endif %}
-                                
-                                {% if 'agendamento_primeiro_passo_valor_pago_assistente'|verifyPermission %}
-                                <div class="col-12 col-lg-6 col-xl-6 mb-3">
-                                    <label class="form-label">Valor a Ser Pago ao Assistente</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text">R$</span>
-                                        <input type="text" 
-                                               class="form-control" 
-                                               name="valor_pago_assistente" 
-                                               value="{{ action == 'editar' ? agendamento.valor_pago_assistente|number_format(2, ',', '.') : '' }}"
-                                               placeholder="0,00"
-                                               class="money">
+                                <div class="row">
+                                    <div class="col-12 col-lg-6 col-xl-6 mb-3">
+                                        <div class="row">
+                                            {% if 'agendamento_primeiro_passo_numero_tipo'|verifyPermission %}
+                                            <div class="col-12 col-lg-4 col-xl-4 mb-3">
+                                                <label class="form-label">N° (Tipo)</label>
+                                                <input type="text" 
+                                                    class="form-control" 
+                                                    name="numero_tipo_pericia" 
+                                                    value="{{ action == 'editar' ? agendamento.numero_tipo_pericia : '' }}"
+                                                    placeholder="Número do tipo">
+                                            </div>
+                                            {% endif %}
+                                            
+                                            {% if 'agendamento_primeiro_passo_assistente'|verifyPermission %}
+                                            <div class="col-12 col-lg-8 col-xl-8 mb-3">
+                                                <label class="form-label">Assistente (Prestador de Serviço Técnico/Médico)</label>
+                                                <select class="form-control" name="assistente_id" id="assistente_id">
+                                                    <option value="">Selecione o Assistente</option>
+                                                    {% for assistente in assistentes %}
+                                                    <option value="{{ assistente.id }}" {{ action == 'editar' and agendamento.assistente_id == assistente.id ? 'selected' : '' }}>
+                                                        {{ assistente.nome }}
+                                                    </option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                        
+                                        {% if 'agendamento_primeiro_passo_valor_pago_assistente'|verifyPermission %}
+                                        <div class="col-12 col-lg-12 col-xl-12 mb-3">
+                                            <label class="form-label">Valor a Ser Pago ao Assistente</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">R$</span>
+                                                <input type="text" 
+                                                    class="form-control" 
+                                                    name="valor_pago_assistente" 
+                                                    value="{{ action == 'editar' ? agendamento.valor_pago_assistente|number_format(2, ',', '.') : '' }}"
+                                                    placeholder="0,00"
+                                                    class="money">
+                                            </div>
+                                        </div>
+                                        {% endif %}
                                     </div>
-                                </div>
-                                {% endif %}
+
+                                    <div class="col-12 col-lg-6 col-xl-6 mb-3">
+                                        <div class="">
+                                            <label class="form-label">Observações Gerais</label>
+                                            <textarea class="form-control" 
+                                                    name="observacoes" 
+                                                    rows="4"
+                                                    placeholder="Informações adicionais sobre o agendamento...">{{ action == 'editar' ? agendamento.observacoes : '' }}</textarea>
+                                        </div>
+                                    </div>
+
+                                </div>                               
+
                             </div>
                         </div>
                     </div>
@@ -470,25 +488,7 @@
                             </div>
                         </div>
                     </div>
-                    {% endif %}
-                    
-                    <!-- OBSERVAÇÕES GERAIS -->
-                    <div class="card mb-3">
-                        <div class="card-header">
-                            <h4 class="card-title mb-0"><i class="fa fa-comments me-2"></i>Observações Gerais</h4>
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-12 mb-3">
-                                    <label class="form-label">Observações</label>
-                                    <textarea class="form-control" 
-                                              name="observacoes" 
-                                              rows="4"
-                                              placeholder="Informações adicionais sobre o agendamento...">{{ action == 'editar' ? agendamento.observacoes : '' }}</textarea>
-                                </div>
-                            </div>
-                        </div>
-                    </div>                    
+                    {% endif %}                                    
 
                     <div class="card mb-3">
                         <div class="card-header">
