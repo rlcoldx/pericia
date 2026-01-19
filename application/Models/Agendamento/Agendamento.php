@@ -114,8 +114,8 @@ class Agendamento extends Model
     public function verificarConflitoHorario($peritoId, $dataAgendamento, $horaAgendamento, $excludeId = null): Read
     {
         $this->read = new Read();
-        // Considera conflito apenas para agendamentos ainda ativos (Pendente ou Agendado)
-        $where = "WHERE perito_id = :perito_id AND data_agendamento = :data_agendamento AND hora_agendamento = :hora_agendamento AND status IN ('Pendente', 'Agendado')";
+        // Considera conflito apenas para agendamentos ainda ativos (Agendado ou Perícia Realizada)
+        $where = "WHERE perito_id = :perito_id AND data_agendamento = :data_agendamento AND hora_agendamento = :hora_agendamento AND status IN ('Agendado', 'Perícia Realizada')";
         $params = "perito_id={$peritoId}&data_agendamento={$dataAgendamento}&hora_agendamento={$horaAgendamento}";
         
         if ($excludeId) {
@@ -355,12 +355,10 @@ class Agendamento extends Model
     private function getCorPorStatus(string $status): string
     {
         $cores = [
-            'Pendente' => '#8b6914',    // Amarelo escuro
-            'Agendado' => '#0a4d8a',    // Azul escuro
-            'Realizado' => '#0f5132',    // Verde escuro
-            'Cancelado' => '#842029',    // Vermelho escuro
-            'Aprovado' => '#146c43',     // Verde água escuro
-            'Rejeitado' => '#495057'     // Cinza escuro
+            'Agendado' => '#0a4d8a',              // Azul escuro
+            'Perícia Realizada' => '#0f5132',      // Verde escuro
+            'Não Realizada' => '#842029',          // Vermelho escuro
+            'Parecer para Revisar' => '#8b6914'   // Amarelo escuro
         ];
 
         return $cores[$status] ?? '#495057';

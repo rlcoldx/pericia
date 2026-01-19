@@ -80,14 +80,33 @@ class Tarefa extends Model
             $tarefaRead = $this->getPorModuloRegistro($modulo, $registroId, $empresa);
             $tarefaExistente = $tarefaRead->getResult()[0] ?? null;
 
+            // Determinar se está concluído (pode vir como true, 1, '1', ou 'on')
+            $concluido = false;
+            if (isset($dados['concluido'])) {
+                $concluido = ($dados['concluido'] === true || 
+                             $dados['concluido'] === 1 || 
+                             $dados['concluido'] === '1' || 
+                             $dados['concluido'] === 'on');
+            }
+            
+            // Se está marcando como concluído e não tem usuário responsável definido, manter o atual ou usar o logado
+            $usuarioResponsavelId = null;
+            if (!empty($dados['usuario_responsavel_id'])) {
+                $usuarioResponsavelId = (int) $dados['usuario_responsavel_id'];
+            } elseif ($tarefaExistente && !empty($tarefaExistente['usuario_responsavel_id'])) {
+                // Manter o responsável atual se não foi alterado
+                $usuarioResponsavelId = (int) $tarefaExistente['usuario_responsavel_id'];
+            }
+
             $dadosTarefa = [
                 'empresa' => $empresa,
                 'modulo' => $modulo,
                 'registro_id' => $registroId,
-                'concluido' => isset($dados['concluido']) && $dados['concluido'] ? 1 : 0,
-                'usuario_responsavel_id' => !empty($dados['usuario_responsavel_id']) ? (int) $dados['usuario_responsavel_id'] : null,
+                'concluido' => $concluido ? 1 : 0,
+                'usuario_responsavel_id' => $usuarioResponsavelId,
                 'data_conclusao' => !empty($dados['data_conclusao']) ? $dados['data_conclusao'] : null,
-                'usuario_concluiu_id' => isset($dados['concluido']) && $dados['concluido'] ? ($_SESSION['pericia_perfil_id'] ?? null) : null,
+                'tarefa_texto' => !empty($dados['tarefa_texto']) ? trim($dados['tarefa_texto']) : null,
+                'usuario_concluiu_id' => $concluido ? ($_SESSION['pericia_perfil_id'] ?? null) : null,
             ];
 
             if ($tarefaExistente) {
@@ -175,7 +194,11 @@ class Tarefa extends Model
                             WHEN t.modulo = 'agendamento' THEN (SELECT a.cliente_nome FROM agendamentos a WHERE a.id = t.registro_id AND a.empresa = t.empresa LIMIT 1)
                         END,
                         'Sem Reclamada'
-                    ) as reclamada
+                    ) as reclamada,
+                    CASE 
+                        WHEN t.modulo = 'manifestacao' THEN (SELECT m.favoravel FROM manifestacoes_impugnacoes m WHERE m.id = t.registro_id AND m.empresa = t.empresa LIMIT 1)
+                        ELSE NULL
+                    END as favoravel
                 FROM tarefas t
                 {$where}{$searchWhere}
                 ORDER BY t.data_create DESC

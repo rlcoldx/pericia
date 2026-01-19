@@ -292,11 +292,11 @@ class AgendamentoController extends Controller
     }
 
     // Prepara dados para inserção - CLOVIS
-    // Status pode ser definido no cadastro; se não vier, assume "Pendente"
-    $status = $_POST['status'] ?? 'Pendente';
-    $statusValidos = ['Pendente', 'Agendado', 'Realizado', 'Cancelado'];
+    // Status pode ser definido no cadastro; se não vier, assume "Agendado"
+    $status = $_POST['status'] ?? 'Agendado';
+    $statusValidos = ['Agendado', 'Perícia Realizada', 'Não Realizada', 'Parecer para Revisar'];
     if (!in_array($status, $statusValidos, true)) {
-      $status = 'Pendente';
+      $status = 'Agendado';
     }
 
     // Valida e normaliza status_parecer para o enum
@@ -380,17 +380,32 @@ class AgendamentoController extends Controller
 
     // Salvar tarefa se fornecida (não bloqueia o cadastro se falhar)
     try {
-      $temDadosTarefa = isset($_POST['tarefa_concluido']) || !empty($_POST['tarefa_usuario_responsavel_id']) || !empty($_POST['tarefa_data_conclusao']);
+      // Verificar se o checkbox está marcado (pode vir como 'on' ou '1')
+      $tarefaConcluido = isset($_POST['tarefa_concluido']) && 
+                       ($_POST['tarefa_concluido'] == '1' || $_POST['tarefa_concluido'] == 'on');
+      
+      // Sempre salvar tarefa se houver qualquer dado relacionado, incluindo apenas o checkbox
+      $temDadosTarefa = $tarefaConcluido || !empty($_POST['tarefa_usuario_responsavel_id']) || !empty($_POST['tarefa_data_conclusao']) || !empty($_POST['tarefa_texto']);
       
       if ($temDadosTarefa) {
         $tarefaModel = new Tarefa();
         $moduloTarefa = $parecerId ? 'parecer' : 'agendamento';
         $registroTarefa = $parecerId ?: $idAgendamento;
 
+        // Se o checkbox está marcado, garantir que o usuário responsável seja o usuário logado se não foi definido outro
+        $usuarioResponsavelId = null;
+        if (!empty($_POST['tarefa_usuario_responsavel_id'])) {
+          $usuarioResponsavelId = (int) $_POST['tarefa_usuario_responsavel_id'];
+        } elseif ($tarefaConcluido) {
+          // Se está marcando como concluído mas não definiu responsável, usar o logado
+          $usuarioResponsavelId = $_SESSION['pericia_perfil_id'] ?? null;
+        }
+
         $tarefaModel->salvarTarefa($moduloTarefa, $registroTarefa, (int) $empresa, [
-          'concluido' => isset($_POST['tarefa_concluido']) && $_POST['tarefa_concluido'] == '1',
-          'usuario_responsavel_id' => $_POST['tarefa_usuario_responsavel_id'] ?? null,
+          'concluido' => $tarefaConcluido ? 1 : 0,
+          'usuario_responsavel_id' => $usuarioResponsavelId,
           'data_conclusao' => $_POST['tarefa_data_conclusao'] ?? null,
+          'tarefa_texto' => $_POST['tarefa_texto'] ?? null,
         ]);
       }
     } catch (\Exception $e) {
@@ -544,16 +559,37 @@ class AgendamentoController extends Controller
 
       // Salvar tarefa se fornecida (não bloqueia a atualização se falhar)
       try {
-        $temDadosTarefa = isset($_POST['tarefa_concluido']) || !empty($_POST['tarefa_usuario_responsavel_id']) || !empty($_POST['tarefa_data_conclusao']);
+        // Verificar se o checkbox está marcado (pode vir como 'on' ou '1')
+        $tarefaConcluido = isset($_POST['tarefa_concluido']) && 
+                         ($_POST['tarefa_concluido'] == '1' || $_POST['tarefa_concluido'] == 'on');
+        
+        // Sempre salvar tarefa se houver qualquer dado relacionado, incluindo apenas o checkbox
+        $temDadosTarefa = $tarefaConcluido || !empty($_POST['tarefa_usuario_responsavel_id']) || !empty($_POST['tarefa_data_conclusao']);
         
         if ($temDadosTarefa) {
           $tarefaModel = new Tarefa();
           $moduloTarefa = $parecerId ? 'parecer' : 'agendamento';
           $registroTarefa = $parecerId ?: $id;
 
+          // Buscar tarefa existente para manter o usuário responsável se não foi alterado
+          $tarefaExistente = $tarefaModel->getPorModuloRegistro($moduloTarefa, $registroTarefa, (int) $empresa);
+          $tarefaData = $tarefaExistente->getResult()[0] ?? null;
+
+          // Se o checkbox está marcado, garantir que o usuário responsável seja mantido ou definido
+          $usuarioResponsavelId = null;
+          if (!empty($_POST['tarefa_usuario_responsavel_id'])) {
+            $usuarioResponsavelId = (int) $_POST['tarefa_usuario_responsavel_id'];
+          } elseif ($tarefaData && !empty($tarefaData['usuario_responsavel_id'])) {
+            // Manter o responsável atual se não foi alterado
+            $usuarioResponsavelId = (int) $tarefaData['usuario_responsavel_id'];
+          } elseif ($tarefaConcluido) {
+            // Se está marcando como concluído mas não definiu responsável, usar o logado
+            $usuarioResponsavelId = $_SESSION['pericia_perfil_id'] ?? null;
+          }
+
           $tarefaModel->salvarTarefa($moduloTarefa, $registroTarefa, (int) $empresa, [
-            'concluido' => isset($_POST['tarefa_concluido']) && $_POST['tarefa_concluido'] == '1',
-            'usuario_responsavel_id' => $_POST['tarefa_usuario_responsavel_id'] ?? null,
+            'concluido' => $tarefaConcluido ? 1 : 0,
+            'usuario_responsavel_id' => $usuarioResponsavelId,
             'data_conclusao' => $_POST['tarefa_data_conclusao'] ?? null,
           ]);
         }
@@ -638,7 +674,7 @@ class AgendamentoController extends Controller
     }
 
     // Valida status
-    $statusValidos = ['Pendente', 'Agendado', 'Realizado', 'Cancelado'];
+    $statusValidos = ['Agendado', 'Perícia Realizada', 'Não Realizada', 'Parecer para Revisar'];
     if (!in_array($status, $statusValidos)) {
       $this->responseJson(['success' => false, 'message' => 'Status inválido']);
       return;
@@ -1015,7 +1051,7 @@ class AgendamentoController extends Controller
           $dados['data_agendamento'] ? date('d/m/Y', strtotime($dados['data_agendamento'])) : 'N/A',
           htmlspecialchars($dados['hora_agendamento'] ?? 'N/A'),
           htmlspecialchars($peritoNome),
-          htmlspecialchars($dados['status'] ?? 'Pendente'),
+          htmlspecialchars($dados['status'] ?? 'Agendado'),
           htmlspecialchars($dados['local_pericia'] ?? 'N/A')
         ),
         'mensagem' => sprintf(

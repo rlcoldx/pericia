@@ -190,15 +190,21 @@
                                                type="checkbox"
                                                id="tarefa_concluido"
                                                name="tarefa_concluido"
+                                               value="1"
                                                {{ action == 'editar' and tarefa and tarefa.concluido ? 'checked' : '' }}>
                                         <label class="form-check-label" for="tarefa_concluido">
                                             <strong>Marcar como concluído</strong>
                                         </label>
                                     </div>
-                                    <div class="form-text">Marcar que você concluiu a tarefa</div>
+                                    <input type="date"
+                                           class="form-control"
+                                           name="tarefa_data_conclusao"
+                                           id="tarefa_data_conclusao"
+                                           value="{{ action == 'editar' and tarefa and tarefa.data_conclusao ? tarefa.data_conclusao : '' }}">
+                                    <div class="form-text">Data prevista para conclusão da próxima tarefa</div>
                                 </div>
 
-                                <div class="col-12 col-lg-6 mb-3">
+                                <div class="col-12 col-lg-3 mb-3">
                                     <label class="form-label">Usuário Responsável</label>
                                     <select class="form-control" name="tarefa_usuario_responsavel_id" id="tarefa_usuario_responsavel_id">
                                         <option value="">Selecione o usuário responsável</option>
@@ -211,14 +217,12 @@
                                     <div class="form-text">Usuário que será responsável pela próxima tarefa</div>
                                 </div>
 
-                                <div class="col-12 col-lg-3 mb-3">
-                                    <label class="form-label">Data de Conclusão</label>
-                                    <input type="date"
-                                           class="form-control"
-                                           name="tarefa_data_conclusao"
-                                           id="tarefa_data_conclusao"
-                                           value="{{ action == 'editar' and tarefa and tarefa.data_conclusao ? tarefa.data_conclusao : '' }}">
-                                    <div class="form-text">Data prevista para conclusão da próxima tarefa</div>
+                                <div class="col-12 col-lg-6 mb-3">
+                                    <label class="form-label">Descrição da Tarefa</label>
+                                    <textarea class="form-control"
+                                              name="tarefa_texto"
+                                              rows="1">{{ action == 'editar' ? tarefa.tarefa_texto : '' }}</textarea>
+                                    <div class="form-text">Descrição da tarefa que será exibida para o usuário responsável</div>
                                 </div>
                             </div>
                         </div>
@@ -260,7 +264,7 @@
                 width: '100%',
                 language: {
                     noResults: function() {
-                        return "Digite para criar um novo tipo";
+                        return "Digite para criar um novo";
                     },
                     searching: function() {
                         return "Buscando...";
@@ -278,14 +282,15 @@
                 }
             });
 
-            // Inicializar Select2 para Reclamada e Reclamante com busca
+            // Inicializar Select2 para Reclamada com tags (permite criar novos)
             $('#reclamada_id').select2({
-                placeholder: 'Selecione a Reclamada',
+                tags: true,
+                placeholder: 'Selecione ou digite para criar um novo',
                 allowClear: true,
                 width: '100%',
                 language: {
                     noResults: function() {
-                        return "Nenhuma reclamada encontrada";
+                        return "Digite para criar um novo";
                     },
                     searching: function() {
                         return "Buscando...";
@@ -293,13 +298,15 @@
                 }
             });
 
+            // Inicializar Select2 para Reclamante com tags (permite criar novos)
             $('#reclamante_id').select2({
-                placeholder: 'Selecione o Reclamante',
+                tags: true,
+                placeholder: 'Selecione ou digite para criar um novo',
                 allowClear: true,
                 width: '100%',
                 language: {
                     noResults: function() {
-                        return "Nenhum reclamante encontrado";
+                        return "Digite para criar um novo";
                     },
                     searching: function() {
                         return "Buscando...";
@@ -347,10 +354,79 @@
             });
         });
 
+        /**
+         * Cria um reclamante/reclamada rapidamente via AJAX
+         */
+        async function criarRapido(tipo, nome) {
+            const endpoint = tipo === 'reclamante' 
+                ? window.DOMAIN + '/reclamantes/criar-rapido'
+                : window.DOMAIN + '/reclamadas/criar-rapido';
+            
+            const formData = new FormData();
+            formData.append('nome', nome);
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    return { success: true, id: data.id, nome: data.nome };
+                } else {
+                    throw new Error(data.message || 'Erro ao criar ' + tipo);
+                }
+            } catch (error) {
+                console.error('Erro ao criar ' + tipo + ':', error);
+                throw error;
+            }
+        }
+
+        /**
+         * Verifica se o valor selecionado é um novo (texto) ou um ID existente
+         */
+        function isNovoValor(valor) {
+            if (!valor || valor === '') {
+                return false;
+            }
+            // Se for um número inteiro, é um ID existente
+            // Se for uma string não numérica, é um novo valor
+            const valorInt = parseInt(valor);
+            return isNaN(valorInt) || valorInt.toString() !== valor.toString();
+        }
+
+        /**
+         * Verifica se um valor existe nas opções do select
+         */
+        function valorExisteNoSelect(selectId, valor) {
+            if (!valor || valor === '') {
+                return false;
+            }
+            
+            const select = document.getElementById(selectId);
+            if (!select) return false;
+            
+            // Se o valor é um número, verificar se existe nas opções
+            const valorInt = parseInt(valor);
+            if (!isNaN(valorInt)) {
+                // É um número, verificar se existe nas opções
+                for (let option of select.options) {
+                    if (parseInt(option.value) === valorInt) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            
+            // Se não é um número, é um novo valor (texto digitado)
+            return false;
+        }
+
         const form = document.getElementById('formQuesito');
         if (!form) return;
 
-        form.addEventListener('submit', function(e) {
+        form.addEventListener('submit', async function(e) {
             e.preventDefault();
 
             const submitBtn = form.querySelector('button[type="submit"]');
@@ -358,21 +434,177 @@
             submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin me-2"></i>Salvando...';
             submitBtn.disabled = true;
 
-            const formData = new FormData(form);
-            const isEdit = !!form.querySelector('input[name="id"]');
-            const url = window.DOMAIN + (isEdit ? '/quesitos/editar/save' : '/quesitos/add/save');
+            try {
+                // Verificar se Reclamante é novo e criar se necessário
+                const reclamanteSelect = $('#reclamante_id');
+                let reclamanteId = reclamanteSelect.val();
+                
+                // Se for array (Select2 pode retornar array), pegar o primeiro valor
+                if (Array.isArray(reclamanteId)) {
+                    reclamanteId = reclamanteId[0];
+                }
+                
+                let reclamanteIdFinal = reclamanteId;
+                
+                // Se o valor não existe nas opções do select ou não é um número, é um novo valor
+                if (reclamanteId && (!valorExisteNoSelect('reclamante_id', reclamanteId) || isNaN(parseInt(reclamanteId)))) {
+                    try {
+                        const resultado = await criarRapido('reclamante', reclamanteId);
+                        reclamanteIdFinal = resultado.id.toString();
+                        
+                        // Remover a opção temporária (texto) se existir
+                        reclamanteSelect.find('option').each(function() {
+                            const optionValue = $(this).val();
+                            // Se o valor da opção é o texto digitado (não é um número)
+                            if (optionValue === reclamanteId && isNaN(parseInt(optionValue))) {
+                                $(this).remove();
+                            }
+                        });
+                        
+                        // Verificar se a opção com o ID já existe antes de adicionar
+                        let optionExists = false;
+                        reclamanteSelect.find('option').each(function() {
+                            if (parseInt($(this).val()) === resultado.id) {
+                                optionExists = true;
+                                return false; // break
+                            }
+                        });
+                        
+                        if (!optionExists) {
+                            // Adicionar a nova opção com ID
+                            const newOption = new Option(resultado.nome, resultado.id, true, true);
+                            reclamanteSelect.append(newOption);
+                        }
+                        
+                        // Forçar atualização do Select2 com o ID correto
+                        reclamanteSelect.val(resultado.id).trigger('change.select2');
+                        
+                        // Aguardar um pouco para garantir que o Select2 atualizou
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    } catch (error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Erro!',
+                            text: 'Erro ao criar reclamante: ' + error.message
+                        });
+                        submitBtn.innerHTML = originalText;
+                        submitBtn.disabled = false;
+                        return;
+                    }
+                }
 
-            fetch(url, {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => {
+                // Verificar se Reclamada é nova e criar se necessário
+                const reclamadaSelect = $('#reclamada_id');
+                let reclamadaId = reclamadaSelect.val();
+                
+                // Se for array (Select2 pode retornar array), pegar o primeiro valor
+                if (Array.isArray(reclamadaId)) {
+                    reclamadaId = reclamadaId[0];
+                }
+                
+                let reclamadaIdFinal = reclamadaId;
+                
+                // Se o valor não existe nas opções do select ou não é um número, é um novo valor
+                if (reclamadaId && (!valorExisteNoSelect('reclamada_id', reclamadaId) || isNaN(parseInt(reclamadaId)))) {
+                    try {
+                        const resultado = await criarRapido('reclamada', reclamadaId);
+                        reclamadaIdFinal = resultado.id.toString();
+                        
+                        // Remover a opção temporária (texto) se existir
+                        reclamadaSelect.find('option').each(function() {
+                            const optionValue = $(this).val();
+                            // Se o valor da opção é o texto digitado (não é um número)
+                            if (optionValue === reclamadaId && isNaN(parseInt(optionValue))) {
+                                $(this).remove();
+                            }
+                        });
+                        
+                        // Verificar se a opção com o ID já existe antes de adicionar
+                        let optionExists = false;
+                        reclamadaSelect.find('option').each(function() {
+                            if (parseInt($(this).val()) === resultado.id) {
+                                optionExists = true;
+                                return false; // break
+                            }
+                        });
+                        
+                        if (!optionExists) {
+                            // Adicionar a nova opção com ID
+                            const newOption = new Option(resultado.nome, resultado.id, true, true);
+                            reclamadaSelect.append(newOption);
+                        }
+                        
+                        // Forçar atualização do Select2 com o ID correto
+                        reclamadaSelect.val(resultado.id).trigger('change.select2');
+                        
+                        // Aguardar um pouco para garantir que o Select2 atualizou
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    } catch (error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Erro!',
+                            text: 'Erro ao criar reclamada: ' + error.message
+                        });
+                        submitBtn.innerHTML = originalText;
+                        submitBtn.disabled = false;
+                        return;
+                    }
+                }
+
+                // Garantir que os valores finais estão corretos nos selects
+                reclamanteSelect.val(reclamanteIdFinal).trigger('change.select2');
+                reclamadaSelect.val(reclamadaIdFinal).trigger('change.select2');
+
+                // Aguardar um pouco para o Select2 atualizar completamente
+                await new Promise(resolve => setTimeout(resolve, 200));
+
+                // Obter os valores finais novamente dos selects (garantir que estão atualizados)
+                let reclamanteIdFinalVerificado = reclamanteSelect.val();
+                let reclamadaIdFinalVerificado = reclamadaSelect.val();
+                
+                // Se for array, pegar o primeiro valor
+                if (Array.isArray(reclamanteIdFinalVerificado)) {
+                    reclamanteIdFinalVerificado = reclamanteIdFinalVerificado[0];
+                }
+                if (Array.isArray(reclamadaIdFinalVerificado)) {
+                    reclamadaIdFinalVerificado = reclamadaIdFinalVerificado[0];
+                }
+
+                const formData = new FormData(form);
+                
+                // Garantir que os IDs corretos estão no formData (não o texto)
+                // Converter para número para garantir que é um ID válido
+                const reclamanteIdNum = parseInt(reclamanteIdFinalVerificado);
+                const reclamadaIdNum = parseInt(reclamadaIdFinalVerificado);
+                
+                if (isNaN(reclamanteIdNum) || isNaN(reclamadaIdNum)) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Erro!',
+                        text: 'Erro ao processar Reclamante ou Reclamada. Por favor, selecione valores válidos.'
+                    });
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                    return;
+                }
+                
+                // Substituir os valores no formData com os IDs numéricos corretos
+                formData.set('reclamante_id', reclamanteIdNum);
+                formData.set('reclamada_id', reclamadaIdNum);
+                
+                const isEdit = !!form.querySelector('input[name="id"]');
+                const url = window.DOMAIN + (isEdit ? '/quesitos/editar/save' : '/quesitos/add/save');
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    body: formData
+                });
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                return response.json();
-            })
-            .then(data => {
+                
+                const data = await response.json();
+                
                 if (data.success) {
                     Swal.fire({
                         icon: 'success',
@@ -390,21 +622,19 @@
                         title: 'Erro!',
                         text: data.message || 'Erro ao salvar o quesito. Verifique o console para mais detalhes.'
                     });
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
                 }
-            })
-            .catch(error => {
+            } catch (error) {
                 console.error('Erro na requisição:', error);
-                console.error('URL:', url);
                 Swal.fire({
                     icon: 'error',
                     title: 'Erro!',
                     text: 'Ocorreu um erro ao salvar o quesito. Verifique o console do navegador (F12) para mais detalhes.'
                 });
-            })
-            .finally(() => {
                 submitBtn.innerHTML = originalText;
                 submitBtn.disabled = false;
-            });
+            }
         });
     })();
 </script>

@@ -17,9 +17,6 @@
         const form = document.getElementById('formAgendamento');
         if (!form) return;
 
-        // Inicializa máscaras
-        initMasks();
-        
         // Máscaras de moeda são aplicadas globalmente no custom.min.js
         // Apenas garante que campos dinâmicos também recebam a máscara
         setTimeout(function() {
@@ -71,16 +68,17 @@
             }
         });
 
-        // Select2 para Reclamada do Parecer
+        // Select2 para Reclamada do Parecer com tags (permite criar novos)
         const reclamadaParecerSelect = jQuery('#parecer_reclamada_id');
         if (reclamadaParecerSelect.length) {
             reclamadaParecerSelect.select2({
-                placeholder: 'Selecione a Reclamada',
+                tags: true,
+                placeholder: 'Selecione ou digite para criar um novo',
                 allowClear: true,
                 width: '100%',
                 language: {
                     noResults: function() {
-                        return "Nenhuma reclamada encontrada";
+                        return "Digite para criar um novo";
                     },
                     searching: function() {
                         return "Buscando...";
@@ -89,16 +87,17 @@
             });
         }
 
-        // Select2 para Reclamante do Parecer
+        // Select2 para Reclamante do Parecer com tags (permite criar novos)
         const reclamanteParecerSelect = jQuery('#parecer_reclamante_id');
         if (reclamanteParecerSelect.length) {
             reclamanteParecerSelect.select2({
-                placeholder: 'Selecione o Reclamante',
+                tags: true,
+                placeholder: 'Selecione ou digite para criar um novo',
                 allowClear: true,
                 width: '100%',
                 language: {
                     noResults: function() {
-                        return "Nenhum reclamante encontrado";
+                        return "Digite para criar um novo";
                     },
                     searching: function() {
                         return "Buscando...";
@@ -117,7 +116,7 @@
                 width: '100%',
                 language: {
                     noResults: function() {
-                        return "Digite para criar um novo tipo";
+                        return "Digite para criar um novo";
                     },
                     searching: function() {
                         return "Buscando...";
@@ -166,127 +165,46 @@
                 }
             });
         }
-    }
 
-    /**
-     * Inicializa máscaras de CPF/CNPJ e telefone
-     */
-    function initMasks() {
-        const tipoDocumentoSelect = document.getElementById('tipo_documento');
-        const documentoInput = document.getElementById('cliente_documento');
-        const telefoneInput = document.querySelector('input[name="cliente_telefone"]');
-
-        // Máscara de CPF/CNPJ baseada no tipo selecionado
-        if (tipoDocumentoSelect && documentoInput) {
-            // Detecta automaticamente o tipo baseado no valor inicial
-            if (documentoInput.value) {
-                const valueLimpo = documentoInput.value.replace(/\D/g, '');
-                if (valueLimpo.length === 14) {
-                    tipoDocumentoSelect.value = 'CNPJ';
-                    documentoInput.value = maskCNPJ(valueLimpo);
-                } else if (valueLimpo.length === 11) {
-                    tipoDocumentoSelect.value = 'CPF';
-                    documentoInput.value = maskCPF(valueLimpo);
-                } else {
-                    // Tenta detectar pelo formato atual
-                    if (documentoInput.value.includes('/')) {
-                        tipoDocumentoSelect.value = 'CNPJ';
-                    } else {
-                        tipoDocumentoSelect.value = 'CPF';
-                    }
-                }
-            }
-
-            tipoDocumentoSelect.addEventListener('change', function() {
-                const valueLimpo = documentoInput.value.replace(/\D/g, '');
-                documentoInput.value = '';
-                documentoInput.placeholder = this.value === 'CNPJ' ? '00.000.000/0000-00' : '000.000.000-00';
-                
-                // Se havia valor, reaplica a máscara correta
-                if (valueLimpo) {
-                    if (this.value === 'CNPJ' && valueLimpo.length <= 14) {
-                        documentoInput.value = maskCNPJ(valueLimpo);
-                    } else if (this.value === 'CPF' && valueLimpo.length <= 11) {
-                        documentoInput.value = maskCPF(valueLimpo);
+        // Select2 para Reclamante Nome com tags (permite criar novos)
+        const reclamanteNomeSelect = jQuery('#reclamante_nome');
+        if (reclamanteNomeSelect.length) {
+            reclamanteNomeSelect.select2({
+                tags: true,
+                placeholder: 'Selecione ou digite para criar um novo Reclamante',
+                allowClear: true,
+                width: '100%',
+                language: {
+                    noResults: function() {
+                        return "Digite para criar um novo reclamante";
+                    },
+                    searching: function() {
+                        return "Buscando...";
                     }
                 }
             });
+        }
 
-            documentoInput.addEventListener('input', function(e) {
-                const tipo = tipoDocumentoSelect.value || 'CPF';
-                const value = e.target.value.replace(/\D/g, '');
-                
-                if (tipo === 'CNPJ') {
-                    e.target.value = maskCNPJ(value);
-                } else {
-                    e.target.value = maskCPF(value);
+        // Select2 para Cliente Nome (Reclamada) com tags (permite criar novos)
+        const clienteNomeSelect = jQuery('#cliente_nome');
+        if (clienteNomeSelect.length) {
+            clienteNomeSelect.select2({
+                tags: true,
+                placeholder: 'Selecione ou digite para criar uma nova Reclamada',
+                allowClear: true,
+                width: '100%',
+                language: {
+                    noResults: function() {
+                        return "Digite para criar uma nova reclamada";
+                    },
+                    searching: function() {
+                        return "Buscando...";
+                    }
                 }
             });
-
-            // Atualiza placeholder inicial
-            documentoInput.placeholder = tipoDocumentoSelect.value === 'CNPJ' ? '00.000.000/0000-00' : '000.000.000-00';
-        }
-
-        // Máscara de telefone
-        if (telefoneInput) {
-            telefoneInput.addEventListener('input', function(e) {
-                const value = e.target.value.replace(/\D/g, '');
-                e.target.value = maskTelefone(value);
-            });
-
-            // Aplica máscara inicial se já houver valor
-            if (telefoneInput.value) {
-                const value = telefoneInput.value.replace(/\D/g, '');
-                telefoneInput.value = maskTelefone(value);
-            }
         }
     }
 
-    /**
-     * Aplica máscara de CPF
-     */
-    function maskCPF(value) {
-        // Limita a 11 dígitos
-        value = value.substring(0, 11);
-        
-        if (value.length === 0) return '';
-        if (value.length <= 3) return value;
-        if (value.length <= 6) return value.replace(/(\d{3})(\d+)/, '$1.$2');
-        if (value.length <= 9) return value.replace(/(\d{3})(\d{3})(\d+)/, '$1.$2.$3');
-        return value.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-    }
-
-    /**
-     * Aplica máscara de CNPJ
-     */
-    function maskCNPJ(value) {
-        // Limita a 14 dígitos
-        value = value.substring(0, 14);
-        
-        if (value.length === 0) return '';
-        if (value.length <= 2) return value;
-        if (value.length <= 5) return value.replace(/(\d{2})(\d+)/, '$1.$2');
-        if (value.length <= 8) return value.replace(/(\d{2})(\d{3})(\d+)/, '$1.$2.$3');
-        if (value.length <= 12) return value.replace(/(\d{2})(\d{3})(\d{3})(\d+)/, '$1.$2.$3/$4');
-        return value.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
-    }
-
-    /**
-     * Aplica máscara de telefone
-     */
-    function maskTelefone(value) {
-        if (value.length <= 10) {
-            if (value.length <= 2) {
-                return value.length > 0 ? '(' + value : value;
-            } else if (value.length <= 6) {
-                return value.replace(/(\d{2})(\d+)/, '($1) $2');
-            } else {
-                return value.replace(/(\d{2})(\d{4})(\d+)/, '($1) $2-$3');
-            }
-        } else {
-            return value.substring(0, 11).replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
-        }
-    }
 
 
     /**
@@ -301,10 +219,66 @@
     }
 
     /**
+     * Cria um reclamante/reclamada rapidamente via AJAX
+     */
+    async function criarRapido(tipo, nome) {
+        const endpoint = tipo === 'reclamante' 
+            ? window.DOMAIN + '/reclamantes/criar-rapido'
+            : window.DOMAIN + '/reclamadas/criar-rapido';
+        
+        const formData = new FormData();
+        formData.append('nome', nome);
+
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                return { success: true, id: data.id, nome: data.nome };
+            } else {
+                throw new Error(data.message || 'Erro ao criar ' + tipo);
+            }
+        } catch (error) {
+            console.error('Erro ao criar ' + tipo + ':', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Verifica se um valor existe nas opções do select
+     */
+    function valorExisteNoSelect(selectId, valor) {
+        if (!valor || valor === '') {
+            return false;
+        }
+        
+        const select = document.getElementById(selectId);
+        if (!select) return false;
+        
+        // Se o valor é um número, verificar se existe nas opções
+        const valorInt = parseInt(valor);
+        if (!isNaN(valorInt)) {
+            // É um número, verificar se existe nas opções
+            for (let option of select.options) {
+                if (parseInt(option.value) === valorInt) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        // Se não é um número, é um novo valor (texto digitado)
+        return false;
+    }
+
+    /**
      * Inicializa submissão do formulário
      */
     function initFormSubmit(form) {
-        form.addEventListener('submit', function(e) {
+        form.addEventListener('submit', async function(e) {
             e.preventDefault();
             
             // Mostra loading
@@ -312,27 +286,327 @@
             const originalText = submitBtn.innerHTML;
             submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin me-2"></i>Salvando...';
             submitBtn.disabled = true;
+
+            try {
+                // Cache para evitar criar duplicados se o mesmo nome for usado em múltiplos campos
+                const nomesCriadosCache = {};
+
+                /**
+                 * Função auxiliar para buscar ou criar e retornar o nome correto
+                 * Retorna o nome que deve ser usado (pode ser o digitado ou o nome existente)
+                 */
+                async function buscarOuCriarNome(tipo, nomeDigitado) {
+                    if (!nomeDigitado || nomeDigitado.trim() === '') {
+                        return null;
+                    }
+
+                    const nomeTrimmed = nomeDigitado.trim();
+                    
+                    // Verificar no cache primeiro (case-insensitive)
+                    const cacheKey = tipo + '_' + nomeTrimmed.toLowerCase();
+                    if (nomesCriadosCache[cacheKey]) {
+                        return nomesCriadosCache[cacheKey];
+                    }
+
+                    // Verificar se já existe na tabela e criar se necessário
+                    // O criarRapido já verifica se existe antes de criar
+                    try {
+                        const resultado = await criarRapido(tipo, nomeTrimmed);
+                        // O nome retornado é o nome correto (pode ser o digitado ou o existente)
+                        const nomeFinal = resultado.nome;
+                        // Armazenar no cache (case-insensitive)
+                        nomesCriadosCache[cacheKey] = nomeFinal;
+                        return nomeFinal;
+                    } catch (error) {
+                        console.error('Erro ao buscar/criar ' + tipo + ':', error);
+                        throw error;
+                    }
+                }
+
+                // Processar reclamante_nome (campo de texto que salva o nome)
+                const reclamanteNomeSelect = jQuery('#reclamante_nome');
+                let reclamanteNome = reclamanteNomeSelect.val();
+                if (Array.isArray(reclamanteNome)) {
+                    reclamanteNome = reclamanteNome[0];
+                }
+                
+                let reclamanteNomeFinal = reclamanteNome;
+                if (reclamanteNome && reclamanteNome.trim() !== '') {
+                    try {
+                        // Verificar se é um nome novo (não está nas opções do select)
+                        let nomeExiste = false;
+                        reclamanteNomeSelect.find('option').each(function() {
+                            if (jQuery(this).val() === reclamanteNome) {
+                                nomeExiste = true;
+                                return false; // break
+                            }
+                        });
+
+                        if (!nomeExiste) {
+                            // É um nome novo, buscar ou criar
+                            reclamanteNomeFinal = await buscarOuCriarNome('reclamante', reclamanteNome);
+                            
+                            // Atualizar o select com o nome correto
+                            reclamanteNomeSelect.val(reclamanteNomeFinal).trigger('change.select2');
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                        }
+                    } catch (error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Erro!',
+                            text: 'Erro ao processar reclamante: ' + error.message
+                        });
+                        submitBtn.innerHTML = originalText;
+                        submitBtn.disabled = false;
+                        return;
+                    }
+                }
+
+                // Processar cliente_nome (campo de texto que salva o nome - é uma Reclamada)
+                const clienteNomeSelect = jQuery('#cliente_nome');
+                let clienteNome = clienteNomeSelect.val();
+                if (Array.isArray(clienteNome)) {
+                    clienteNome = clienteNome[0];
+                }
+                
+                let clienteNomeFinal = clienteNome;
+                if (clienteNome && clienteNome.trim() !== '') {
+                    try {
+                        // Verificar se é um nome novo (não está nas opções do select)
+                        let nomeExiste = false;
+                        clienteNomeSelect.find('option').each(function() {
+                            if (jQuery(this).val() === clienteNome) {
+                                nomeExiste = true;
+                                return false; // break
+                            }
+                        });
+
+                        if (!nomeExiste) {
+                            // É um nome novo, buscar ou criar
+                            clienteNomeFinal = await buscarOuCriarNome('reclamada', clienteNome);
+                            
+                            // Atualizar o select com o nome correto
+                            clienteNomeSelect.val(clienteNomeFinal).trigger('change.select2');
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                        }
+                    } catch (error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Erro!',
+                            text: 'Erro ao processar cliente/reclamada: ' + error.message
+                        });
+                        submitBtn.innerHTML = originalText;
+                        submitBtn.disabled = false;
+                        return;
+                    }
+                }
+
+                // Verificar se Reclamante do Parecer é novo e criar se necessário
+                const reclamanteParecerSelect = jQuery('#parecer_reclamante_id');
+                let reclamanteParecerId = reclamanteParecerSelect.val();
+                
+                // Se for array (Select2 pode retornar array), pegar o primeiro valor
+                if (Array.isArray(reclamanteParecerId)) {
+                    reclamanteParecerId = reclamanteParecerId[0];
+                }
+                
+                let reclamanteParecerIdFinal = reclamanteParecerId;
+                
+                // Se o valor não existe nas opções do select ou não é um número, é um novo valor
+                if (reclamanteParecerId && (!valorExisteNoSelect('parecer_reclamante_id', reclamanteParecerId) || isNaN(parseInt(reclamanteParecerId)))) {
+                    try {
+                        // Verificar no cache se já foi criado/verificado
+                        const nomeReclamanteParecer = reclamanteParecerId.trim();
+                        const cacheKey = 'reclamante_' + nomeReclamanteParecer.toLowerCase();
+                        
+                        let resultado;
+                        if (nomesCriadosCache[cacheKey]) {
+                            // Já foi criado/verificado, buscar o ID usando o nome do cache
+                            const nomeExistente = nomesCriadosCache[cacheKey];
+                            // Buscar o ID do reclamante pelo nome (criarRapido retorna o ID)
+                            resultado = await criarRapido('reclamante', nomeExistente);
+                        } else {
+                            // Criar ou buscar
+                            resultado = await criarRapido('reclamante', nomeReclamanteParecer);
+                            // Armazenar o nome correto no cache
+                            nomesCriadosCache[cacheKey] = resultado.nome;
+                        }
+                        
+                        reclamanteParecerIdFinal = resultado.id.toString();
+                        
+                        // Remover a opção temporária (texto) se existir
+                        reclamanteParecerSelect.find('option').each(function() {
+                            const optionValue = jQuery(this).val();
+                            // Se o valor da opção é o texto digitado (não é um número)
+                            if (optionValue === reclamanteParecerId && isNaN(parseInt(optionValue))) {
+                                jQuery(this).remove();
+                            }
+                        });
+                        
+                        // Verificar se a opção com o ID já existe antes de adicionar
+                        let optionExists = false;
+                        reclamanteParecerSelect.find('option').each(function() {
+                            if (parseInt(jQuery(this).val()) === resultado.id) {
+                                optionExists = true;
+                                return false; // break
+                            }
+                        });
+                        
+                        if (!optionExists) {
+                            // Adicionar a nova opção com ID
+                            const newOption = new Option(resultado.nome, resultado.id, true, true);
+                            reclamanteParecerSelect.append(newOption);
+                        }
+                        
+                        // Forçar atualização do Select2 com o ID correto
+                        reclamanteParecerSelect.val(resultado.id).trigger('change.select2');
+                        
+                        // Aguardar um pouco para garantir que o Select2 atualizou
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    } catch (error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Erro!',
+                            text: 'Erro ao criar reclamante: ' + error.message
+                        });
+                        submitBtn.innerHTML = originalText;
+                        submitBtn.disabled = false;
+                        return;
+                    }
+                }
+
+                // Verificar se Reclamada do Parecer é nova e criar se necessário
+                const reclamadaParecerSelect = jQuery('#parecer_reclamada_id');
+                let reclamadaParecerId = reclamadaParecerSelect.val();
+                
+                // Se for array (Select2 pode retornar array), pegar o primeiro valor
+                if (Array.isArray(reclamadaParecerId)) {
+                    reclamadaParecerId = reclamadaParecerId[0];
+                }
+                
+                let reclamadaParecerIdFinal = reclamadaParecerId;
+                
+                // Se o valor não existe nas opções do select ou não é um número, é um novo valor
+                if (reclamadaParecerId && (!valorExisteNoSelect('parecer_reclamada_id', reclamadaParecerId) || isNaN(parseInt(reclamadaParecerId)))) {
+                    try {
+                        // Verificar no cache se já foi criado/verificado
+                        const nomeReclamadaParecer = reclamadaParecerId.trim();
+                        const cacheKey = 'reclamada_' + nomeReclamadaParecer.toLowerCase();
+                        
+                        let resultado;
+                        if (nomesCriadosCache[cacheKey]) {
+                            // Já foi criado/verificado, buscar o ID usando o nome do cache
+                            const nomeExistente = nomesCriadosCache[cacheKey];
+                            // Buscar o ID da reclamada pelo nome (criarRapido retorna o ID)
+                            resultado = await criarRapido('reclamada', nomeExistente);
+                        } else {
+                            // Criar ou buscar
+                            resultado = await criarRapido('reclamada', nomeReclamadaParecer);
+                            // Armazenar o nome correto no cache
+                            nomesCriadosCache[cacheKey] = resultado.nome;
+                        }
+                        
+                        reclamadaParecerIdFinal = resultado.id.toString();
+                        
+                        // Remover a opção temporária (texto) se existir
+                        reclamadaParecerSelect.find('option').each(function() {
+                            const optionValue = jQuery(this).val();
+                            // Se o valor da opção é o texto digitado (não é um número)
+                            if (optionValue === reclamadaParecerId && isNaN(parseInt(optionValue))) {
+                                jQuery(this).remove();
+                            }
+                        });
+                        
+                        // Verificar se a opção com o ID já existe antes de adicionar
+                        let optionExists = false;
+                        reclamadaParecerSelect.find('option').each(function() {
+                            if (parseInt(jQuery(this).val()) === resultado.id) {
+                                optionExists = true;
+                                return false; // break
+                            }
+                        });
+                        
+                        if (!optionExists) {
+                            // Adicionar a nova opção com ID
+                            const newOption = new Option(resultado.nome, resultado.id, true, true);
+                            reclamadaParecerSelect.append(newOption);
+                        }
+                        
+                        // Forçar atualização do Select2 com o ID correto
+                        reclamadaParecerSelect.val(resultado.id).trigger('change.select2');
+                        
+                        // Aguardar um pouco para garantir que o Select2 atualizou
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    } catch (error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Erro!',
+                            text: 'Erro ao criar reclamada: ' + error.message
+                        });
+                        submitBtn.innerHTML = originalText;
+                        submitBtn.disabled = false;
+                        return;
+                    }
+                }
+
+                // Garantir que os valores finais estão corretos nos selects
+                reclamanteParecerSelect.val(reclamanteParecerIdFinal).trigger('change.select2');
+                reclamadaParecerSelect.val(reclamadaParecerIdFinal).trigger('change.select2');
+
+                // Aguardar um pouco para o Select2 atualizar completamente
+                await new Promise(resolve => setTimeout(resolve, 200));
+
+                // Obter os valores finais novamente dos selects (garantir que estão atualizados)
+                let reclamanteParecerIdFinalVerificado = reclamanteParecerSelect.val();
+                let reclamadaParecerIdFinalVerificado = reclamadaParecerSelect.val();
+                
+                // Se for array, pegar o primeiro valor
+                if (Array.isArray(reclamanteParecerIdFinalVerificado)) {
+                    reclamanteParecerIdFinalVerificado = reclamanteParecerIdFinalVerificado[0];
+                }
+                if (Array.isArray(reclamadaParecerIdFinalVerificado)) {
+                    reclamadaParecerIdFinalVerificado = reclamadaParecerIdFinalVerificado[0];
+                }
             
-            // Prepara dados do formulário
-            const formData = new FormData(this);
-            
-            // Processa documento: envia o valor formatado como cliente_cpf para compatibilidade com o backend
-            const documentoInput = document.getElementById('cliente_documento');
-            if (documentoInput && documentoInput.value) {
-                // Envia o valor formatado (com máscara) para o backend
-                formData.set('cliente_cpf', documentoInput.value);
-            }
-            
-            // Faz a requisição
-            const action = form.querySelector('input[name="id"]') ? 'edit' : 'criar';
-            const url = window.DOMAIN + '/agendamento/' + (action === 'criar' ? 'add/save' : 'edit/save');
-            
-            fetch(url, {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
+                // Prepara dados do formulário
+                const formData = new FormData(this);
+                
+                // Garantir que os nomes corretos estão no formData (reclamante_nome e cliente_nome)
+                if (reclamanteNomeFinal) {
+                    formData.set('reclamante_nome', reclamanteNomeFinal);
+                }
+                if (clienteNomeFinal) {
+                    formData.set('cliente_nome', clienteNomeFinal);
+                }
+                
+                // Garantir que os IDs corretos estão no formData (não o texto)
+                // Converter para número para garantir que é um ID válido
+                const reclamanteParecerIdNum = parseInt(reclamanteParecerIdFinalVerificado);
+                const reclamadaParecerIdNum = parseInt(reclamadaParecerIdFinalVerificado);
+                
+                // Se os campos não são obrigatórios, permitir valores vazios
+                if (reclamanteParecerIdFinalVerificado && !isNaN(reclamanteParecerIdNum)) {
+                    formData.set('parecer_reclamante_id', reclamanteParecerIdNum);
+                }
+                if (reclamadaParecerIdFinalVerificado && !isNaN(reclamadaParecerIdNum)) {
+                    formData.set('parecer_reclamada_id', reclamadaParecerIdNum);
+                }
+                
+                // Faz a requisição
+                const action = form.querySelector('input[name="id"]') ? 'edit' : 'criar';
+                const url = window.DOMAIN + '/agendamento/' + (action === 'criar' ? 'add/save' : 'edit/save');
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
                 if (data.success) {
                     Swal.fire({
                         icon: 'success',
@@ -349,21 +623,19 @@
                         title: 'Erro!',
                         text: data.message
                     });
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
                 }
-            })
-            .catch(error => {
+            } catch (error) {
                 console.error('Erro:', error);
                 Swal.fire({
                     icon: 'error',
                     title: 'Erro!',
-                    text: 'Ocorreu um erro ao salvar o agendamento.'
+                    text: 'Ocorreu um erro ao salvar o agendamento. Verifique o console do navegador (F12) para mais detalhes.'
                 });
-            })
-            .finally(() => {
-                // Restaura o botão
                 submitBtn.innerHTML = originalText;
                 submitBtn.disabled = false;
-            });
+            }
         });
     }
 

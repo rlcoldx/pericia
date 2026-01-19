@@ -84,30 +84,37 @@ class HomeController extends Controller
    */
   public function tarefasDatatable($params)
   {
-    $this->setParams($params);
-    
-    $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
-    $usuarioId = $_SESSION['pericia_perfil_id'] ?? null;
+    try {
+      // Limpar qualquer output buffer antes de enviar JSON
+      while (ob_get_level() > 0) {
+        ob_end_clean();
+      }
+      
+      // Definir header JSON
+      header('Content-Type: application/json; charset=utf-8');
+      
+      $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
+      $usuarioId = $_SESSION['pericia_perfil_id'] ?? null;
 
-    if (!$empresa || !$usuarioId) {
-      $this->responseJson([
-        'draw' => (int) ($_GET['draw'] ?? 1),
-        'recordsTotal' => 0,
-        'recordsFiltered' => 0,
-        'data' => []
-      ]);
-      return;
-    }
+      if (!$empresa || !$usuarioId) {
+        echo json_encode([
+          'draw' => (int) ($_GET['draw'] ?? 1),
+          'recordsTotal' => 0,
+          'recordsFiltered' => 0,
+          'data' => []
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+      }
 
-    $dtParams = DataTableResponse::getParams();
+      $dtParams = DataTableResponse::getParams();
 
-    $filtros = [];
-    if (!empty($_GET['status'])) {
-      $filtros['status'] = $_GET['status'];
-    }
+      $filtros = [];
+      if (!empty($_GET['status'])) {
+        $filtros['status'] = $_GET['status'];
+      }
 
-    $tarefaModel = new Tarefa();
-    $result = $tarefaModel->getTarefasUsuarioDataTable((int) $usuarioId, (int) $empresa, $dtParams, $filtros);
+      $tarefaModel = new Tarefa();
+      $result = $tarefaModel->getTarefasUsuarioDataTable((int) $usuarioId, (int) $empresa, $dtParams, $filtros);
 
     $formattedData = [];
     
@@ -122,7 +129,16 @@ class HomeController extends Controller
       
       $moduloNome = ucfirst($tarefa['modulo']);
       if ($tarefa['modulo'] === 'manifestacao') {
-        $moduloNome = 'Manifestação/Impugnação';
+        // Verificar se é favorável ou desfavorável para mostrar o nome correto
+        $favoravel = $tarefa['favoravel'] ?? null;
+        if ($favoravel === 'Favorável') {
+          $moduloNome = 'Manifestação';
+        } elseif ($favoravel === 'Desfavorável') {
+          $moduloNome = 'Impugnação';
+        } else {
+          // Se não tiver definido ou for outro valor, manter o padrão
+          $moduloNome = 'Manifestação/Impugnação';
+        }
       }
 
       $status = isset($tarefa['concluido']) && $tarefa['concluido'] ? 'Concluída' : 'Pendente';
@@ -130,13 +146,29 @@ class HomeController extends Controller
         ? '<span class="badge bg-success">Concluída</span>'
         : '<span class="badge bg-warning">Pendente</span>';
 
-      $dataConclusao = !empty($tarefa['data_conclusao']) 
-        ? date('d/m/Y', strtotime($tarefa['data_conclusao']))
-        : '-';
+      $dataConclusao = '-';
+      if (!empty($tarefa['data_conclusao']) && $tarefa['data_conclusao'] !== '0000-00-00' && $tarefa['data_conclusao'] !== null) {
+        try {
+          $dataConclusao = date('d/m/Y', strtotime($tarefa['data_conclusao']));
+          if ($dataConclusao === false) {
+            $dataConclusao = '-';
+          }
+        } catch (\Exception $e) {
+          $dataConclusao = '-';
+        }
+      }
 
-      $dataCreate = !empty($tarefa['data_create'])
-        ? date('d/m/Y H:i', strtotime($tarefa['data_create']))
-        : '-';
+      $dataCreate = '-';
+      if (!empty($tarefa['data_create']) && $tarefa['data_create'] !== '0000-00-00 00:00:00' && $tarefa['data_create'] !== null) {
+        try {
+          $dataCreate = date('d/m/Y H:i', strtotime($tarefa['data_create']));
+          if ($dataCreate === false) {
+            $dataCreate = '-';
+          }
+        } catch (\Exception $e) {
+          $dataCreate = '-';
+        }
+      }
 
       $reclamada = htmlspecialchars($tarefa['reclamada'] ?? 'Sem Reclamada', ENT_QUOTES, 'UTF-8');
 
@@ -176,13 +208,29 @@ class HomeController extends Controller
       ];
     }
 
-    $response = DataTableResponse::format(
-      $formattedData,
-      (int) $result['total'],
-      (int) $result['filtered'],
-      (int) $dtParams['draw']
-    );
+      $response = DataTableResponse::format(
+        $formattedData,
+        (int) $result['total'],
+        (int) $result['filtered'],
+        (int) $dtParams['draw']
+      );
 
-    $this->responseJson($response);
+      echo json_encode($response, JSON_UNESCAPED_UNICODE);
+      exit;
+    } catch (\Exception $e) {
+      // Em caso de erro, retornar JSON válido
+      while (ob_get_level() > 0) {
+        ob_end_clean();
+      }
+      header('Content-Type: application/json; charset=utf-8');
+      echo json_encode([
+        'draw' => (int) ($_GET['draw'] ?? 1),
+        'recordsTotal' => 0,
+        'recordsFiltered' => 0,
+        'data' => [],
+        'error' => 'Erro ao carregar tarefas: ' . $e->getMessage()
+      ], JSON_UNESCAPED_UNICODE);
+      exit;
+    }
   }
 }

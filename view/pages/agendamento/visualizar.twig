@@ -99,18 +99,16 @@
                             <div class="col-md-4 mb-3">
                                 <label class="form-label fw-bold">Status</label>
                                 <p class="mb-0">
-                                    {% if agendamento.status == 'Pendente' %}
-                                        <span class="badge bg-warning fs-6">Pendente</span>
-                                    {% elseif agendamento.status == 'Agendado' %}
+                                    {% if agendamento.status == 'Agendado' %}
                                         <span class="badge bg-primary fs-6">Agendado</span>
-                                    {% elseif agendamento.status == 'Realizado' %}
-                                        <span class="badge bg-success fs-6">Realizado</span>
-                                    {% elseif agendamento.status == 'Cancelado' %}
-                                        <span class="badge bg-danger fs-6">Cancelado</span>
-                                    {% elseif agendamento.status == 'Aprovado' %}
-                                        <span class="badge bg-success fs-6">Aprovado</span>
-                                    {% elseif agendamento.status == 'Rejeitado' %}
-                                        <span class="badge bg-danger fs-6">Rejeitado</span>
+                                    {% elseif agendamento.status == 'Perícia Realizada' %}
+                                        <span class="badge bg-success fs-6">Perícia Realizada</span>
+                                    {% elseif agendamento.status == 'Não Realizada' %}
+                                        <span class="badge bg-danger fs-6">Não Realizada</span>
+                                    {% elseif agendamento.status == 'Parecer para Revisar' %}
+                                        <span class="badge bg-warning fs-6">Parecer para Revisar</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary fs-6">{{ agendamento.status|default('Agendado') }}</span>
                                     {% endif %}
                                 </p>
                             </div>

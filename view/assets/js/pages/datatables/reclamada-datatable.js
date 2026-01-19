@@ -55,9 +55,16 @@
 
     function setupRemoveFunction() {
         window.removerReclamada = function(id, nome) {
-            document.getElementById('nomeReclamada').textContent = nome;
+            const nomeElement = document.getElementById('nomeReclamada');
+            if (nomeElement) {
+                nomeElement.textContent = nome;
+            }
             window.reclamadaParaRemover = id;
-            new bootstrap.Modal(document.getElementById('confirmModal')).show();
+            const modalElement = document.getElementById('confirmModal');
+            if (modalElement) {
+                const modal = new bootstrap.Modal(modalElement);
+                modal.show();
+            }
         };
 
         const confirmRemover = document.getElementById('confirmRemover');
@@ -66,6 +73,7 @@
                 if (!window.reclamadaParaRemover) return;
                 
                 const btn = this;
+                const originalHtml = btn.innerHTML;
                 btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Removendo...';
                 btn.disabled = true;
                 
@@ -84,21 +92,35 @@
                             timer: 2000,
                             showConfirmButton: false
                         }).then(() => {
-                            bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
+                            const modalElement = document.getElementById('confirmModal');
+                            if (modalElement) {
+                                const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                                if (modalInstance) {
+                                    modalInstance.hide();
+                                }
+                            }
                             if (dataTableInstance) {
                                 dataTableInstance.reload();
                             }
                         });
                     } else {
-                        Swal.fire({ icon: 'error', title: 'Erro!', text: data.message });
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Erro!',
+                            text: data.message
+                        });
                     }
                 })
                 .catch(error => {
                     console.error('Erro:', error);
-                    Swal.fire({ icon: 'error', title: 'Erro!', text: 'Ocorreu um erro ao remover.' });
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Erro!',
+                        text: 'Ocorreu um erro ao remover a reclamada.'
+                    });
                 })
                 .finally(() => {
-                    btn.innerHTML = 'Sim, Remover';
+                    btn.innerHTML = originalHtml;
                     btn.disabled = false;
                     window.reclamadaParaRemover = null;
                 });

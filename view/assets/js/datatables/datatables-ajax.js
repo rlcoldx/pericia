@@ -83,7 +83,38 @@
 
             // Mescla configurações customizadas
             if (config.customConfig) {
-                Object.assign(this.config, config.customConfig);
+                // Se tem ajax.data customizado, mesclar de forma especial
+                if (config.customConfig.ajax && config.customConfig.ajax.data) {
+                    const originalDataFn = this.config.ajax.data;
+                    const customDataFn = config.customConfig.ajax.data;
+                    
+                    // Mesclar outras propriedades do ajax primeiro
+                    Object.keys(config.customConfig.ajax).forEach(key => {
+                        if (key !== 'data') {
+                            this.config.ajax[key] = config.customConfig.ajax[key];
+                        }
+                    });
+                    
+                    // Criar função data que combina ambas
+                    this.config.ajax.data = function(d) {
+                        // Primeiro executa a função original (para customFilters)
+                        if (originalDataFn) {
+                            originalDataFn(d);
+                        }
+                        // Depois executa a função customizada (para filtros dinâmicos)
+                        if (customDataFn) {
+                            customDataFn(d);
+                        }
+                        return d;
+                    };
+                }
+                
+                // Mesclar outras configurações (não ajax)
+                Object.keys(config.customConfig).forEach(key => {
+                    if (key !== 'ajax') {
+                        this.config[key] = config.customConfig[key];
+                    }
+                });
             }
 
             this.table = null;

@@ -37,20 +37,9 @@
                         </div>
                         <div class="card-body">
                             <div class="row">
-                                {% if 'agendamento_primeiro_passo_data_entrada'|verifyPermission %}
-                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
-                                    <label class="form-label">Data de Entrada <span class="text-danger">*</span></label>
-                                    <input type="date" 
-                                           class="form-control" 
-                                           name="data_entrada" 
-                                           value="{{ action == 'editar' ? agendamento.data_entrada : '' }}"
-                                           required>
-                                </div>
-                                {% endif %}
-                                
                                 {% if 'agendamento_primeiro_passo_data_pericia'|verifyPermission %}
                                 <div class="col-12 col-lg-4 col-xl-3 mb-3">
-                                    <label class="form-label">Data da Perícia <span class="text-danger">*</span></label>
+                                    <label class="form-label">Data do Agendamento <span class="text-danger">*</span></label>
                                     <input type="date" 
                                            class="form-control" 
                                            name="data_agendamento" 
@@ -70,28 +59,6 @@
                                 </div>
                                 {% endif %}
                                 
-                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
-                                    <label class="form-label">Status do Agendamento</label>
-                                    <select class="form-control" name="status">
-                                        {% set currentStatus = action == 'editar' ? agendamento.status|default('Pendente') : 'Pendente' %}
-                                        <option value="Pendente" {{ currentStatus == 'Pendente' ? 'selected' : '' }}>Pendente</option>
-                                        <option value="Agendado" {{ currentStatus == 'Agendado' ? 'selected' : '' }}>Agendado</option>
-                                        <option value="Realizado" {{ currentStatus == 'Realizado' ? 'selected' : '' }}>Realizado</option>
-                                        <option value="Cancelado" {{ currentStatus == 'Cancelado' ? 'selected' : '' }}>Cancelado</option>
-                                    </select>
-                                </div>
-                                
-                                {% if 'agendamento_primeiro_passo_local'|verifyPermission %}
-                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
-                                    <label class="form-label">Local</label>
-                                    <input type="text" 
-                                           class="form-control" 
-                                           name="local_pericia" 
-                                           value="{{ action == 'editar' ? agendamento.local_pericia : '' }}"
-                                           placeholder="Local da perícia">
-                                </div>
-                                {% endif %}
-                                
                                 {% if 'agendamento_primeiro_passo_numero_processo'|verifyPermission %}
                                 <div class="col-12 col-lg-4 col-xl-3 mb-3">
                                     <label class="form-label">Número do Processo</label>
@@ -103,37 +70,35 @@
                                 </div>
                                 {% endif %}
                                 
-                                {% if 'agendamento_primeiro_passo_vara'|verifyPermission %}
+                                {% if 'agendamento_primeiro_passo_cliente'|verifyPermission %}
                                 <div class="col-12 col-lg-4 col-xl-3 mb-3">
-                                    <label class="form-label">Vara</label>
-                                    <input type="text" 
-                                           class="form-control" 
-                                           name="vara" 
-                                           value="{{ action == 'editar' ? agendamento.vara : '' }}"
-                                           placeholder="Vara/Órgão">
+                                    <label class="form-label">Reclamada (Cliente) <span class="text-danger">*</span></label>
+                                    <select class="form-control" name="cliente_nome" id="cliente_nome" required>
+                                        {% if action == 'editar' and agendamento.cliente_nome %}
+                                            <option value="{{ agendamento.cliente_nome }}" selected>{{ agendamento.cliente_nome }}</option>
+                                        {% endif %}
+                                        {% for reclamada in reclamadas %}
+                                            {% if action != 'editar' or agendamento.cliente_nome != reclamada.nome %}
+                                                <option value="{{ reclamada.nome }}">{{ reclamada.nome }}</option>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </select>
                                 </div>
                                 {% endif %}
                                 
                                 {% if 'agendamento_primeiro_passo_reclamante'|verifyPermission %}
                                 <div class="col-12 col-lg-4 col-xl-3 mb-3">
                                     <label class="form-label">Reclamante</label>
-                                    <input type="text" 
-                                           class="form-control" 
-                                           name="reclamante_nome" 
-                                           value="{{ action == 'editar' ? agendamento.reclamante_nome : '' }}"
-                                           placeholder="Nome do reclamante">
-                                </div>
-                                {% endif %}
-                                
-                                {% if 'agendamento_primeiro_passo_cliente'|verifyPermission %}
-                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
-                                    <label class="form-label">Reclamada (Cliente) <span class="text-danger">*</span></label>
-                                    <input type="text" 
-                                           class="form-control" 
-                                           name="cliente_nome" 
-                                           value="{{ action == 'editar' ? agendamento.cliente_nome : '' }}"
-                                           placeholder="Nome do cliente"
-                                           required>
+                                    <select class="form-control" name="reclamante_nome" id="reclamante_nome">
+                                        {% if action == 'editar' and agendamento.reclamante_nome %}
+                                            <option value="{{ agendamento.reclamante_nome }}" selected>{{ agendamento.reclamante_nome }}</option>
+                                        {% endif %}
+                                        {% for reclamante in reclamantes %}
+                                            {% if action != 'editar' or agendamento.reclamante_nome != reclamante.nome %}
+                                                <option value="{{ reclamante.nome }}">{{ reclamante.nome }}</option>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </select>
                                 </div>
                                 {% endif %}
                                 
@@ -152,41 +117,38 @@
                                 </div>
                                 {% endif %}
                                 
+                                {% if 'agendamento_primeiro_passo_local'|verifyPermission %}
                                 <div class="col-12 col-lg-4 col-xl-3 mb-3">
-                                    <label class="form-label">Tipo de Documento</label>
-                                    <select class="form-control" id="tipo_documento" name="tipo_documento">
-                                        {% set isCNPJ = (action == 'editar' and agendamento.cliente_cpf and ('/' in agendamento.cliente_cpf or agendamento.cliente_cpf|replace({'.': '', '/': '', '-': ''})|length == 14)) %}
-                                        <option value="CPF" {{ not isCNPJ ? 'selected' : '' }}>CPF</option>
-                                        <option value="CNPJ" {{ isCNPJ ? 'selected' : '' }}>CNPJ</option>
+                                    <label class="form-label">Endereço</label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           name="local_pericia" 
+                                           value="{{ action == 'editar' ? agendamento.local_pericia : '' }}"
+                                           placeholder="Endereço da perícia">
+                                </div>
+                                {% endif %}
+                                
+                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
+                                    <label class="form-label">Status do Agendamento</label>
+                                    <select class="form-control" name="status">
+                                        {% set currentStatus = action == 'editar' ? agendamento.status|default('Agendado') : 'Agendado' %}
+                                        <option value="Agendado" {{ currentStatus == 'Agendado' ? 'selected' : '' }}>Agendado</option>
+                                        <option value="Perícia Realizada" {{ currentStatus == 'Perícia Realizada' ? 'selected' : '' }}>Perícia Realizada</option>
+                                        <option value="Não Realizada" {{ currentStatus == 'Não Realizada' ? 'selected' : '' }}>Não Realizada</option>
+                                        <option value="Parecer para Revisar" {{ currentStatus == 'Parecer para Revisar' ? 'selected' : '' }}>Parecer para Revisar</option>
                                     </select>
                                 </div>
                                 
+                                {% if 'agendamento_primeiro_passo_vara'|verifyPermission %}
                                 <div class="col-12 col-lg-4 col-xl-3 mb-3">
-                                    <label class="form-label">CPF/CNPJ</label>
+                                    <label class="form-label">Vara</label>
                                     <input type="text" 
                                            class="form-control" 
-                                           id="cliente_documento"
-                                           name="cliente_documento" 
-                                           value="{{ action == 'editar' ? agendamento.cliente_cpf : '' }}"
-                                           placeholder="000.000.000-00">
+                                           name="vara" 
+                                           value="{{ action == 'editar' ? agendamento.vara : '' }}"
+                                           placeholder="Vara/Órgão">
                                 </div>
-                                
-                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
-                                    <label class="form-label">Email</label>
-                                    <input type="email" 
-                                           class="form-control" 
-                                           name="cliente_email" 
-                                           value="{{ action == 'editar' ? agendamento.cliente_email : '' }}">
-                                </div>
-                                
-                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
-                                    <label class="form-label">Telefone</label>
-                                    <input type="text" 
-                                           class="form-control" 
-                                           name="cliente_telefone" 
-                                           value="{{ action == 'editar' ? agendamento.cliente_telefone : '' }}"
-                                           placeholder="(11) 99999-9999">
-                                </div>
+                                {% endif %}
                                 
                                 {% if 'agendamento_primeiro_passo_valor_cobrado'|verifyPermission %}
                                 <div class="col-12 col-lg-4 col-xl-3 mb-3">
@@ -507,15 +469,21 @@
                                                type="checkbox"
                                                id="tarefa_concluido"
                                                name="tarefa_concluido"
+                                               value="1"
                                                {{ action == 'editar' and tarefa and tarefa.concluido ? 'checked' : '' }}>
                                         <label class="form-check-label" for="tarefa_concluido">
                                             <strong>Marcar como concluído</strong>
                                         </label>
                                     </div>
-                                    <div class="form-text">Marcar que você concluiu a tarefa</div>
+                                    <input type="date"
+                                           class="form-control"
+                                           name="tarefa_data_conclusao"
+                                           id="tarefa_data_conclusao"
+                                           value="{{ action == 'editar' and tarefa and tarefa.data_conclusao ? tarefa.data_conclusao : '' }}">
+                                    <div class="form-text">Data prevista para conclusão da próxima tarefa</div>
                                 </div>
 
-                                <div class="col-12 col-lg-6 mb-3">
+                                <div class="col-12 col-lg-3 mb-3">
                                     <label class="form-label">Usuário Responsável</label>
                                     <select class="form-control" name="tarefa_usuario_responsavel_id" id="tarefa_usuario_responsavel_id">
                                         <option value="">Selecione o usuário responsável</option>
@@ -528,14 +496,12 @@
                                     <div class="form-text">Usuário que será responsável pela próxima tarefa</div>
                                 </div>
 
-                                <div class="col-12 col-lg-3 mb-3">
-                                    <label class="form-label">Data de Conclusão</label>
-                                    <input type="date"
-                                           class="form-control"
-                                           name="tarefa_data_conclusao"
-                                           id="tarefa_data_conclusao"
-                                           value="{{ action == 'editar' and tarefa and tarefa.data_conclusao ? tarefa.data_conclusao : '' }}">
-                                    <div class="form-text">Data prevista para conclusão da próxima tarefa</div>
+                                <div class="col-12 col-lg-6 mb-3">
+                                    <label class="form-label">Descrição da Tarefa</label>
+                                    <textarea class="form-control"
+                                              name="tarefa_texto"
+                                              rows="1">{{ action == 'editar' ? tarefa.tarefa_texto : '' }}</textarea>
+                                    <div class="form-text">Descrição da tarefa que será exibida para o usuário responsável</div>
                                 </div>
                             </div>
                         </div>

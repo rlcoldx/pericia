@@ -13,6 +13,7 @@
     }
 
     let dataTableInstance = null;
+    let currentFilters = {};
 
     function init() {
         const table = document.getElementById('tabelaTarefas');
@@ -32,6 +33,18 @@
             { data: 5, name: 'acoes', orderable: false, searchable: false, className: 'text-center' }
         ];
 
+        // Função para obter filtros do formulário dinamicamente
+        function getFiltersFromForm() {
+            const filtroStatus = document.getElementById('filtroStatusTarefas');
+            const filters = {};
+            
+            if (filtroStatus && filtroStatus.value) {
+                filters.status = filtroStatus.value;
+            }
+            
+            return filters;
+        }
+
         const config = {
             ajaxUrl: window.DOMAIN + '/home/tarefas/datatable',
             columns: columns,
@@ -39,7 +52,21 @@
             pageLength: 10,
             lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Todos"]],
             dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip',
-            customFilters: {},
+            customFilters: getFiltersFromForm(),
+            customConfig: {
+                ajax: {
+                    data: function(d) {
+                        // Adiciona filtro de status dinamicamente do select
+                        const filtroStatus = document.getElementById('filtroStatusTarefas');
+                        if (filtroStatus && filtroStatus.value) {
+                            d.status = filtroStatus.value;
+                        } else {
+                            d.status = '';
+                        }
+                        return d;
+                    }
+                }
+            },
             onDraw: function() {
                 // Inicializar tooltips após desenhar a tabela
                 if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
@@ -62,9 +89,27 @@
         dataTableInstance = new DataTableAjax('tabelaTarefas', config);
         if (dataTableInstance.init()) {
             console.log('DataTable de tarefas inicializado com sucesso');
+            
+            // Configurar filtro de status
+            setupStatusFilter();
         } else {
             console.error('Erro ao inicializar DataTable de tarefas');
         }
+    }
+
+    /**
+     * Configura o filtro de status das tarefas
+     */
+    function setupStatusFilter() {
+        const filtroStatus = document.getElementById('filtroStatusTarefas');
+        if (!filtroStatus) return;
+
+        filtroStatus.addEventListener('change', function() {
+            if (dataTableInstance && dataTableInstance.reload) {
+                // Recarrega a tabela com os novos filtros
+                dataTableInstance.reload();
+            }
+        });
     }
 
     // Função para recarregar a tabela (pode ser chamada externamente)

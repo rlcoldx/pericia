@@ -223,6 +223,62 @@ class ReclamanteController extends Controller
         $this->responseJson($response);
     }
 
+    /**
+     * Cria um reclamante rapidamente via AJAX (usado em formulários de outros módulos)
+     */
+    public function criarRapido($params)
+    {
+        $this->setParams($params);
+        $this->requirePermission('reclamantes_criar');
+
+        $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
+        $nome = trim($_POST['nome'] ?? '');
+
+        if (empty($nome)) {
+            $this->responseJson(['success' => false, 'message' => 'Nome é obrigatório.']);
+            return;
+        }
+
+        // Verificar se já existe um reclamante com esse nome
+        $model = new Reclamante();
+        $read = new \Agencia\Close\Conn\Read();
+        $read->ExeRead(
+            'reclamantes',
+            'WHERE empresa = :empresa AND nome = :nome',
+            "empresa={$empresa}&nome={$nome}"
+        );
+
+        if ($read->getResult()) {
+            // Já existe, retorna o ID existente
+            $existente = $read->getResult()[0];
+            $this->responseJson([
+                'success' => true,
+                'id' => (int) $existente['id'],
+                'nome' => $existente['nome'],
+                'message' => 'Reclamante já existe.'
+            ]);
+            return;
+        }
+
+        // Criar novo
+        $result = $model->criar([
+            'empresa' => (int) $empresa,
+            'nome' => $nome,
+        ]);
+
+        if ($result->getResult()) {
+            $idReclamante = (int) $result->getResult();
+            $this->responseJson([
+                'success' => true,
+                'id' => $idReclamante,
+                'nome' => $nome,
+                'message' => 'Reclamante criado com sucesso.'
+            ]);
+        } else {
+            $this->responseJson(['success' => false, 'message' => 'Erro ao criar reclamante.']);
+        }
+    }
+
     private function formatAcoesCell(?int $id): string
     {
         if (!$id) {

@@ -32069,7 +32069,6 @@ button:focus {
 @media only screen and (max-width: 575px) {
   .card {
     margin-bottom: 0.938rem;
-    height: calc(100% - 0.938rem);
   }
 }
 .card-body {
