@@ -40,7 +40,7 @@ abstract class Conn {
         try {
             if ($this->Connect == null):
                 $dsn = 'mysql:host=' . $this->Host . ';dbname=' . $this->Dbsa;
-                $options = array(PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES LATIN1');
+                $options = array(PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8mb4');
                 $this->Connect = new PDO($dsn, $this->User, $this->Pass, $options);
             endif;
         } catch (PDOException $e) {

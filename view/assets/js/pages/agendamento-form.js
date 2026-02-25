@@ -203,6 +203,25 @@
                 }
             });
         }
+
+        // Select2 para Perito com tags (permite criar novos)
+        const peritoSelect = jQuery('#perito_id');
+        if (peritoSelect.length) {
+            peritoSelect.select2({
+                tags: true,
+                placeholder: 'Selecione ou digite para criar um novo Perito',
+                allowClear: true,
+                width: '100%',
+                language: {
+                    noResults: function() {
+                        return "Digite para criar um novo perito";
+                    },
+                    searching: function() {
+                        return "Buscando...";
+                    }
+                }
+            });
+        }
     }
 
 
@@ -219,12 +238,19 @@
     }
 
     /**
-     * Cria um reclamante/reclamada rapidamente via AJAX
+     * Cria um reclamante/reclamada/perito rapidamente via AJAX
      */
     async function criarRapido(tipo, nome) {
-        const endpoint = tipo === 'reclamante' 
-            ? window.DOMAIN + '/reclamantes/criar-rapido'
-            : window.DOMAIN + '/reclamadas/criar-rapido';
+        let endpoint;
+        if (tipo === 'reclamante') {
+            endpoint = window.DOMAIN + '/reclamantes/criar-rapido';
+        } else if (tipo === 'reclamada') {
+            endpoint = window.DOMAIN + '/reclamadas/criar-rapido';
+        } else if (tipo === 'perito') {
+            endpoint = window.DOMAIN + '/perito/criar-rapido';
+        } else {
+            throw new Error('Tipo inválido para criação rápida');
+        }
         
         const formData = new FormData();
         formData.append('nome', nome);
@@ -549,9 +575,64 @@
                     }
                 }
 
+                // Verificar se Perito é novo e criar se necessário
+                const peritoSelect = jQuery('#perito_id');
+                let peritoId = peritoSelect.val();
+
+                if (Array.isArray(peritoId)) {
+                    peritoId = peritoId[0];
+                }
+
+                let peritoIdFinal = peritoId;
+
+                // Se o valor não existe nas opções do select ou não é um número, é um novo valor
+                if (peritoId && (!valorExisteNoSelect('perito_id', peritoId) || isNaN(parseInt(peritoId)))) {
+                    try {
+                        const resultadoPerito = await criarRapido('perito', peritoId);
+                        peritoIdFinal = resultadoPerito.id.toString();
+
+                        // Remover a opção temporária (texto) se existir
+                        peritoSelect.find('option').each(function() {
+                            const optionValue = jQuery(this).val();
+                            if (optionValue === peritoId && isNaN(parseInt(optionValue))) {
+                                jQuery(this).remove();
+                            }
+                        });
+
+                        // Verificar se a opção com o ID já existe antes de adicionar
+                        let optionPeritoExists = false;
+                        peritoSelect.find('option').each(function() {
+                            if (parseInt(jQuery(this).val()) === resultadoPerito.id) {
+                                optionPeritoExists = true;
+                                return false; // break
+                            }
+                        });
+
+                        if (!optionPeritoExists) {
+                            const newPeritoOption = new Option(resultadoPerito.nome, resultadoPerito.id, true, true);
+                            peritoSelect.append(newPeritoOption);
+                        }
+
+                        // Forçar atualização do Select2 com o ID correto
+                        peritoSelect.val(resultadoPerito.id).trigger('change.select2');
+
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    } catch (error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Erro!',
+                            text: 'Erro ao criar perito: ' + error.message
+                        });
+                        submitBtn.innerHTML = originalText;
+                        submitBtn.disabled = false;
+                        return;
+                    }
+                }
+
                 // Garantir que os valores finais estão corretos nos selects
                 reclamanteParecerSelect.val(reclamanteParecerIdFinal).trigger('change.select2');
                 reclamadaParecerSelect.val(reclamadaParecerIdFinal).trigger('change.select2');
+                peritoSelect.val(peritoIdFinal).trigger('change.select2');
 
                 // Aguardar um pouco para o Select2 atualizar completamente
                 await new Promise(resolve => setTimeout(resolve, 200));

@@ -450,5 +450,66 @@ class PeritoController extends Controller
       error_log('Erro ao enviar notificação por e-mail: ' . $e->getMessage());
     }
   }
+
+  /**
+   * Cria um perito rapidamente via AJAX (usado em formulários de outros módulos)
+   */
+  public function criarRapido($params)
+  {
+    $this->setParams($params);
+    $this->requirePermission('perito_criar');
+
+    $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
+    $nome = trim($_POST['nome'] ?? '');
+
+    if (!$empresa) {
+      $this->responseJson(['success' => false, 'message' => 'Empresa não encontrada.']);
+      return;
+    }
+
+    if ($nome === '') {
+      $this->responseJson(['success' => false, 'message' => 'Nome é obrigatório.']);
+      return;
+    }
+
+    // Verificar se já existe um perito com esse nome para a empresa
+    $read = new \Agencia\Close\Conn\Read();
+    $read->ExeRead(
+      'peritos',
+      'WHERE empresa = :empresa AND nome = :nome',
+      "empresa={$empresa}&nome={$nome}"
+    );
+
+    if ($read->getResult()) {
+      $existente = $read->getResult()[0];
+      $this->responseJson([
+        'success' => true,
+        'id' => (int) $existente['id'],
+        'nome' => $existente['nome'],
+        'message' => 'Perito já existe.'
+      ]);
+      return;
+    }
+
+    // Criar novo perito básico (apenas com nome e empresa, status Ativo)
+    $model = new Perito();
+    $result = $model->criarPerito([
+      'empresa' => (int) $empresa,
+      'nome' => $nome,
+      'status' => 'Ativo'
+    ]);
+
+    if ($result->getResult()) {
+      $idPerito = (int) $result->getResult();
+      $this->responseJson([
+        'success' => true,
+        'id' => $idPerito,
+        'nome' => $nome,
+        'message' => 'Perito criado com sucesso.'
+      ]);
+    } else {
+      $this->responseJson(['success' => false, 'message' => 'Erro ao criar perito.']);
+    }
+  }
 }
 

@@ -105,8 +105,10 @@
                                 {% if 'agendamento_primeiro_passo_perito'|verifyPermission %}
                                 <div class="col-12 col-lg-4 col-xl-3 mb-3">
                                     <label class="form-label">Perito</label>
-                                    <select class="form-control" name="perito_id">
-                                        <option value="">Selecione um perito</option>
+                                    <select class="form-control" name="perito_id" id="perito_id">
+                                        <option value="">
+                                            Selecione ou digite para criar um novo Perito
+                                        </option>
                                         {% for perito in peritos %}
                                             <option value="{{ perito.id }}" 
                                                     {{ (action == 'editar' and agendamento.perito_id == perito.id) ? 'selected' : '' }}>

@@ -6,6 +6,7 @@ $router->get("/perito/add", "PeritoController:criar");
 $router->get("/perito/edit/{id}", "PeritoController:editar");
 $router->get("/perito/view/{id}", "PeritoController:visualizar");
 $router->post("/perito/add/save", "PeritoController:criarSalvar");
+$router->post("/perito/criar-rapido", "PeritoController:criarRapido");
 $router->post("/perito/edit/save", "PeritoController:editarSalvar");
 $router->post("/perito/remover", "PeritoController:remover");
 $router->get("/perito/datatable", "PeritoController:datatable");
