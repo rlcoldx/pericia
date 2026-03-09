@@ -17,7 +17,7 @@ class CreateQuesitosTable extends Migration
             `reclamada` varchar(255) NOT NULL,
             `link_pasta_drive` varchar(500) DEFAULT NULL,
             `enviar_para_cliente` tinyint(1) NOT NULL DEFAULT 0,
-            `status` enum('Pendente','Finalizado','Pendente de Envio','Recusado') NOT NULL DEFAULT 'Pendente',
+            `status` enum('Pendente','Finalizado','Finalizado e Enviado','Pendente de Envio','Recusado') NOT NULL DEFAULT 'Pendente',
             `data_create` timestamp NULL DEFAULT current_timestamp(),
             `data_update` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
             PRIMARY KEY (`id`),

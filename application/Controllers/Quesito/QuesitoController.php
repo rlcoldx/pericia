@@ -140,6 +140,9 @@ class QuesitoController extends Controller
             case 'Finalizado':
                 $badgeClass = 'bg-success';
                 break;
+            case 'Finalizado e Enviado':
+                $badgeClass = 'bg-success';
+                break;            
             case 'Pendente de Envio':
                 $badgeClass = 'bg-info';
                 break;
@@ -482,7 +485,7 @@ class QuesitoController extends Controller
             }
         }
 
-        $statusValidos = ['Pendente', 'Finalizado', 'Pendente de Envio', 'Recusado'];
+        $statusValidos = ['Pendente', 'Finalizado', 'Finalizado e Enviado', 'Pendente de Envio', 'Recusado'];
         if (!in_array($status, $statusValidos, true)) {
             $status = 'Pendente';
         }
