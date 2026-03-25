@@ -30,8 +30,9 @@
             }
         }, 200);
         
-        // Inicializa validação de data
-        initDateValidation();
+        // Permite selecionar datas passadas também
+        // (anteriormente era aplicado min=today no input de data_agendamento)
+        // initDateValidation();
         
         // Inicializa Select2 para campos com busca
         initSelect2();
@@ -226,16 +227,13 @@
 
 
 
-    /**
-     * Inicializa validação de data (não permitir datas passadas)
-     */
-    function initDateValidation() {
-        const dataInput = document.querySelector('input[name="data_agendamento"]');
-        if (dataInput) {
-            const hoje = new Date().toISOString().split('T')[0];
-            dataInput.setAttribute('min', hoje);
-        }
-    }
+    // function initDateValidation() {
+    //     const dataInput = document.querySelector('input[name="data_agendamento"]');
+    //     if (dataInput) {
+    //         const hoje = new Date().toISOString().split('T')[0];
+    //         dataInput.setAttribute('min', hoje);
+    //     }
+    // }
 
     /**
      * Cria um reclamante/reclamada/perito rapidamente via AJAX

@@ -103,14 +103,14 @@ class AddCamposAgendamentoGranular extends Migration
         if ($this->columnExists('agendamentos', 'tipo_pericia')) {
             try {
                 // Limpa valores inválidos
-                $this->executeQuery("UPDATE `agendamentos` SET `tipo_pericia` = NULL WHERE `tipo_pericia` IS NOT NULL AND `tipo_pericia` NOT IN ('MEDIACA','TECNICA','ERGONO','CINESIO','VISTORIA','X1','X2')");
+                $this->executeQuery("UPDATE `agendamentos` SET `tipo_pericia` = NULL WHERE `tipo_pericia` IS NOT NULL AND `tipo_pericia` NOT IN ('MÉDICA','TECNICA','ERGONO','CINESIO','VISTORIA','X1','X2')");
                 
                 // Altera para ENUM
-                $this->executeQuery("ALTER TABLE `agendamentos` MODIFY COLUMN `tipo_pericia` enum('MEDIACA','TECNICA','ERGONO','CINESIO','VISTORIA','X1','X2') DEFAULT NULL COMMENT 'Tipo de perícia'");
+                $this->executeQuery("ALTER TABLE `agendamentos` MODIFY COLUMN `tipo_pericia` enum('MÉDICA','TECNICA','ERGONO','CINESIO','VISTORIA','X1','X2') DEFAULT NULL COMMENT 'Tipo de perícia'");
             } catch (\Exception $e) {
                 // Se falhar, tenta apenas alterar a coluna (pode já estar limpa)
                 try {
-                    $this->executeQuery("ALTER TABLE `agendamentos` MODIFY COLUMN `tipo_pericia` enum('MEDIACA','TECNICA','ERGONO','CINESIO','VISTORIA','X1','X2') DEFAULT NULL COMMENT 'Tipo de perícia'");
+                    $this->executeQuery("ALTER TABLE `agendamentos` MODIFY COLUMN `tipo_pericia` enum('MÉDICA','TECNICA','ERGONO','CINESIO','VISTORIA','X1','X2') DEFAULT NULL COMMENT 'Tipo de perícia'");
                 } catch (\Exception $e2) {
                     // Ignora se já estiver no formato correto
                 }
