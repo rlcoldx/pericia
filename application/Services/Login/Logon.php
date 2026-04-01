@@ -38,9 +38,24 @@ class Logon
     {
         if (isset($_COOKIE['CookieLoginEmail'], $_COOKIE['CookieLoginHash'])) {
             $login = new Login();
-            $result = $login->getUserByEmailAndCookie($_COOKIE['CookieLoginEmail'], $_COOKIE['CookieLoginHash']);
+            $email = (string) $_COOKIE['CookieLoginEmail'];
+            $cookieRaw = (string) $_COOKIE['CookieLoginHash'];
+
+            // Novo formato: banco guarda sha256(token), cookie guarda token raw
+            $cookieHashed = hash('sha256', $cookieRaw);
+            $result = $login->getUserByEmailAndCookie($email, $cookieHashed);
+
+            // Compatibilidade: se ainda existir cookie_key antigo (plain), tenta também
+            if (!$result->getResult()) {
+                $result = $login->getUserByEmailAndCookie($email, $cookieRaw);
+            }
             if ($result->getResult()) {
-                $this->actionAfterFoundUser($result->getResult()[0]);
+                $user = $result->getResult()[0];
+                $this->actionAfterFoundUser($user);
+
+                // Rotaciona token e renova expiração para mais 7 dias
+                $tokenNovo = $this->loginCookie($user['id'], $user['email']);
+                (new \Agencia\Close\Models\User\User())->saveCookie($user['email'], $tokenNovo);
                 return true;
             }
         }
@@ -52,10 +67,10 @@ class Logon
         $this->saveInSession($login);
     }
 
-    private function loginCookie($idUser, $email)
+    private function loginCookie($idUser, $email): string
     {
         $loginCookie = new LoginCookie();
-        $loginCookie->createCookie($idUser, $email);
+        return $loginCookie->createCookie($idUser, $email);
     }
 
     private function saveInSession(array $login)
@@ -73,7 +88,8 @@ class Logon
     private function actionsAfterFoundUser(Read $result): void
     {
         $loginResult = $result->getResult()[0];
-        $this->loginCookie($loginResult['id'], $loginResult['email']);
+        $token = $this->loginCookie($loginResult['id'], $loginResult['email']);
+        (new \Agencia\Close\Models\User\User())->saveCookie($loginResult['email'], $token);
         //$this->saveLog($loginResult['id'], $company);
         $this->actionAfterFoundUser($loginResult);
     }

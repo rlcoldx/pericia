@@ -92,7 +92,12 @@
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Número do Processo</label>
-                                    <input type="text" name="numero_processo" id="numero_processo" class="form-control" value="{{ conta.numero_processo|default('') }}">
+                                    {{ include('partials/select_numero_processo.twig', {
+                                        name: 'numero_processo',
+                                        id: 'numero_processo',
+                                        numeros_processo: numeros_processo|default([]),
+                                        selected: conta.numero_processo|default('')
+                                    }) }}
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Tipo</label>
@@ -279,6 +284,44 @@
                 }
             }
         });
+
+        function definirNumeroProcessoContaReceber(valor) {
+            var v = (valor === undefined || valor === null) ? '' : String(valor).trim();
+            var $np = $('#numero_processo');
+            if (!$np.length) {
+                return;
+            }
+            if (!v) {
+                $np.val(null).trigger('change');
+                return;
+            }
+            var existe = false;
+            $np.find('option').each(function() {
+                if ($(this).val() === v) {
+                    existe = true;
+                    return false;
+                }
+            });
+            if (!existe) {
+                $np.append(new Option(v, v, true, true));
+            }
+            $np.val(v).trigger('change');
+        }
+
+        $('#numero_processo').select2({
+            tags: true,
+            placeholder: 'Selecione um número ou digite um novo',
+            allowClear: true,
+            width: '100%',
+            language: {
+                noResults: function() {
+                    return 'Digite para informar um novo número';
+                },
+                searching: function() {
+                    return 'Buscando...';
+                }
+            }
+        });
         
         // Preenche campos automaticamente ao selecionar agendamento
         $('#agendamento_id').on('change', function() {
@@ -288,7 +331,7 @@
                 $('#cliente_nome').val(option.data('cliente'));
                 $('#local_pericia').val(option.data('local'));
                 $('#reclamante_nome').val(option.data('reclamante'));
-                $('#numero_processo').val(option.data('processo'));
+                definirNumeroProcessoContaReceber(option.data('processo'));
                 $('#valor_total').val(parseFloat(option.data('valor')).toFixed(2).replace('.', ','));
                 $('#data_pericia').val(option.data('data-pericia'));
                 $('#assistente_nome').val(option.data('assistente'));
@@ -303,7 +346,7 @@
                 $('#cliente_nome').val('');
                 $('#local_pericia').val('');
                 $('#reclamante_nome').val('');
-                $('#numero_processo').val('');
+                definirNumeroProcessoContaReceber('');
                 $('#valor_total').val('0,00');
                 $('#data_pericia').val('');
                 $('#assistente_nome').val('');

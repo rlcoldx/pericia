@@ -11,6 +11,7 @@ use Agencia\Close\Services\Notificacao\EmailNotificationService;
 use Agencia\Close\Helpers\DataTableResponse;
 use Agencia\Close\Models\Equipe\Equipe;
 use Agencia\Close\Models\Tarefa\Tarefa;
+use Agencia\Close\Services\Processo\ProcessoVinculoService;
 
 class ParecerController extends Controller
 {
@@ -56,6 +57,7 @@ class ParecerController extends Controller
         $parecerModel = new Parecer();
         $assistenteModel = new Assistente();
         $equipeModel = new Equipe();
+        $processoVinculo = new ProcessoVinculoService();
 
         $this->render('pages/parecer/form.twig', [
             'titulo' => 'Novo Parecer',
@@ -67,6 +69,7 @@ class ParecerController extends Controller
             'assistentes' => $assistenteModel->listar((int) $empresa)->getResult() ?? [],
             'tipos' => $parecerModel->listarTipos((int) $empresa)->getResult() ?? [],
             'usuarios' => $equipeModel->getUsuariosAtivos((int) $empresa)->getResult() ?? [],
+            'numeros_processo' => $processoVinculo->listarNumerosProcessoDistintos((int) $empresa),
             'tarefa' => null,
         ]);
     }
@@ -114,6 +117,7 @@ class ParecerController extends Controller
 
         $dados = [
             'empresa' => (int) $empresa,
+            'numero_processo' => isset($_POST['numero_processo']) && trim((string) $_POST['numero_processo']) !== '' ? trim((string) $_POST['numero_processo']) : null,
             'data_realizacao' => $dataRealizacao,
             'data_fatal' => $_POST['data_fatal'] !== '' ? $_POST['data_fatal'] : null,
             'data_entrega_parecer' => $_POST['data_entrega_parecer'] !== '' ? $_POST['data_entrega_parecer'] : null,
@@ -220,6 +224,8 @@ class ParecerController extends Controller
         $tarefaRead = $tarefaModel->getPorModuloRegistro('parecer', $id, (int) $empresa);
         $tarefa = $tarefaRead->getResult()[0] ?? null;
 
+        $processoVinculo = new ProcessoVinculoService();
+
         $this->render('pages/parecer/form.twig', [
             'titulo' => 'Editar Parecer',
             'page' => 'pareceres',
@@ -230,6 +236,7 @@ class ParecerController extends Controller
             'assistentes' => $assistenteModel->listar((int) $empresa)->getResult() ?? [],
             'tipos' => $parecerModel->listarTipos((int) $empresa)->getResult() ?? [],
             'usuarios' => $equipeModel->getUsuariosAtivos((int) $empresa)->getResult() ?? [],
+            'numeros_processo' => $processoVinculo->listarNumerosProcessoDistintos((int) $empresa),
             'tarefa' => $tarefa,
         ]);
     }
@@ -281,6 +288,7 @@ class ParecerController extends Controller
         }
 
         $dados = [
+            'numero_processo' => isset($_POST['numero_processo']) && trim((string) $_POST['numero_processo']) !== '' ? trim((string) $_POST['numero_processo']) : null,
             'data_realizacao' => $dataRealizacao,
             'data_fatal' => $_POST['data_fatal'] !== '' ? $_POST['data_fatal'] : null,
             'data_entrega_parecer' => $_POST['data_entrega_parecer'] !== '' ? $_POST['data_entrega_parecer'] : null,
@@ -358,7 +366,10 @@ class ParecerController extends Controller
             ob_clean();
         }
         
-        $this->responseJson(['success' => true, 'message' => 'Parecer atualizado com sucesso.']);
+        $this->responseJson($this->mergeRedirectHomeAposEditarUsuarioMarcelo([
+            'success' => true,
+            'message' => 'Parecer atualizado com sucesso.',
+        ]));
     }
 
     private function enviarNotificacaoEmailParecer(int $empresa, int $idParecer, array $dados, string $acao): void

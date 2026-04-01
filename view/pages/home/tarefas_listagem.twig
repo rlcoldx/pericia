@@ -1,0 +1,64 @@
+{% extends "layout/layoutMaster.twig" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block body %}
+
+<div class="content-body">
+    <div class="container-fluid">
+        <div class="page-titles">
+            <div class="d-flex flex-wrap align-items-center justify-content-between">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ DOMAIN }}">Home</a></li>
+                    <li class="breadcrumb-item active"><a href="javascript:void(0)">{{ titulo }}</a></li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="d-flex flex-wrap align-items-center justify-content-between w-100">
+                            <h4 class="card-title mb-0">Minhas Tarefas</h4>
+                            <div class="d-flex align-items-center gap-2">
+                                <label class="form-label mb-0">Filtro:</label>
+                                <select id="filtroStatusTarefas" class="form-control form-control-sm" style="width: auto; min-width: 150px;">
+                                    <option value="" selected>Todas</option>
+                                    <option value="pendente">Pendentes</option>
+                                    <option value="concluido">Concluídas</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped" id="tabelaTarefas" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th>Módulo</th>
+                                        <th>Reclamante</th>
+                                        <th>Reclamada</th>
+                                        <th>Status</th>
+                                        <th>Prazo Fatal</th>
+                                        <th>Data de Criação</th>
+                                        <th class="text-center">Drive</th>
+                                        <th class="text-center">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ PATH }}/view/assets/js/pages/datatables/tarefas-datatable.js"></script>
+{% endblock %}

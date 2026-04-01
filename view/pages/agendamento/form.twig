@@ -21,7 +21,7 @@
             </div>
         </div>
 
-        <form id="formAgendamento" method="POST">
+        <form id="formAgendamento" method="POST" data-action="{{ action }}" data-record-id="{{ action == 'editar' ? agendamento.id : '' }}">
             {% if action == 'editar' %}
                 <input type="hidden" name="id" value="{{ agendamento.id }}">
             {% endif %}
@@ -62,11 +62,13 @@
                                 {% if 'agendamento_primeiro_passo_numero_processo'|verifyPermission %}
                                 <div class="col-12 col-lg-4 col-xl-3 mb-3">
                                     <label class="form-label">Número do Processo</label>
-                                    <input type="text" 
-                                           class="form-control" 
-                                           name="numero_processo" 
-                                           value="{{ action == 'editar' ? agendamento.numero_processo : '' }}"
-                                           placeholder="Número do processo">
+                                    {{ include('partials/select_numero_processo.twig', {
+                                        name: 'numero_processo',
+                                        id: 'numero_processo',
+                                        numeros_processo: numeros_processo|default([]),
+                                        selected: action == 'editar' ? agendamento.numero_processo|default('') : ''
+                                    }) }}
+                                    <small class="form-text">Vincula quesito, manifestação e pareceres.</small>
                                 </div>
                                 {% endif %}
                                 
@@ -246,7 +248,7 @@
                     {% endif %}
                     
                     <!-- SEÇÃO MARCELO / PARECER -->
-                    {% if 'agendamento_segundo_passo_data_realizada'|verifyPermission or 'agendamento_segundo_passo_data_fatal'|verifyPermission or 'agendamento_segundo_passo_data_entrega_parecer'|verifyPermission or 'agendamento_segundo_passo_status_parecer'|verifyPermission or 'agendamento_segundo_passo_obs_parecer'|verifyPermission %}
+                    {% if 'agendamento_segundo_passo_data_realizada'|verifyPermission or 'agendamento_segundo_passo_data_fatal'|verifyPermission or 'agendamento_segundo_passo_data_entrega_parecer'|verifyPermission or 'agendamento_segundo_passo_obs_parecer'|verifyPermission %}
                     {% set parecerValores = parecer_agendamento ?? {} %}
                     <div class="card mb-3">
                         <div class="card-header">
@@ -282,19 +284,6 @@
                                            class="form-control"
                                            name="parecer_data_entrega_parecer"
                                            value="{{ parecerValores.data_entrega_parecer ?? agendamento.data_entrega_parecer ?? '' }}">
-                                </div>
-
-                                <div class="col-12 col-lg-3 mb-3">
-                                    <label class="form-label">Status do Parecer</label>
-                                    <select class="form-control" name="parecer_status_parecer">
-                                        <option value="">Selecione</option>
-                                        {% set statusAtual = parecerValores.status_parecer ?? agendamento.status_parecer ?? '' %}
-                                        <option value="OK" {{ statusAtual == 'OK' ? 'selected' : '' }}>OK</option>
-                                        <option value="FAVORAVEL" {{ statusAtual == 'FAVORAVEL' ? 'selected' : '' }}>Favorável</option>
-                                        <option value="DESFAVORAVEL" {{ statusAtual == 'DESFAVORAVEL' ? 'selected' : '' }}>Desfavorável</option>
-                                        <option value="PARCIAL FAVORAVEL" {{ statusAtual == 'PARCIAL FAVORAVEL' ? 'selected' : '' }}>Parcial Favorável</option>
-                                        <option value="NR (NÃO REALIZADO)" {{ statusAtual == 'NR (NÃO REALIZADO)' ? 'selected' : '' }}>NR (Não Realizado)</option>
-                                    </select>
                                 </div>
 
                                 <div class="col-12 col-lg-3 mb-3">
@@ -538,5 +527,6 @@
     // Define DOMAIN globalmente para uso no JS externo
     window.DOMAIN = '{{ DOMAIN }}';
 </script>
+<script src="{{ PATH }}/view/assets/js/processo-vinculo.js"></script>
 <script src="{{ PATH }}/view/assets/js/pages/agendamento-form.js"></script>
 {% endblock %}

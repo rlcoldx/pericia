@@ -135,7 +135,9 @@ class Tarefa extends Model
         // Parâmetros do DataTable
         $start = (int) ($params['start'] ?? 0);
         $length = (int) ($params['length'] ?? 10);
-        $search = trim($params['search']['value'] ?? '');
+        $search = trim(is_array($params['search'] ?? null)
+            ? ($params['search']['value'] ?? '')
+            : ($params['search'] ?? ''));
 
         // WHERE base
         $where = "WHERE t.empresa = :empresa AND t.usuario_responsavel_id = :usuario_id";
@@ -150,12 +152,7 @@ class Tarefa extends Model
             }
         }
 
-        // Busca geral
-        $searchWhere = '';
-        if (!empty($search)) {
-            $searchWhere = " AND (
-                t.modulo LIKE :search OR
-                COALESCE(
+        $exprReclamada = "COALESCE(
                     CASE 
                         WHEN t.modulo = 'quesito' THEN (SELECT rd.nome FROM quesitos q LEFT JOIN reclamadas rd ON q.reclamada_id = rd.id AND rd.empresa = q.empresa WHERE q.id = t.registro_id AND q.empresa = t.empresa LIMIT 1)
                         WHEN t.modulo = 'manifestacao' THEN (SELECT rd.nome FROM manifestacoes_impugnacoes m LEFT JOIN reclamadas rd ON m.reclamada_id = rd.id AND rd.empresa = m.empresa WHERE m.id = t.registro_id AND m.empresa = t.empresa LIMIT 1)
@@ -163,7 +160,25 @@ class Tarefa extends Model
                         WHEN t.modulo = 'agendamento' THEN (SELECT a.cliente_nome FROM agendamentos a WHERE a.id = t.registro_id AND a.empresa = t.empresa LIMIT 1)
                     END,
                     ''
-                ) LIKE :search
+                )";
+
+        $exprReclamante = "COALESCE(
+                    CASE 
+                        WHEN t.modulo = 'quesito' THEN (SELECT r2.nome FROM quesitos q LEFT JOIN reclamantes r2 ON q.reclamante_id = r2.id AND r2.empresa = q.empresa WHERE q.id = t.registro_id AND q.empresa = t.empresa LIMIT 1)
+                        WHEN t.modulo = 'manifestacao' THEN (SELECT r2.nome FROM manifestacoes_impugnacoes m LEFT JOIN reclamantes r2 ON m.reclamante_id = r2.id AND r2.empresa = m.empresa WHERE m.id = t.registro_id AND m.empresa = t.empresa LIMIT 1)
+                        WHEN t.modulo = 'parecer' THEN (SELECT r2.nome FROM pareceres p LEFT JOIN reclamantes r2 ON p.reclamante_id = r2.id AND r2.empresa = p.empresa WHERE p.id = t.registro_id AND p.empresa = t.empresa LIMIT 1)
+                        WHEN t.modulo = 'agendamento' THEN (SELECT a.reclamante_nome FROM agendamentos a WHERE a.id = t.registro_id AND a.empresa = t.empresa LIMIT 1)
+                    END,
+                    ''
+                )";
+
+        // Busca geral
+        $searchWhere = '';
+        if (!empty($search)) {
+            $searchWhere = " AND (
+                t.modulo LIKE :search OR
+                {$exprReclamada} LIKE :search OR
+                {$exprReclamante} LIKE :search
             )";
             $parseString .= "&search=%{$search}%";
         }
@@ -177,6 +192,28 @@ class Tarefa extends Model
         $sqlFiltered = "SELECT COUNT(*) as total FROM tarefas t {$where}{$searchWhere}";
         $this->read->FullRead($sqlFiltered, $parseString);
         $filtered = (int) ($this->read->getResult()[0]['total'] ?? 0);
+
+        $orderColumn = (int) ($params['order_column'] ?? 4);
+        $orderDir = strtoupper($params['order_dir'] ?? 'ASC') === 'DESC' ? 'DESC' : 'ASC';
+
+        $columnOrderMap = [
+            0 => 't.modulo',
+            1 => $exprReclamante,
+            2 => $exprReclamada,
+            3 => 't.concluido',
+            4 => 't.data_conclusao',
+            5 => 't.data_create',
+        ];
+
+        $orderBy = ' (t.data_conclusao IS NULL OR t.data_conclusao = \'0000-00-00\'), t.data_conclusao ASC, t.data_create DESC';
+        if (isset($columnOrderMap[$orderColumn])) {
+            $colSql = $columnOrderMap[$orderColumn];
+            if ($orderColumn === 4) {
+                $orderBy = " ({$colSql} IS NULL OR {$colSql} = '0000-00-00'), {$colSql} {$orderDir}, t.data_create DESC";
+            } else {
+                $orderBy = "{$colSql} {$orderDir}, t.id DESC";
+            }
+        }
 
         // Busca dos dados
         $sql = "SELECT 
@@ -195,13 +232,26 @@ class Tarefa extends Model
                         END,
                         'Sem Reclamada'
                     ) as reclamada,
+                    COALESCE(
+                        CASE 
+                            WHEN t.modulo = 'quesito' THEN (SELECT r2.nome FROM quesitos q LEFT JOIN reclamantes r2 ON q.reclamante_id = r2.id AND r2.empresa = q.empresa WHERE q.id = t.registro_id AND q.empresa = t.empresa LIMIT 1)
+                            WHEN t.modulo = 'manifestacao' THEN (SELECT r2.nome FROM manifestacoes_impugnacoes m LEFT JOIN reclamantes r2 ON m.reclamante_id = r2.id AND r2.empresa = m.empresa WHERE m.id = t.registro_id AND m.empresa = t.empresa LIMIT 1)
+                            WHEN t.modulo = 'parecer' THEN (SELECT r2.nome FROM pareceres p LEFT JOIN reclamantes r2 ON p.reclamante_id = r2.id AND r2.empresa = p.empresa WHERE p.id = t.registro_id AND p.empresa = t.empresa LIMIT 1)
+                            WHEN t.modulo = 'agendamento' THEN (SELECT a.reclamante_nome FROM agendamentos a WHERE a.id = t.registro_id AND a.empresa = t.empresa LIMIT 1)
+                        END,
+                        'Sem Reclamante'
+                    ) as reclamante,
                     CASE 
                         WHEN t.modulo = 'manifestacao' THEN (SELECT m.favoravel FROM manifestacoes_impugnacoes m WHERE m.id = t.registro_id AND m.empresa = t.empresa LIMIT 1)
                         ELSE NULL
-                    END as favoravel
+                    END as favoravel,
+                    CASE 
+                        WHEN t.modulo = 'quesito' THEN (SELECT q.link_pasta_drive FROM quesitos q WHERE q.id = t.registro_id AND q.empresa = t.empresa LIMIT 1)
+                        ELSE NULL
+                    END as link_pasta_drive
                 FROM tarefas t
                 {$where}{$searchWhere}
-                ORDER BY t.data_create DESC
+                ORDER BY {$orderBy}
                 LIMIT :limit OFFSET :offset";
 
         $parseString .= "&limit={$length}&offset={$start}";

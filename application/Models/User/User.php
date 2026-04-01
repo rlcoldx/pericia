@@ -31,7 +31,9 @@ class User extends Model
     public function saveUserCookie($idUser, $email, $cookieHash)
     {
         $this->saveDatabase($cookieHash, $idUser);
-        $this->saveCookie($email, $cookieHash);
+        // O cookie enviado ao browser deve conter o token "raw" (o hash fica no banco).
+        // Para manter compatibilidade com a assinatura atual, este método recebe $cookieHash
+        // já como o valor que deve ir ao banco. O valor do cookie será definido externamente.
     }
 
     public function saveDatabase($cookieHash, $idUser): void
@@ -41,11 +43,27 @@ class User extends Model
         $update->ExeUpdate($this->table, $data, 'WHERE id = :idUser', "idUser={$idUser}");
     }
 
-    public function saveCookie($email, $cookieHash): void
+    public function saveCookie($email, $cookieValue): void
     {
-        $expire = time() + 3600 * 24 * 365;
-        setcookie("CookieLoginEmail", $email, $expire);
-        setcookie("CookieLoginHash", $cookieHash, $expire);
+        // 7 dias
+        $expire = time() + 3600 * 24 * 7;
+        $secure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+
+        setcookie('CookieLoginEmail', (string) $email, [
+            'expires' => $expire,
+            'path' => '/',
+            'secure' => $secure,
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
+
+        setcookie('CookieLoginHash', (string) $cookieValue, [
+            'expires' => $expire,
+            'path' => '/',
+            'secure' => $secure,
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
     }
 
 

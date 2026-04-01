@@ -96,8 +96,8 @@
 
         <!-- Gráficos e Tarefas -->
         <div class="row">
-            <!-- Coluna Esquerda: Tarefas -->
-            <div class="col-xl-8 col-lg-12">
+            <!-- Tarefas em largura total -->
+            <div class="col-12">
                 <div class="card">
                     <div class="card-header">
                         <div class="d-flex flex-wrap align-items-center justify-content-between w-100">
@@ -105,7 +105,7 @@
                             <div class="d-flex align-items-center gap-2">
                                 <label class="form-label mb-0">Filtro:</label>
                                 <select id="filtroStatusTarefas" class="form-control form-control-sm" style="width: auto; min-width: 150px;">
-                                    <option value="">Todas</option>
+                                    <option value="" selected>Todas</option>
                                     <option value="pendente">Pendentes</option>
                                     <option value="concluido">Concluídas</option>
                                 </select>
@@ -114,14 +114,16 @@
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">
-                            <table class="table table-striped" id="tabelaTarefas">
+                            <table class="table table-striped" id="tabelaTarefas" style="width:100%">
                                 <thead>
                                     <tr>
                                         <th>Módulo</th>
+                                        <th>Reclamante</th>
                                         <th>Reclamada</th>
                                         <th>Status</th>
-                                        <th>Data para Conclusão</th>
+                                        <th>Prazo Fatal</th>
                                         <th>Data de Criação</th>
+                                        <th class="text-center">Drive</th>
                                         <th class="text-center">Ações</th>
                                     </tr>
                                 </thead>
@@ -131,9 +133,14 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
 
+        <div class="row mt-4">
+            <div class="{% if ocultar_graficos_home|default(false) %}col-12{% else %}col-xl-8 col-lg-12{% endif %}">
+                {% if not ocultar_graficos_home|default(false) %}
                 <!-- Quesitos por Dia -->
-                <div class="card mt-4">
+                <div class="card">
                     <div class="card-header">
                         <h4 class="card-title">Quesitos por Dia do Mês</h4>
                     </div>
@@ -141,9 +148,10 @@
                         <div id="chartQuesitosDia" style="min-height: 350px;"></div>
                     </div>
                 </div>
+                {% endif %}
 
-                <!-- Financeiro -->
-                <div class="card mt-4">
+                <!-- Financeiro (totais sempre; gráfico só se permitido) -->
+                <div class="card{% if not ocultar_graficos_home|default(false) %} mt-4{% endif %}">
                     <div class="card-header">
                         <h4 class="card-title">Financeiro - Contas a Receber</h4>
                     </div>
@@ -162,35 +170,16 @@
                                 </div>
                             </div>
                         </div>
+                        {% if not ocultar_graficos_home|default(false) %}
                         <div id="chartFinanceiroStatus" style="min-height: 300px;"></div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
 
-            <!-- Coluna Direita: Gráficos -->
-            <div class="col-xl-4 col-lg-12">
-                <!-- Quesitos por Status -->
+            {% if not ocultar_graficos_home|default(false) %}
+            <div class="col-xl-4 col-lg-12 mt-4 mt-xl-0">
                 <div class="card">
-                    <div class="card-header">
-                        <h4 class="card-title">Quesitos por Status</h4>
-                    </div>
-                    <div class="card-body">
-                        <div id="chartQuesitosStatus" style="min-height: 350px;"></div>
-                    </div>
-                </div>
-
-                <!-- Manifestações/Impugnações -->
-                <div class="card mt-4">
-                    <div class="card-header">
-                        <h4 class="card-title">Manifestações/Impugnações por Dia</h4>
-                    </div>
-                    <div class="card-body">
-                        <div id="chartManifestacoesDia" style="min-height: 350px;"></div>
-                    </div>
-                </div>
-
-                <!-- Agendamentos por Status -->
-                <div class="card mt-4">
                     <div class="card-header">
                         <h4 class="card-title">Agendamentos por Status</h4>
                     </div>
@@ -199,6 +188,7 @@
                     </div>
                 </div>
             </div>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -209,8 +199,11 @@
 <script>
     window.DOMAIN = '{{ DOMAIN }}';
     window.STATISTICS_DATA = {{ estatisticas|json_encode|raw }};
+    window.HOME_OCULTAR_GRAFICOS = {{ ocultar_graficos_home|default(false) ? 'true' : 'false' }};
 </script>
+{% if not ocultar_graficos_home|default(false) %}
 <script src="{{ PATH }}/view/assets/vendor/apexchart/apexchart.js"></script>
+{% endif %}
 <script src="{{ PATH }}/view/assets/js/pages/datatables/tarefas-datatable.js"></script>
 <script src="{{ PATH }}/view/assets/js/pages/home.js"></script>
 {% endblock %}

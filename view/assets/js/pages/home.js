@@ -15,13 +15,22 @@
         init();
     }
 
+    function graficosDesativadosNaHome() {
+        return window.HOME_OCULTAR_GRAFICOS === true;
+    }
+
     function init() {
+        setupFilterForm();
+
+        if (graficosDesativadosNaHome()) {
+            return;
+        }
+
         if (typeof ApexCharts === 'undefined') {
             console.error('ApexCharts não está carregado');
             return;
         }
 
-        setupFilterForm();
         renderAllCharts();
     }
 
@@ -68,7 +77,9 @@
                 if (data.success) {
                     currentData = data.data;
                     updateStatisticsCards();
-                    updateAllCharts();
+                    if (!graficosDesativadosNaHome()) {
+                        updateAllCharts();
+                    }
                 } else {
                     Swal.fire({
                         icon: 'error',
@@ -131,14 +142,15 @@
     }
 
     function renderAllCharts() {
-        renderQuesitosStatusChart();
         renderQuesitosDiaChart();
-        renderManifestacoesDiaChart();
         renderAgendamentosStatusChart();
         renderFinanceiroStatusChart();
     }
 
     function updateAllCharts() {
+        if (graficosDesativadosNaHome()) {
+            return;
+        }
         Object.values(charts).forEach(chart => {
             if (chart && typeof chart.destroy === 'function') {
                 chart.destroy();
@@ -146,50 +158,6 @@
         });
         charts = {};
         renderAllCharts();
-    }
-
-    // Quesitos por Status (Donut)
-    function renderQuesitosStatusChart() {
-        const el = document.getElementById('chartQuesitosStatus');
-        if (!el) return;
-
-        const porStatus = currentData.quesitos?.por_status || [];
-        const labels = porStatus.map(item => item.status);
-        const series = porStatus.map(item => parseInt(item.total));
-
-        if (series.length === 0) {
-            el.innerHTML = '<div class="text-center p-5"><p>Nenhum dado disponível</p></div>';
-            return;
-        }
-
-        const options = {
-            series: series,
-            chart: {
-                type: 'donut',
-                height: 350
-            },
-            labels: labels,
-            colors: ['#d6a220', '#45ADDA', '#FE634E', '#FFC700', '#28a745'],
-            legend: {
-                position: 'bottom'
-            },
-            dataLabels: {
-                enabled: true,
-                formatter: function(val) {
-                    return val.toFixed(0) + '%';
-                }
-            },
-            plotOptions: {
-                pie: {
-                    donut: {
-                        size: '60%'
-                    }
-                }
-            }
-        };
-
-        charts.quesitosStatus = new ApexCharts(el, options);
-        charts.quesitosStatus.render();
     }
 
     // Quesitos por Dia (Line)
@@ -237,51 +205,6 @@
 
         charts.quesitosDia = new ApexCharts(el, options);
         charts.quesitosDia.render();
-    }
-
-    // Manifestações por Dia (Bar)
-    function renderManifestacoesDiaChart() {
-        const el = document.getElementById('chartManifestacoesDia');
-        if (!el) return;
-
-        const porDia = currentData.manifestacoes?.por_dia || [];
-        const dias = Array.from({ length: 31 }, (_, i) => i + 1);
-        const valores = dias.map(dia => {
-            const item = porDia.find(d => parseInt(d.dia) === dia);
-            return item ? parseInt(item.total) : 0;
-        });
-
-        const options = {
-            series: [{
-                name: 'Manifestações',
-                data: valores
-            }],
-            chart: {
-                type: 'bar',
-                height: 350,
-                toolbar: { show: false }
-            },
-            colors: ['#45ADDA'],
-            xaxis: {
-                categories: dias.map(d => d.toString()),
-                title: { text: 'Dia do Mês' }
-            },
-            yaxis: {
-                title: { text: 'Quantidade' }
-            },
-            dataLabels: {
-                enabled: false
-            },
-            plotOptions: {
-                bar: {
-                    borderRadius: 4,
-                    columnWidth: '50%'
-                }
-            }
-        };
-
-        charts.manifestacoesDia = new ApexCharts(el, options);
-        charts.manifestacoesDia.render();
     }
 
     // Agendamentos por Status (Donut)

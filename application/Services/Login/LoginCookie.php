@@ -8,11 +8,12 @@ class LoginCookie
 {
     public function createCookie($userId, $email): string
     {
-        $time = microtime();
-        $cookieKey = md5($time);
+        // Token forte e imprevisível para "manter conectado"
+        $cookieKey = bin2hex(random_bytes(32)); // 64 chars
 
         $user = new User();
-        $user->saveUserCookie($userId, $email, $cookieKey);
+        // Salva no banco apenas o hash do token (não o token em si)
+        $user->saveUserCookie($userId, $email, hash('sha256', $cookieKey));
         return $cookieKey;
     }
 }

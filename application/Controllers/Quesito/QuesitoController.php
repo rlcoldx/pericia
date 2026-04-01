@@ -12,6 +12,7 @@ use Agencia\Close\Conn\Read;
 use Agencia\Close\Helpers\DataTableResponse;
 use Agencia\Close\Models\Equipe\Equipe;
 use Agencia\Close\Models\Tarefa\Tarefa;
+use Agencia\Close\Services\Processo\ProcessoVinculoService;
 
 class QuesitoController extends Controller
 {
@@ -218,6 +219,7 @@ class QuesitoController extends Controller
         $reclamanteModel = new Reclamante();
         $quesitoModel = new Quesito();
         $equipeModel = new Equipe();
+        $processoVinculo = new ProcessoVinculoService();
 
         $this->render('pages/quesito/form.twig', [
             'titulo' => 'Cadastrar Quesito',
@@ -228,6 +230,7 @@ class QuesitoController extends Controller
             'reclamantes' => $reclamanteModel->listar((int) $empresa)->getResult() ?? [],
             'tipos' => $quesitoModel->getTiposDistinct((int) $empresa)->getResult() ?? [],
             'usuarios' => $equipeModel->getUsuariosAtivos((int) $empresa)->getResult() ?? [],
+            'numeros_processo' => $processoVinculo->listarNumerosProcessoDistintos((int) $empresa),
             'tarefa' => null,
         ]);
     }
@@ -315,6 +318,7 @@ class QuesitoController extends Controller
             'data' => $data,
             'tipo' => $tipo,
             'vara' => $vara,
+            'numero_processo' => isset($_POST['numero_processo']) && trim((string) $_POST['numero_processo']) !== '' ? trim((string) $_POST['numero_processo']) : null,
             'reclamante' => $reclamanteNome, // Campo antigo (NOT NULL na tabela)
             'reclamante_id' => $reclamanteId,
             'codigo_reclamante' => $_POST['codigo_reclamante'] !== '' ? $_POST['codigo_reclamante'] : null,
@@ -343,27 +347,18 @@ class QuesitoController extends Controller
 
         // Salvar tarefa se fornecida (não bloqueia o cadastro do quesito se falhar)
         try {
-            // Verificar se o checkbox está marcado (pode vir como 'on' ou '1')
-            $tarefaConcluido = isset($_POST['tarefa_concluido']) && 
-                             ($_POST['tarefa_concluido'] == '1' || $_POST['tarefa_concluido'] == 'on');
-            
-            // Sempre salvar tarefa se houver qualquer dado relacionado, incluindo apenas o checkbox
-            $temDadosTarefa = $tarefaConcluido || !empty($_POST['tarefa_usuario_responsavel_id']) || !empty($_POST['tarefa_data_conclusao']);
-            
+            $temDadosTarefa = !empty($_POST['tarefa_usuario_responsavel_id'])
+                || !empty($_POST['tarefa_data_conclusao'])
+                || trim((string) ($_POST['tarefa_texto'] ?? '')) !== '';
+
             if ($temDadosTarefa) {
                 $tarefaModel = new Tarefa();
-                
-                // Se o checkbox está marcado, garantir que o usuário responsável seja o usuário logado se não foi definido outro
-                $usuarioResponsavelId = null;
-                if (!empty($_POST['tarefa_usuario_responsavel_id'])) {
-                    $usuarioResponsavelId = (int) $_POST['tarefa_usuario_responsavel_id'];
-                } elseif ($tarefaConcluido) {
-                    // Se está marcando como concluído mas não definiu responsável, usar o logado
-                    $usuarioResponsavelId = $usuarioId; // Usuário logado
-                }
-                
+                $usuarioResponsavelId = !empty($_POST['tarefa_usuario_responsavel_id'])
+                    ? (int) $_POST['tarefa_usuario_responsavel_id']
+                    : null;
+
                 $tarefaModel->salvarTarefa('quesito', $idQuesito, (int) $empresa, [
-                    'concluido' => $tarefaConcluido ? 1 : 0,
+                    'concluido' => 0,
                     'usuario_responsavel_id' => $usuarioResponsavelId,
                     'data_conclusao' => $_POST['tarefa_data_conclusao'] ?? null,
                     'tarefa_texto' => $_POST['tarefa_texto'] ?? null,
@@ -429,6 +424,8 @@ class QuesitoController extends Controller
         $tarefaRead = $tarefaModel->getPorModuloRegistro('quesito', $id, (int) $empresa);
         $tarefa = $tarefaRead->getResult()[0] ?? null;
 
+        $processoVinculo = new ProcessoVinculoService();
+
         $this->render('pages/quesito/form.twig', [
             'titulo' => 'Gerenciar Quesito',
             'page' => 'quesitos',
@@ -438,6 +435,7 @@ class QuesitoController extends Controller
             'reclamantes' => $reclamanteModel->listar((int) $empresa)->getResult() ?? [],
             'tipos' => $model->getTiposDistinct((int) $empresa)->getResult() ?? [],
             'usuarios' => $equipeModel->getUsuariosAtivos((int) $empresa)->getResult() ?? [],
+            'numeros_processo' => $processoVinculo->listarNumerosProcessoDistintos((int) $empresa),
             'tarefa' => $tarefa,
         ]);
     }
@@ -526,6 +524,7 @@ class QuesitoController extends Controller
             'data' => $data,
             'tipo' => $tipo,
             'vara' => $vara,
+            'numero_processo' => isset($_POST['numero_processo']) && trim((string) $_POST['numero_processo']) !== '' ? trim((string) $_POST['numero_processo']) : null,
             'reclamante' => $reclamanteNome, // Campo antigo (NOT NULL na tabela)
             'reclamante_id' => $reclamanteId,
             'codigo_reclamante' => $_POST['codigo_reclamante'] !== '' ? $_POST['codigo_reclamante'] : null,
@@ -552,36 +551,30 @@ class QuesitoController extends Controller
 
         // Salvar tarefa se fornecida (não bloqueia a edição do quesito se falhar)
         try {
-            // Verificar se o checkbox está marcado (pode vir como 'on' ou '1')
-            $tarefaConcluido = isset($_POST['tarefa_concluido']) && 
-                             ($_POST['tarefa_concluido'] == '1' || $_POST['tarefa_concluido'] == 'on');
-            
-            // Sempre salvar tarefa se houver qualquer dado relacionado, incluindo apenas o checkbox
-            $temDadosTarefa = $tarefaConcluido || !empty($_POST['tarefa_usuario_responsavel_id']) || !empty($_POST['tarefa_data_conclusao']);
-            
+            $tarefaModel = new Tarefa();
+            $tarefaExistente = $tarefaModel->getPorModuloRegistro('quesito', $id, (int) $empresa);
+            $tarefaData = $tarefaExistente->getResult()[0] ?? null;
+
+            $temDadosTarefa = !empty($_POST['tarefa_usuario_responsavel_id'])
+                || !empty($_POST['tarefa_data_conclusao'])
+                || trim((string) ($_POST['tarefa_texto'] ?? '')) !== ''
+                || $tarefaData !== null;
+
             if ($temDadosTarefa) {
-                $tarefaModel = new Tarefa();
-                
-                // Buscar tarefa existente para manter o usuário responsável se não foi alterado
-                $tarefaExistente = $tarefaModel->getPorModuloRegistro('quesito', $id, (int) $empresa);
-                $tarefaData = $tarefaExistente->getResult()[0] ?? null;
-                
-                // Se o checkbox está marcado, garantir que o usuário responsável seja mantido ou definido
+                $concluidoPersistir = $tarefaData ? (int) ($tarefaData['concluido'] ?? 0) : 0;
+
                 $usuarioResponsavelId = null;
                 if (!empty($_POST['tarefa_usuario_responsavel_id'])) {
                     $usuarioResponsavelId = (int) $_POST['tarefa_usuario_responsavel_id'];
                 } elseif ($tarefaData && !empty($tarefaData['usuario_responsavel_id'])) {
-                    // Manter o responsável atual se não foi alterado
                     $usuarioResponsavelId = (int) $tarefaData['usuario_responsavel_id'];
-                } elseif ($tarefaConcluido) {
-                    // Se está marcando como concluído mas não definiu responsável, usar o logado
-                    $usuarioResponsavelId = $_SESSION['pericia_perfil_id'] ?? null;
                 }
-                
+
                 $tarefaModel->salvarTarefa('quesito', $id, (int) $empresa, [
-                    'concluido' => $tarefaConcluido ? 1 : 0,
+                    'concluido' => $concluidoPersistir,
                     'usuario_responsavel_id' => $usuarioResponsavelId,
                     'data_conclusao' => $_POST['tarefa_data_conclusao'] ?? null,
+                    'tarefa_texto' => $_POST['tarefa_texto'] ?? null,
                 ]);
             }
         } catch (\Exception $e) {
@@ -623,10 +616,10 @@ class QuesitoController extends Controller
             ob_clean();
         }
         
-        $this->responseJson([
+        $this->responseJson($this->mergeRedirectHomeAposEditarUsuarioMarcelo([
             'success' => true,
             'message' => 'Quesito atualizado com sucesso.',
-        ]);
+        ]));
     }
 
     private function notificarResponsaveisQuesito(int $empresa, int $idQuesito, array $dadosQuesito): void

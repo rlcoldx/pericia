@@ -26,11 +26,13 @@
 
         const columns = [
             { data: 0, name: 'modulo', orderable: true, searchable: true },
-            { data: 1, name: 'reclamada', orderable: true, searchable: true },
-            { data: 2, name: 'status', orderable: true, searchable: false },
-            { data: 3, name: 'data_conclusao', orderable: true, searchable: false },
-            { data: 4, name: 'data_create', orderable: true, searchable: false },
-            { data: 5, name: 'acoes', orderable: false, searchable: false, className: 'text-center' }
+            { data: 1, name: 'reclamante', orderable: true, searchable: true },
+            { data: 2, name: 'reclamada', orderable: true, searchable: true },
+            { data: 3, name: 'status', orderable: true, searchable: false },
+            { data: 4, name: 'data_conclusao', orderable: true, searchable: false },
+            { data: 5, name: 'data_create', orderable: true, searchable: false },
+            { data: 6, name: 'drive', orderable: false, searchable: false, className: 'text-center' },
+            { data: 7, name: 'acoes', orderable: false, searchable: false, className: 'text-center' }
         ];
 
         // Função para obter filtros do formulário dinamicamente
@@ -48,7 +50,7 @@
         const config = {
             ajaxUrl: window.DOMAIN + '/home/tarefas/datatable',
             columns: columns,
-            order: [[4, 'desc']], // Ordenar por data de criação (mais recente primeiro)
+            order: [[4, 'asc']], // Prazo Fatal: mais próximo primeiro (sem data por último no servidor)
             pageLength: 10,
             lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Todos"]],
             dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip',

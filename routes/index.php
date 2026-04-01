@@ -24,6 +24,7 @@ require  __DIR__ . '/notificacao.php';
 require  __DIR__ . '/email_template.php';
 require  __DIR__ . '/configuracao.php';
 require  __DIR__ . '/migration.php';
+require  __DIR__ . '/vinculo_processo.php';
 
 // ERROR
 $router->group("error")->namespace("Agencia\Close\Controllers\Error");

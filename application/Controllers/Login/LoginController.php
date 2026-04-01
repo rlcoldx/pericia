@@ -38,9 +38,36 @@ class LoginController extends Controller
     {
         $this->setParams($params);
 
+        $email = $_SESSION['pericia_perfil_email'] ?? null;
+        $userId = $_SESSION['pericia_perfil_id'] ?? null;
+
         session_destroy();
-        setcookie("CookieLoginEmail", "", time() - 3600);
-        setcookie("CookieLoginHash", "", time() - 3600);
+
+        // Limpa cookie no browser (mesmos parâmetros de path/samesite)
+        $secure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+        setcookie('CookieLoginEmail', '', [
+            'expires' => time() - 3600,
+            'path' => '/',
+            'secure' => $secure,
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
+        setcookie('CookieLoginHash', '', [
+            'expires' => time() - 3600,
+            'path' => '/',
+            'secure' => $secure,
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
+
+        // Revoga no banco (remove cookie_key) se tiver id
+        if ($userId) {
+            try {
+                (new User())->saveDatabase(null, (int) $userId);
+            } catch (\Throwable $e) {
+                // não bloqueia logout
+            }
+        }
 
         $this->router->redirect("login");
     }

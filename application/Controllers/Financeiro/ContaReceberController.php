@@ -6,6 +6,7 @@ use Agencia\Close\Controllers\Controller;
 use Agencia\Close\Models\Financeiro\ContaReceber;
 use Agencia\Close\Models\Agendamento\Agendamento;
 use Agencia\Close\Helpers\DataTableResponse;
+use Agencia\Close\Services\Processo\ProcessoVinculoService;
 
 class ContaReceberController extends Controller
 {
@@ -87,12 +88,14 @@ class ContaReceberController extends Controller
         $agendamentos = $agendamentoModel->getAgendamentos($empresa, [
             'status' => '' // Busca todos para permitir vincular qualquer agendamento
         ]);
+        $processoVinculo = new ProcessoVinculoService();
 
         $this->render('pages/financeiro/contas_receber/form.twig', [
             'titulo' => 'Nova Conta a Receber',
             'page' => 'contas_receber',
             'action' => 'criar',
-            'agendamentos' => $agendamentos->getResult() ?? []
+            'agendamentos' => $agendamentos->getResult() ?? [],
+            'numeros_processo' => $processoVinculo->listarNumerosProcessoDistintos((int) $empresa),
         ]);
     }
 
@@ -119,13 +122,15 @@ class ContaReceberController extends Controller
 
         $agendamentoModel = new Agendamento();
         $agendamentos = $agendamentoModel->getAgendamentos($empresa);
+        $processoVinculo = new ProcessoVinculoService();
 
         $this->render('pages/financeiro/contas_receber/form.twig', [
             'titulo' => 'Editar Conta a Receber',
             'page' => 'contas_receber',
             'action' => 'editar',
             'conta' => $conta->getResult()[0] ?? null,
-            'agendamentos' => $agendamentos->getResult() ?? []
+            'agendamentos' => $agendamentos->getResult() ?? [],
+            'numeros_processo' => $processoVinculo->listarNumerosProcessoDistintos((int) $empresa),
         ]);
     }
 

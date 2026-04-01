@@ -44,6 +44,17 @@
                                 </div>
 
                                 <div class="col-12 col-lg-3 mb-3">
+                                    <label class="form-label">Número do Processo</label>
+                                    {{ include('partials/select_numero_processo.twig', {
+                                        name: 'numero_processo',
+                                        id: 'numero_processo',
+                                        numeros_processo: numeros_processo|default([]),
+                                        selected: action == 'editar' ? quesito.numero_processo|default('') : ''
+                                    }) }}
+                                    <small class="form-text">Vincula agendamento, manifestação e pareceres.</small>
+                                </div>
+
+                                <div class="col-12 col-lg-3 mb-3">
                                     <label class="form-label">Tipo <span class="text-danger">*</span></label>
                                     <select class="form-control select2-tipo" name="tipo" id="tipo" required>
                                         {% if action == 'editar' and quesito.tipo %}
@@ -185,17 +196,7 @@
                         <div class="card-body">
                             <div class="row align-items-center">
                                 <div class="col-12 col-lg-3 mb-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input"
-                                               type="checkbox"
-                                               id="tarefa_concluido"
-                                               name="tarefa_concluido"
-                                               value="1"
-                                               {{ action == 'editar' and tarefa and tarefa.concluido ? 'checked' : '' }}>
-                                        <label class="form-check-label" for="tarefa_concluido">
-                                            <strong>Marcar como concluído</strong>
-                                        </label>
-                                    </div>
+                                    <label class="form-label" for="tarefa_data_conclusao">Data prevista (prazo)</label>
                                     <input type="date"
                                            class="form-control"
                                            name="tarefa_data_conclusao"
@@ -248,6 +249,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ PATH }}/view/assets/js/processo-vinculo.js"></script>
 <script>
     window.DOMAIN = '{{ DOMAIN }}';
 
@@ -314,6 +316,21 @@
                 }
             });
 
+            $('#numero_processo').select2({
+                tags: true,
+                placeholder: 'Selecione um número ou digite um novo',
+                allowClear: true,
+                width: '100%',
+                language: {
+                    noResults: function() {
+                        return 'Digite para informar um novo número';
+                    },
+                    searching: function() {
+                        return 'Buscando...';
+                    }
+                }
+            });
+
             // Select2 para Usuário Responsável (Tarefas)
             $('#tarefa_usuario_responsavel_id').select2({
                 placeholder: 'Selecione o usuário responsável',
@@ -352,6 +369,17 @@
                     });
                 }
             });
+
+            if (typeof initVinculoProcesso === 'function') {
+                initVinculoProcesso({
+                    inputSelector: '#numero_processo',
+                    excludeFonte: {% if action == 'editar' %}'quesito'{% else %}null{% endif %},
+                    excludeId: {% if action == 'editar' %}{{ quesito.id }}{% else %}null{% endif %},
+                    reclamada: '#reclamada_id',
+                    reclamante: '#reclamante_id',
+                    vara: 'input[name="vara"]'
+                });
+            }
         });
 
         /**
@@ -613,7 +641,8 @@
                         timer: 2000,
                         showConfirmButton: false
                     }).then(() => {
-                        window.location.href = window.DOMAIN + '/quesitos';
+                        const path = typeof data.redirect === 'string' ? data.redirect : '/quesitos';
+                        window.location.href = window.DOMAIN + path;
                     });
                 } else {
                     console.error('Erro do servidor:', data);

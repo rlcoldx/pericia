@@ -36871,3 +36871,8 @@ table.dataTable thead .sorting_desc {
   max-height: 75vh;
   overflow: auto;
 }
+[data-theme-version="dark"] .apexcharts-legend-text, 
+[data-theme-version="dark"] .apexcharts-xaxis text {
+  color: #FFF !important;
+  fill: #FFF !important;
+}

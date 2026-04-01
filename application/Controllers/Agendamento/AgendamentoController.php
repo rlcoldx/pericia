@@ -5,6 +5,7 @@ namespace Agencia\Close\Controllers\Agendamento;
 use Agencia\Close\Controllers\Controller;
 use Agencia\Close\Models\Agendamento\Agendamento;
 use Agencia\Close\Models\Equipe\Equipe;
+use Agencia\Close\Services\Processo\ProcessoVinculoService;
 use Agencia\Close\Models\User\User;
 use Agencia\Close\Models\Perito\Perito;
 use Agencia\Close\Models\Assistente\Assistente;
@@ -102,7 +103,8 @@ class AgendamentoController extends Controller
     
     // Busca usuários para tarefas
     $equipeModel = new Equipe();
-    
+    $processoVinculo = new ProcessoVinculoService();
+
     $this->render('pages/agendamento/form.twig', [
       'titulo' => 'Novo Agendamento',
       'page' => 'agendamento',
@@ -113,6 +115,7 @@ class AgendamentoController extends Controller
       'reclamantes' => $reclamantes->getResult() ?? [],
       'tipos_parecer' => $tiposParecer->getResult() ?? [],
       'usuarios' => $equipeModel->getUsuariosAtivos((int) $empresa)->getResult() ?? [],
+      'numeros_processo' => $processoVinculo->listarNumerosProcessoDistintos((int) $empresa),
       'agendamento' => null,
       'parecer_agendamento' => null,
       'tarefa' => null,
@@ -176,7 +179,9 @@ class AgendamentoController extends Controller
       $tarefaRead = $tarefaModel->getPorModuloRegistro('agendamento', $id, (int) $empresa);
       $tarefa = $tarefaRead->getResult()[0] ?? null;
     }
-    
+
+    $processoVinculo = new ProcessoVinculoService();
+
     $this->render('pages/agendamento/form.twig', [
       'titulo' => 'Editar Agendamento',
       'page' => 'agendamento',
@@ -188,6 +193,7 @@ class AgendamentoController extends Controller
       'reclamantes' => $reclamantes->getResult() ?? [],
       'tipos_parecer' => $tiposParecer->getResult() ?? [],
       'usuarios' => $equipeModel->getUsuariosAtivos((int) $empresa)->getResult() ?? [],
+      'numeros_processo' => $processoVinculo->listarNumerosProcessoDistintos((int) $empresa),
       'parecer_agendamento' => $parecerAgendamento,
       'tarefa' => $tarefa,
     ]);
@@ -261,18 +267,18 @@ class AgendamentoController extends Controller
       return;
     }
 
-    // Valida dados obrigatórios
-    $clienteNome = $_POST['cliente_nome'] ?? '';
-    $dataAgendamento = $_POST['data_agendamento'] ?? '';
-    $horaAgendamento = $_POST['hora_agendamento'] ?? '';
-    $peritoId = $_POST['perito_id'] ?? null;
+    // Valida dados obrigatórios (hora pode estar ausente no POST se a permissão ocultar o campo — usa padrão)
+    $clienteNome = trim((string) ($this->primeiroValorPost($_POST['cliente_nome'] ?? '') ?? ''));
+    $dataAgendamento = trim((string) ($this->primeiroValorPost($_POST['data_agendamento'] ?? '') ?? ''));
+    $horaAgendamento = $this->normalizarHoraAgendamento($this->primeiroValorPost($_POST['hora_agendamento'] ?? null));
+    $peritoId = $this->primeiroValorPost($_POST['perito_id'] ?? null);
 
-    if (empty($clienteNome) || empty($dataAgendamento) || empty($horaAgendamento)) {
+    if ($clienteNome === '' || $dataAgendamento === '') {
       // Limpar qualquer output buffer antes de enviar JSON
       if (ob_get_level() > 0) {
         ob_clean();
       }
-      $this->responseJson(['success' => false, 'message' => 'Preencha todos os campos obrigatórios']);
+      $this->responseJson(['success' => false, 'message' => 'Preencha todos os campos obrigatórios (cliente e data do agendamento).']);
       return;
     }
 
@@ -299,27 +305,26 @@ class AgendamentoController extends Controller
       $status = 'Agendado';
     }
 
-    // Valida e normaliza status_parecer para o enum
-    $statusParecer = $_POST['parecer_status_parecer'] ?? null;
-    if ($statusParecer) {
-      $statusParecerValidos = ['OK', 'FAVORAVEL', 'DESFAVORAVEL', 'PARCIAL FAVORAVEL', 'NR (NÃO REALIZADO)'];
-      $statusParecerUpper = mb_strtoupper($statusParecer, 'UTF-8');
-      if (!in_array($statusParecerUpper, $statusParecerValidos, true)) {
-        // Se não estiver no enum válido, tenta mapear
-        $statusParecer = null;
-      } else {
-        $statusParecer = $statusParecerUpper;
-      }
-    }
-
     // Função auxiliar para normalizar campos de data (converte string vazia para null)
-    $normalizeDate = function($value) {
-      return (!empty($value) && trim($value) !== '') ? $value : null;
+    $normalizeDate = function ($value) {
+      $v = $this->primeiroValorPost($value);
+      if ($v === null || $v === '') {
+        return null;
+      }
+      $t = trim((string) $v);
+
+      return $t !== '' ? $t : null;
     };
 
     // Função auxiliar para normalizar campos de texto (converte string vazia para null)
-    $normalizeText = function($value) {
-      return (!empty($value) && trim($value) !== '') ? $value : null;
+    $normalizeText = function ($value) {
+      $v = $this->primeiroValorPost($value);
+      if ($v === null || $v === '') {
+        return null;
+      }
+      $t = trim((string) $v);
+
+      return $t !== '' ? $t : null;
     };
 
     $data = [
@@ -332,15 +337,15 @@ class AgendamentoController extends Controller
       'numero_processo' => $normalizeText($_POST['numero_processo'] ?? null),
       'vara' => $normalizeText($_POST['vara'] ?? null),
       'reclamante_nome' => $normalizeText($_POST['reclamante_nome'] ?? null),
-      'valor_pericia_cobrado' => !empty($_POST['valor_pericia_cobrado']) ? $this->parseCurrency($_POST['valor_pericia_cobrado']) : null,
-      'tipo_pericia' => $normalizeText($_POST['tipo_pericia'] ?? null),
+      'valor_pericia_cobrado' => $this->parseCurrency($_POST['valor_pericia_cobrado'] ?? null),
+      'tipo_pericia' => $this->sanitizarTipoPericiaAgendamento($_POST['tipo_pericia'] ?? null),
       'numero_tipo_pericia' => $normalizeText($_POST['numero_tipo_pericia'] ?? null),
       'data_agendamento' => $dataAgendamento,
       'hora_agendamento' => $horaAgendamento,
       'perito_id' => $peritoId ?: null,
       'assistente_nome' => $normalizeText($_POST['assistente_nome'] ?? null),
       'assistente_id' => !empty($_POST['assistente_id']) ? (int) $_POST['assistente_id'] : null,
-      'valor_pago_assistente' => !empty($_POST['valor_pago_assistente']) ? $this->parseCurrency($_POST['valor_pago_assistente']) : null,
+      'valor_pago_assistente' => $this->parseCurrency($_POST['valor_pago_assistente'] ?? null),
       'local_pericia' => $normalizeText($_POST['local_pericia'] ?? null),
       'status' => $status,
       'observacoes' => $normalizeText($_POST['observacoes'] ?? null),
@@ -348,7 +353,6 @@ class AgendamentoController extends Controller
       'data_realizada' => $normalizeDate($_POST['parecer_data_realizacao'] ?? null),
       'data_fatal' => $normalizeDate($_POST['parecer_data_fatal'] ?? null),
       'data_entrega_parecer' => $normalizeDate($_POST['parecer_data_entrega_parecer'] ?? null),
-      'status_parecer' => $statusParecer,
       'obs_parecer' => $normalizeText($_POST['parecer_observacoes'] ?? null),
       // MAURO
       'data_pagamento_assistente' => $normalizeDate($_POST['data_pagamento_assistente'] ?? null),
@@ -365,11 +369,16 @@ class AgendamentoController extends Controller
     $result = $model->criarAgendamento($data);
     
     if (!$result->getResult()) {
-      // Limpar qualquer output buffer antes de enviar JSON
       if (ob_get_level() > 0) {
         ob_clean();
       }
-      $this->responseJson(['success' => false, 'message' => 'Erro ao criar agendamento']);
+      $driverMsg = $this->mensagemErroDriver($result);
+      $this->responseJson([
+        'success' => false,
+        'message' => $driverMsg !== ''
+          ? ('Erro ao criar agendamento: ' . $driverMsg)
+          : 'Erro ao criar agendamento. Verifique tipo de perícia e demais campos obrigatórios no banco.',
+      ]);
       return;
     }
 
@@ -448,18 +457,18 @@ class AgendamentoController extends Controller
       return;
     }
 
-    // Valida dados obrigatórios
-    $clienteNome = $_POST['cliente_nome'] ?? '';
-    $dataAgendamento = $_POST['data_agendamento'] ?? '';
-    $horaAgendamento = $_POST['hora_agendamento'] ?? '';
-    $peritoId = $_POST['perito_id'] ?? null;
+    // Valida dados obrigatórios (hora padrão se o campo não existir no POST)
+    $clienteNome = trim((string) ($this->primeiroValorPost($_POST['cliente_nome'] ?? '') ?? ''));
+    $dataAgendamento = trim((string) ($this->primeiroValorPost($_POST['data_agendamento'] ?? '') ?? ''));
+    $horaAgendamento = $this->normalizarHoraAgendamento($this->primeiroValorPost($_POST['hora_agendamento'] ?? null));
+    $peritoId = $this->primeiroValorPost($_POST['perito_id'] ?? null);
 
-    if (empty($clienteNome) || empty($dataAgendamento) || empty($horaAgendamento)) {
+    if ($clienteNome === '' || $dataAgendamento === '') {
       // Limpar qualquer output buffer antes de enviar JSON
       if (ob_get_level() > 0) {
         ob_clean();
       }
-      $this->responseJson(['success' => false, 'message' => 'Preencha todos os campos obrigatórios']);
+      $this->responseJson(['success' => false, 'message' => 'Preencha todos os campos obrigatórios (cliente e data do agendamento).']);
       return;
     }
 
@@ -480,26 +489,26 @@ class AgendamentoController extends Controller
 
     // Prepara dados para atualização - Todos os campos
     // Função auxiliar para normalizar campos de data (converte string vazia para null)
-    $normalizeDate = function($value) {
-      return (!empty($value) && trim($value) !== '') ? $value : null;
+    $normalizeDate = function ($value) {
+      $v = $this->primeiroValorPost($value);
+      if ($v === null || $v === '') {
+        return null;
+      }
+      $t = trim((string) $v);
+
+      return $t !== '' ? $t : null;
     };
 
     // Função auxiliar para normalizar campos de texto (converte string vazia para null)
-    $normalizeText = function($value) {
-      return (!empty($value) && trim($value) !== '') ? $value : null;
-    };
-
-    // Valida e normaliza status_parecer para o enum
-    $statusParecer = $_POST['parecer_status_parecer'] ?? null;
-    if ($statusParecer) {
-      $statusParecerValidos = ['OK', 'FAVORAVEL', 'DESFAVORAVEL', 'PARCIAL FAVORAVEL', 'NR (NÃO REALIZADO)'];
-      $statusParecerUpper = mb_strtoupper($statusParecer, 'UTF-8');
-      if (!in_array($statusParecerUpper, $statusParecerValidos, true)) {
-        $statusParecer = null;
-      } else {
-        $statusParecer = $statusParecerUpper;
+    $normalizeText = function ($value) {
+      $v = $this->primeiroValorPost($value);
+      if ($v === null || $v === '') {
+        return null;
       }
-    }
+      $t = trim((string) $v);
+
+      return $t !== '' ? $t : null;
+    };
 
     $data = [
       // CLOVIS
@@ -511,15 +520,15 @@ class AgendamentoController extends Controller
       'numero_processo' => $normalizeText($_POST['numero_processo'] ?? null),
       'vara' => $normalizeText($_POST['vara'] ?? null),
       'reclamante_nome' => $normalizeText($_POST['reclamante_nome'] ?? null),
-      'valor_pericia_cobrado' => !empty($_POST['valor_pericia_cobrado']) ? $this->parseCurrency($_POST['valor_pericia_cobrado']) : null,
-      'tipo_pericia' => $normalizeText($_POST['tipo_pericia'] ?? null),
+      'valor_pericia_cobrado' => $this->parseCurrency($_POST['valor_pericia_cobrado'] ?? null),
+      'tipo_pericia' => $this->sanitizarTipoPericiaAgendamento($_POST['tipo_pericia'] ?? null),
       'numero_tipo_pericia' => $normalizeText($_POST['numero_tipo_pericia'] ?? null),
       'data_agendamento' => $dataAgendamento,
       'hora_agendamento' => $horaAgendamento,
       'perito_id' => !empty($peritoId) ? $peritoId : null,
       'assistente_nome' => $normalizeText($_POST['assistente_nome'] ?? null),
       'assistente_id' => !empty($_POST['assistente_id']) ? (int) $_POST['assistente_id'] : null,
-      'valor_pago_assistente' => !empty($_POST['valor_pago_assistente']) ? $this->parseCurrency($_POST['valor_pago_assistente']) : null,
+      'valor_pago_assistente' => $this->parseCurrency($_POST['valor_pago_assistente'] ?? null),
       'local_pericia' => $normalizeText($_POST['local_pericia'] ?? null),
       'status' => isset($_POST['status']) && $_POST['status'] !== '' ? $_POST['status'] : null,
       'observacoes' => $normalizeText($_POST['observacoes'] ?? null),
@@ -527,7 +536,6 @@ class AgendamentoController extends Controller
       'data_realizada' => $normalizeDate($_POST['parecer_data_realizacao'] ?? null),
       'data_fatal' => $normalizeDate($_POST['parecer_data_fatal'] ?? null),
       'data_entrega_parecer' => $normalizeDate($_POST['parecer_data_entrega_parecer'] ?? null),
-      'status_parecer' => $statusParecer,
       'obs_parecer' => $normalizeText($_POST['parecer_observacoes'] ?? null),
       // MAURO
       'data_pagamento_assistente' => $normalizeDate($_POST['data_pagamento_assistente'] ?? null),
@@ -546,11 +554,16 @@ class AgendamentoController extends Controller
       $result = $model->atualizarAgendamento($id, $data, $empresa);
       
       if (!$result->getResult()) {
-        // Limpar qualquer output buffer antes de enviar JSON
         if (ob_get_level() > 0) {
           ob_clean();
         }
-        $this->responseJson(['success' => false, 'message' => 'Erro ao atualizar agendamento']);
+        $driverMsg = $this->mensagemErroDriver($result);
+        $this->responseJson([
+          'success' => false,
+          'message' => $driverMsg !== ''
+            ? ('Erro ao atualizar agendamento: ' . $driverMsg)
+            : 'Erro ao atualizar agendamento. Verifique tipo de perícia e demais campos.',
+        ]);
         return;
       }
 
@@ -610,13 +623,10 @@ class AgendamentoController extends Controller
         ob_clean();
       }
       
-      $this->responseJson(['success' => true, 'message' => 'Agendamento atualizado com sucesso']);
-    } catch (\Exception $e) {
-      // Limpar qualquer output buffer antes de enviar JSON
-      if (ob_get_level() > 0) {
-        ob_clean();
-      }
-      
+      $this->responseJson($this->mergeRedirectHomeAposEditarUsuarioMarcelo([
+        'success' => true,
+        'message' => 'Agendamento atualizado com sucesso',
+      ]));
     } catch (\Exception $e) {
       // Limpar qualquer output buffer antes de enviar JSON
       if (ob_get_level() > 0) {
@@ -903,15 +913,107 @@ class AgendamentoController extends Controller
     return $permissionService->verifyPermissions($permission);
   }
 
+  /** @see AddCamposAgendamentoGranular — coluna enum em `agendamentos.tipo_pericia` */
+  private const TIPOS_PERICIA_AGENDAMENTO_VALIDOS = ['MÉDICA', 'TECNICA', 'ERGONO', 'CINESIO', 'VISTORIA', 'X1', 'X2'];
+
+  /**
+   * Hora padrão quando o campo não vem no POST (permissão granular oculta o input; coluna é NOT NULL).
+   */
+  private function normalizarHoraAgendamento($hora): string
+  {
+    if ($hora === null) {
+      return '09:00:00';
+    }
+    if (is_array($hora)) {
+      $hora = $hora[0] ?? '';
+    }
+    $h = trim((string) $hora);
+    if ($h === '') {
+      return '09:00:00';
+    }
+    if (preg_match('/^\d{2}:\d{2}$/', $h)) {
+      return $h . ':00';
+    }
+
+    return $h;
+  }
+
+  /**
+   * Evita INSERT/UPDATE inválido no ENUM `tipo_pericia` do agendamento.
+   */
+  private function sanitizarTipoPericiaAgendamento($valor): ?string
+  {
+    if ($valor === null || $valor === '') {
+      return null;
+    }
+    if (is_array($valor)) {
+      $valor = $valor[0] ?? '';
+    }
+    $v = strtoupper(trim((string) $valor));
+
+    return in_array($v, self::TIPOS_PERICIA_AGENDAMENTO_VALIDOS, true) ? $v : null;
+  }
+
+  /**
+   * Primeiro valor escalar de POST (Select2 / campos duplicados podem mandar array).
+   *
+   * @param mixed $value
+   */
+  private function primeiroValorPost($value)
+  {
+    if (is_array($value)) {
+      return $value[0] ?? null;
+    }
+
+    return $value;
+  }
+
+  /**
+   * Mensagem de erro de Create/Update (PDO) para resposta JSON.
+   */
+  private function mensagemErroDriver(object $result): string
+  {
+    if (!method_exists($result, 'getErrorInfo')) {
+      return '';
+    }
+    $ei = $result->getErrorInfo();
+    if (!is_array($ei)) {
+      return '';
+    }
+    if (isset($ei['driver_message']) && $ei['driver_message'] !== '') {
+      return (string) $ei['driver_message'];
+    }
+    if (isset($ei[2]) && $ei[2] !== '') {
+      return (string) $ei[2];
+    }
+
+    return '';
+  }
+
   /**
    * Converte valor monetário brasileiro para formato numérico
    * Ex: "1.234,56" -> 1234.56
+   *
+   * @param mixed $value
    */
-  private function parseCurrency(string $value): ?float
+  private function parseCurrency($value): ?float
   {
-    // Remove pontos (separadores de milhar) e substitui vírgula por ponto
-    $cleanValue = str_replace(['.', ','], ['', '.'], $value);
+    if ($value === null || $value === '') {
+      return null;
+    }
+    if (is_array($value)) {
+      $value = $value[0] ?? null;
+    }
+    if ($value === null || $value === '') {
+      return null;
+    }
+    if (is_numeric($value)) {
+      return (float) $value;
+    }
+    $str = (string) $value;
+    $cleanValue = str_replace(['.', ','], ['', '.'], $str);
     $floatValue = filter_var($cleanValue, FILTER_VALIDATE_FLOAT);
+
     return $floatValue !== false ? $floatValue : null;
   }
 
@@ -938,7 +1040,6 @@ class AgendamentoController extends Controller
         'data_realizacao' => $dataRealizacao,
         'data_fatal' => $_POST['parecer_data_fatal'] ?? null,
         'data_entrega_parecer' => $_POST['parecer_data_entrega_parecer'] ?? null,
-        'status_parecer' => $_POST['parecer_status_parecer'] ?? null,
         'tipo' => $tipoParecer,
         'assistente' => null,
         'assistente_id' => !empty($_POST['parecer_assistente_id']) ? (int) $_POST['parecer_assistente_id'] : null,

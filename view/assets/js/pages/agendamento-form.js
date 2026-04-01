@@ -36,9 +36,177 @@
         
         // Inicializa Select2 para campos com busca
         initSelect2();
+
+        // Número do processo: busca em outros módulos e preenche partes
+        initVinculoProcessoAgendamento();
+
+        // Etapa 1 → Etapa 2: Reclamada, Reclamante e Assistente iguais
+        initAgendamentoParecerEtapa1Sync();
+
+        // Data do agendamento → Data da Realização (igual) e Data Fatal (+5 dias)
+        initAgendamentoParecerDatesSync(form);
         
         // Inicializa submissão do formulário
         initFormSubmit(form);
+    }
+
+    /**
+     * Soma dias a uma data YYYY-MM-DD (evita problemas de fuso horário com Date UTC).
+     */
+    function addDaysToYmd(ymd, days) {
+        const parts = ymd.split('-').map(Number);
+        if (parts.length !== 3) return '';
+        const d = new Date(parts[0], parts[1] - 1, parts[2]);
+        d.setDate(d.getDate() + days);
+        const yy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return yy + '-' + mm + '-' + dd;
+    }
+
+    function initAgendamentoParecerDatesSync(form) {
+        const dataAgendamento = form.querySelector('input[name="data_agendamento"]');
+        const dataRealizacao = form.querySelector('input[name="parecer_data_realizacao"]');
+        if (!dataAgendamento || !dataRealizacao) {
+            return;
+        }
+
+        const dataFatal = form.querySelector('input[name="parecer_data_fatal"]');
+
+        function syncParecerDatesFromAgendamento() {
+            const v = dataAgendamento.value;
+            if (!v) {
+                return;
+            }
+            dataRealizacao.value = v;
+            if (dataFatal) {
+                dataFatal.value = addDaysToYmd(v, 5);
+            }
+        }
+
+        dataAgendamento.addEventListener('change', syncParecerDatesFromAgendamento);
+        dataAgendamento.addEventListener('input', syncParecerDatesFromAgendamento);
+
+        // Cadastro novo: se já houver data do agendamento e realização vazia, alinha ao carregar
+        if (dataAgendamento.value && String(dataRealizacao.value || '').trim() === '') {
+            syncParecerDatesFromAgendamento();
+        }
+    }
+
+    function initVinculoProcessoAgendamento() {
+        if (typeof initVinculoProcesso !== 'function') {
+            return;
+        }
+        const form = document.getElementById('formAgendamento');
+        if (!form) {
+            return;
+        }
+        const action = form.getAttribute('data-action') || '';
+        const rid = form.getAttribute('data-record-id');
+        let excludeId = null;
+        if (action === 'editar' && rid) {
+            const parsed = parseInt(rid, 10);
+            if (!isNaN(parsed)) {
+                excludeId = parsed;
+            }
+        }
+        initVinculoProcesso({
+            inputSelector: '#numero_processo',
+            excludeFonte: action === 'editar' ? 'agendamento' : null,
+            excludeId: excludeId,
+            reclamada: '#cliente_nome',
+            reclamante: '#reclamante_nome',
+            vara: 'input[name="vara"]',
+            perito: '#perito_id',
+            assistente: '#assistente_id',
+            parecerReclamada: '#parecer_reclamada_id',
+            parecerReclamante: '#parecer_reclamante_id',
+            parecerAssistente: '#parecer_assistente_id'
+        });
+    }
+
+    /**
+     * Valor único de select/Select2 (tags podem devolver array).
+     */
+    function getSelect2SingleVal($el) {
+        if (!$el || !$el.length) {
+            return '';
+        }
+        let v = $el.val();
+        if (Array.isArray(v)) {
+            v = v[0];
+        }
+        return v === undefined || v === null ? '' : String(v);
+    }
+
+    /**
+     * Copia nome da etapa 1 para o select do parecer (por id ou tag com o mesmo nome).
+     */
+    function syncParecerNomeParaId(selectId, nome) {
+        const $parecer = jQuery('#' + selectId);
+        if (!$parecer.length) {
+            return;
+        }
+        const trimmed = String(nome || '').trim();
+        if (!trimmed) {
+            $parecer.val(null).trigger('change');
+            return;
+        }
+        let matchedVal = null;
+        $parecer.find('option').each(function() {
+            const $o = jQuery(this);
+            const val = $o.val();
+            if (val === '' || val === null) {
+                return;
+            }
+            if ($o.text().trim() === trimmed) {
+                matchedVal = val;
+                return false;
+            }
+        });
+        if (matchedVal !== null) {
+            $parecer.val(matchedVal).trigger('change');
+            return;
+        }
+        const jaExiste = $parecer.find('option').filter(function() {
+            return jQuery(this).val() === trimmed;
+        }).length;
+        if (!jaExiste) {
+            $parecer.append(new Option(trimmed, trimmed, true, true));
+        }
+        $parecer.val(trimmed).trigger('change');
+    }
+
+    /**
+     * Ao preencher Reclamada, Reclamante e Assistente na etapa 1, espelha na etapa 2 (Dados do Parecer).
+     */
+    function initAgendamentoParecerEtapa1Sync() {
+        if (typeof jQuery === 'undefined') {
+            return;
+        }
+
+        const $assistente = jQuery('#assistente_id');
+        const $parecerAssistente = jQuery('#parecer_assistente_id');
+        if ($assistente.length && $parecerAssistente.length) {
+            $assistente.on('change', function() {
+                const v = jQuery(this).val();
+                $parecerAssistente.val(v || '').trigger('change');
+            });
+        }
+
+        const $cliente = jQuery('#cliente_nome');
+        if ($cliente.length) {
+            $cliente.on('change', function() {
+                syncParecerNomeParaId('parecer_reclamada_id', getSelect2SingleVal($cliente));
+            });
+        }
+
+        const $reclamante = jQuery('#reclamante_nome');
+        if ($reclamante.length) {
+            $reclamante.on('change', function() {
+                syncParecerNomeParaId('parecer_reclamante_id', getSelect2SingleVal($reclamante));
+            });
+        }
     }
 
     /**
@@ -200,6 +368,24 @@
                     },
                     searching: function() {
                         return "Buscando...";
+                    }
+                }
+            });
+        }
+
+        const numeroProcessoSelect = jQuery('#numero_processo');
+        if (numeroProcessoSelect.length) {
+            numeroProcessoSelect.select2({
+                tags: true,
+                placeholder: 'Selecione um número ou digite um novo',
+                allowClear: true,
+                width: '100%',
+                language: {
+                    noResults: function() {
+                        return 'Digite para informar um novo número';
+                    },
+                    searching: function() {
+                        return 'Buscando...';
                     }
                 }
             });
@@ -649,6 +835,33 @@
             
                 // Prepara dados do formulário
                 const formData = new FormData(this);
+
+                const $numeroProcesso = jQuery('#numero_processo');
+                if ($numeroProcesso.length) {
+                    let npVal = $numeroProcesso.val();
+                    if (Array.isArray(npVal)) {
+                        npVal = npVal[0];
+                    }
+                    if (npVal !== undefined && npVal !== null) {
+                        formData.set('numero_processo', npVal);
+                    }
+                }
+
+                const horaInput = form.querySelector('input[name="hora_agendamento"]');
+                if (!horaInput || !String(horaInput.value || '').trim()) {
+                    formData.set('hora_agendamento', '09:00');
+                }
+
+                const $peritoField = jQuery('#perito_id');
+                if ($peritoField.length) {
+                    let pVal = $peritoField.val();
+                    if (Array.isArray(pVal)) {
+                        pVal = pVal[0];
+                    }
+                    if (pVal !== undefined && pVal !== null && pVal !== '') {
+                        formData.set('perito_id', pVal);
+                    }
+                }
                 
                 // Garantir que os nomes corretos estão no formData (reclamante_nome e cliente_nome)
                 if (reclamanteNomeFinal) {
@@ -680,11 +893,22 @@
                     body: formData
                 });
                 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                const responseText = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (parseErr) {
+                    const preview = responseText.replace(/\s+/g, ' ').trim().substring(0, 280);
+                    throw new Error(
+                        response.ok
+                            ? ('Resposta inválida do servidor' + (preview ? ': ' + preview : ''))
+                            : ('HTTP ' + response.status + (preview ? ' — ' + preview : ''))
+                    );
                 }
                 
-                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.message || ('HTTP error! status: ' + response.status));
+                }
                 
                 if (data.success) {
                     Swal.fire({
@@ -694,7 +918,8 @@
                         timer: 2000,
                         showConfirmButton: false
                     }).then(() => {
-                        window.location.href = window.DOMAIN + '/agendamento';
+                        const path = typeof data.redirect === 'string' ? data.redirect : '/agendamento';
+                        window.location.href = window.DOMAIN + path;
                     });
                 } else {
                     Swal.fire({
@@ -707,10 +932,11 @@
                 }
             } catch (error) {
                 console.error('Erro:', error);
+                const msgErro = (error && error.message) ? error.message : 'Ocorreu um erro ao salvar o agendamento. Verifique o console (F12) para mais detalhes.';
                 Swal.fire({
                     icon: 'error',
                     title: 'Erro!',
-                    text: 'Ocorreu um erro ao salvar o agendamento. Verifique o console do navegador (F12) para mais detalhes.'
+                    text: msgErro
                 });
                 submitBtn.innerHTML = originalText;
                 submitBtn.disabled = false;

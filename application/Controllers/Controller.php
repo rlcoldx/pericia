@@ -52,6 +52,20 @@ class Controller
         echo json_encode($response, JSON_UNESCAPED_UNICODE);
     }
 
+    /**
+     * Marcelo Pasqualini Souza (ID 3): após salvar edição, o JSON inclui `redirect` => '/' para a home.
+     *
+     * @param array<string, mixed> $payload
+     * @return array<string, mixed>
+     */
+    protected function mergeRedirectHomeAposEditarUsuarioMarcelo(array $payload): array
+    {
+        if ((int) ($_SESSION['pericia_perfil_id'] ?? 0) === 3) {
+            $payload['redirect'] = '/';
+        }
+
+        return $payload;
+    }
 
     private function mergeWithDefault($arrayToMerge): array
     {

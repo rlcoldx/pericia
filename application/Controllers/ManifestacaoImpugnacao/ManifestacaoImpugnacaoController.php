@@ -11,6 +11,7 @@ use Agencia\Close\Services\Notificacao\EmailNotificationService;
 use Agencia\Close\Helpers\DataTableResponse;
 use Agencia\Close\Models\Equipe\Equipe;
 use Agencia\Close\Models\Tarefa\Tarefa;
+use Agencia\Close\Services\Processo\ProcessoVinculoService;
 
 class ManifestacaoImpugnacaoController extends Controller
 {
@@ -56,6 +57,7 @@ class ManifestacaoImpugnacaoController extends Controller
         $peritoModel = new Perito();
         $manifestacaoModel = new ManifestacaoImpugnacao();
         $equipeModel = new Equipe();
+        $processoVinculo = new ProcessoVinculoService();
 
         $this->render('pages/manifestacao_impugnacao/form.twig', [
             'titulo' => 'Nova Manifestação/Impugnação',
@@ -67,6 +69,7 @@ class ManifestacaoImpugnacaoController extends Controller
             'peritos' => $peritoModel->getPeritosAtivos((int) $empresa)->getResult() ?? [],
             'tipos' => $manifestacaoModel->getTiposDistinct((int) $empresa)->getResult() ?? [],
             'usuarios' => $equipeModel->getUsuariosAtivos((int) $empresa)->getResult() ?? [],
+            'numeros_processo' => $processoVinculo->listarNumerosProcessoDistintos((int) $empresa),
             'tarefa' => null,
         ]);
     }
@@ -136,27 +139,18 @@ class ManifestacaoImpugnacaoController extends Controller
 
         // Salvar tarefa se fornecida (não bloqueia o cadastro se falhar)
         try {
-            // Verificar se o checkbox está marcado (pode vir como 'on' ou '1')
-            $tarefaConcluido = isset($_POST['tarefa_concluido']) && 
-                             ($_POST['tarefa_concluido'] == '1' || $_POST['tarefa_concluido'] == 'on');
-            
-            // Sempre salvar tarefa se houver qualquer dado relacionado, incluindo apenas o checkbox
-            $temDadosTarefa = $tarefaConcluido || !empty($_POST['tarefa_usuario_responsavel_id']) || !empty($_POST['tarefa_data_conclusao']) || !empty($_POST['tarefa_texto']);
-            
+            $temDadosTarefa = !empty($_POST['tarefa_usuario_responsavel_id'])
+                || !empty($_POST['tarefa_data_conclusao'])
+                || trim((string) ($_POST['tarefa_texto'] ?? '')) !== '';
+
             if ($temDadosTarefa) {
                 $tarefaModel = new Tarefa();
-                
-                // Se o checkbox está marcado, garantir que o usuário responsável seja o usuário logado se não foi definido outro
-                $usuarioResponsavelId = null;
-                if (!empty($_POST['tarefa_usuario_responsavel_id'])) {
-                    $usuarioResponsavelId = (int) $_POST['tarefa_usuario_responsavel_id'];
-                } elseif ($tarefaConcluido) {
-                    // Se está marcando como concluído mas não definiu responsável, usar o logado
-                    $usuarioResponsavelId = $_SESSION['pericia_perfil_id'] ?? null;
-                }
-                
+                $usuarioResponsavelId = !empty($_POST['tarefa_usuario_responsavel_id'])
+                    ? (int) $_POST['tarefa_usuario_responsavel_id']
+                    : null;
+
                 $tarefaModel->salvarTarefa('manifestacao', $idManifestacao, (int) $empresa, [
-                    'concluido' => $tarefaConcluido ? 1 : 0,
+                    'concluido' => 0,
                     'usuario_responsavel_id' => $usuarioResponsavelId,
                     'data_conclusao' => $_POST['tarefa_data_conclusao'] ?? null,
                     'tarefa_texto' => $_POST['tarefa_texto'] ?? null,
@@ -214,6 +208,8 @@ class ManifestacaoImpugnacaoController extends Controller
         $tarefaRead = $tarefaModel->getPorModuloRegistro('manifestacao', $id, (int) $empresa);
         $tarefa = $tarefaRead->getResult()[0] ?? null;
 
+        $processoVinculo = new ProcessoVinculoService();
+
         $this->render('pages/manifestacao_impugnacao/form.twig', [
             'titulo' => 'Editar Manifestação',
             'page' => 'manifestacoes_impugnacoes',
@@ -224,6 +220,7 @@ class ManifestacaoImpugnacaoController extends Controller
             'peritos' => $peritoModel->getPeritosAtivos((int) $empresa)->getResult() ?? [],
             'tipos' => $manifestacaoModel->getTiposDistinct((int) $empresa)->getResult() ?? [],
             'usuarios' => $equipeModel->getUsuariosAtivos((int) $empresa)->getResult() ?? [],
+            'numeros_processo' => $processoVinculo->listarNumerosProcessoDistintos((int) $empresa),
             'tarefa' => $tarefa,
         ]);
     }
@@ -295,34 +292,27 @@ class ManifestacaoImpugnacaoController extends Controller
 
         // Salvar tarefa se fornecida (não bloqueia a atualização se falhar)
         try {
-            // Verificar se o checkbox está marcado (pode vir como 'on' ou '1')
-            $tarefaConcluido = isset($_POST['tarefa_concluido']) && 
-                             ($_POST['tarefa_concluido'] == '1' || $_POST['tarefa_concluido'] == 'on');
-            
-            // Sempre salvar tarefa se houver qualquer dado relacionado, incluindo apenas o checkbox
-            $temDadosTarefa = $tarefaConcluido || !empty($_POST['tarefa_usuario_responsavel_id']) || !empty($_POST['tarefa_data_conclusao']) || !empty($_POST['tarefa_texto']);
-            
+            $tarefaModel = new Tarefa();
+            $tarefaExistente = $tarefaModel->getPorModuloRegistro('manifestacao', $id, (int) $empresa);
+            $tarefaData = $tarefaExistente->getResult()[0] ?? null;
+
+            $temDadosTarefa = !empty($_POST['tarefa_usuario_responsavel_id'])
+                || !empty($_POST['tarefa_data_conclusao'])
+                || trim((string) ($_POST['tarefa_texto'] ?? '')) !== ''
+                || $tarefaData !== null;
+
             if ($temDadosTarefa) {
-                $tarefaModel = new Tarefa();
-                
-                // Buscar tarefa existente para manter o usuário responsável se não foi alterado
-                $tarefaExistente = $tarefaModel->getPorModuloRegistro('manifestacao', $id, (int) $empresa);
-                $tarefaData = $tarefaExistente->getResult()[0] ?? null;
-                
-                // Se o checkbox está marcado, garantir que o usuário responsável seja mantido ou definido
+                $concluidoPersistir = $tarefaData ? (int) ($tarefaData['concluido'] ?? 0) : 0;
+
                 $usuarioResponsavelId = null;
                 if (!empty($_POST['tarefa_usuario_responsavel_id'])) {
                     $usuarioResponsavelId = (int) $_POST['tarefa_usuario_responsavel_id'];
                 } elseif ($tarefaData && !empty($tarefaData['usuario_responsavel_id'])) {
-                    // Manter o responsável atual se não foi alterado
                     $usuarioResponsavelId = (int) $tarefaData['usuario_responsavel_id'];
-                } elseif ($tarefaConcluido) {
-                    // Se está marcando como concluído mas não definiu responsável, usar o logado
-                    $usuarioResponsavelId = $_SESSION['pericia_perfil_id'] ?? null;
                 }
-                
+
                 $tarefaModel->salvarTarefa('manifestacao', $id, (int) $empresa, [
-                    'concluido' => $tarefaConcluido ? 1 : 0,
+                    'concluido' => $concluidoPersistir,
                     'usuario_responsavel_id' => $usuarioResponsavelId,
                     'data_conclusao' => $_POST['tarefa_data_conclusao'] ?? null,
                     'tarefa_texto' => $_POST['tarefa_texto'] ?? null,
@@ -345,7 +335,10 @@ class ManifestacaoImpugnacaoController extends Controller
             ob_clean();
         }
         
-        $this->responseJson(['success' => true, 'message' => 'Manifestação/Impugnação atualizada com sucesso.']);
+        $this->responseJson($this->mergeRedirectHomeAposEditarUsuarioMarcelo([
+            'success' => true,
+            'message' => 'Manifestação/Impugnação atualizada com sucesso.',
+        ]));
     }
 
     private function enviarNotificacaoEmailManifestacao(int $empresa, int $idManifestacao, array $dados, string $acao): void

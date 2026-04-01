@@ -10,7 +10,10 @@ use Agencia\Close\Models\Tarefa\Tarefa;
 use Agencia\Close\Helpers\DataTableResponse;
 
 class HomeController extends Controller
-{	
+{
+  /** Marcelo Pasqualini Souza — não exibir gráficos Apex na home */
+  private const USUARIO_ID_SEM_GRAFICOS_HOME = 3;
+
   public $today = false;
 
   public function index()
@@ -32,12 +35,15 @@ class HomeController extends Controller
     }
 
     $estatisticasModel = new EstatisticasHome();
+    $usuarioId = (int) ($_SESSION['pericia_perfil_id'] ?? 0);
+    $ocultarGraficosHome = ($usuarioId === self::USUARIO_ID_SEM_GRAFICOS_HOME);
 
     $this->render('pages/home/home.twig', [
-      'page' => 'home', 
+      'page' => 'home',
       'titulo' => 'Página Inicial',
       'data_inicio' => $dataInicio,
       'data_fim' => $dataFim,
+      'ocultar_graficos_home' => $ocultarGraficosHome,
       'estatisticas' => [
         'quesitos' => $estatisticasModel->getEstatisticasQuesitos((int)$empresa, $dataInicio, $dataFim),
         'manifestacoes' => $estatisticasModel->getEstatisticasManifestacoes((int)$empresa, $dataInicio, $dataFim),
@@ -45,6 +51,25 @@ class HomeController extends Controller
         'agendamentos' => $estatisticasModel->getEstatisticasAgendamentos((int)$empresa, $dataInicio, $dataFim),
         'financeiro' => $estatisticasModel->getEstatisticasFinanceiro((int)$empresa, $dataInicio, $dataFim),
       ]
+    ]);
+  }
+
+  /**
+   * Página dedicada: lista todas as tarefas do usuário (pendentes e concluídas), mesmo DataTable da home.
+   */
+  public function tarefasListagem($params)
+  {
+    $this->setParams($params);
+    $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
+
+    if (!$empresa) {
+      $this->redirectUrl(DOMAIN . '/login');
+      return;
+    }
+
+    $this->render('pages/home/tarefas_listagem.twig', [
+      'page' => 'minhas_tarefas',
+      'titulo' => 'Minhas Tarefas',
     ]);
   }
 
@@ -171,6 +196,15 @@ class HomeController extends Controller
       }
 
       $reclamada = htmlspecialchars($tarefa['reclamada'] ?? 'Sem Reclamada', ENT_QUOTES, 'UTF-8');
+      $reclamante = htmlspecialchars($tarefa['reclamante'] ?? 'Sem Reclamante', ENT_QUOTES, 'UTF-8');
+
+      $linkDriveRaw = isset($tarefa['link_pasta_drive']) ? trim((string) $tarefa['link_pasta_drive']) : '';
+      $celulaDrive = '<span class="text-center d-inline-block w-100">—</span>';
+      if ($linkDriveRaw !== '' && preg_match('#^https?://#i', $linkDriveRaw)) {
+        $urlDrive = htmlspecialchars($linkDriveRaw, ENT_QUOTES, 'UTF-8');
+        $celulaDrive = '<a href="' . $urlDrive . '" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary py-1 px-2" data-bs-toggle="tooltip" title="Abrir pasta no Google Drive">'
+          . '<i class="fa fa-folder-open"></i></a>';
+      }
 
       // URL para editar o registro baseado no módulo
       $urlEditar = '';
@@ -200,10 +234,12 @@ class HomeController extends Controller
 
       $formattedData[] = [
         $moduloNome,
+        $reclamante,
         $reclamada,
         $statusBadge,
         $dataConclusao,
         $dataCreate,
+        $celulaDrive,
         $acoes,
       ];
     }

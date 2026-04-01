@@ -1,0 +1,12 @@
+{# name, id, numeros_processo (array), selected (string) #}
+{% set sel = selected|default('') %}
+{% set lista = numeros_processo|default([]) %}
+<select class="form-control" name="{{ name }}" id="{{ id }}">
+    <option value=""></option>
+    {% for np in lista %}
+        <option value="{{ np|e('html_attr') }}"{% if sel == np %} selected{% endif %}>{{ np }}</option>
+    {% endfor %}
+    {% if sel != '' and sel not in lista %}
+        <option value="{{ sel|e('html_attr') }}" selected>{{ sel }}</option>
+    {% endif %}
+</select>

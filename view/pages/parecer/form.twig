@@ -35,6 +35,17 @@
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-12 col-lg-3 mb-3">
+                                    <label class="form-label">Número do Processo</label>
+                                    {{ include('partials/select_numero_processo.twig', {
+                                        name: 'numero_processo',
+                                        id: 'numero_processo',
+                                        numeros_processo: numeros_processo|default([]),
+                                        selected: action == 'editar' ? parecer.numero_processo|default('') : ''
+                                    }) }}
+                                    <small class="form-text">Vincula quesito, manifestação e agendamentos.</small>
+                                </div>
+
+                                <div class="col-12 col-lg-3 mb-3">
                                     <label class="form-label">Data da Realização <span class="text-danger">*</span></label>
                                     <input type="date"
                                            class="form-control"
@@ -224,6 +235,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ PATH }}/view/assets/js/processo-vinculo.js"></script>
 <script>
     window.DOMAIN = '{{ DOMAIN }}';
 
@@ -315,6 +327,21 @@
                 }
             });
 
+            $('#numero_processo').select2({
+                tags: true,
+                placeholder: 'Selecione um número ou digite um novo',
+                allowClear: true,
+                width: '100%',
+                language: {
+                    noResults: function() {
+                        return 'Digite para informar um novo número';
+                    },
+                    searching: function() {
+                        return 'Buscando...';
+                    }
+                }
+            });
+
             $('#assistente_id').select2({
                 placeholder: 'Selecione o Assistente',
                 allowClear: true,
@@ -343,6 +370,17 @@
                     }
                 }
             });
+
+            if (typeof initVinculoProcesso === 'function') {
+                initVinculoProcesso({
+                    inputSelector: '#numero_processo',
+                    excludeFonte: {% if action == 'editar' %}'parecer'{% else %}null{% endif %},
+                    excludeId: {% if action == 'editar' %}{{ parecer.id }}{% else %}null{% endif %},
+                    reclamada: '#reclamada_id',
+                    reclamante: '#reclamante_id',
+                    assistente: '#assistente_id'
+                });
+            }
         });
 
         /**
@@ -585,7 +623,8 @@
                         timer: 2000,
                         showConfirmButton: false
                     }).then(() => {
-                        window.location.href = window.DOMAIN + '/pareceres';
+                        const path = typeof data.redirect === 'string' ? data.redirect : '/pareceres';
+                        window.location.href = window.DOMAIN + path;
                     });
                 } else {
                     Swal.fire({

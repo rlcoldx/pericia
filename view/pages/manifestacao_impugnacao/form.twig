@@ -60,12 +60,14 @@
                                 </div>
 
                                 <div class="col-12 col-lg-3 mb-3">
-                                    <label class="form-label">N°</label>
-                                    <input type="text"
-                                           class="form-control"
-                                           name="numero"
-                                           value="{{ action == 'editar' ? manifestacao.numero : '' }}"
-                                           placeholder="Número">
+                                    <label class="form-label">Número do Processo</label>
+                                    {{ include('partials/select_numero_processo.twig', {
+                                        name: 'numero',
+                                        id: 'numero_processo_manifestacao',
+                                        numeros_processo: numeros_processo|default([]),
+                                        selected: action == 'editar' ? manifestacao.numero|default('') : ''
+                                    }) }}
+                                    <small class="form-text">Vincula quesito, parecer e agendamentos.</small>
                                 </div>
 
                                 <div class="col-12 col-lg-3 mb-3">
@@ -137,17 +139,7 @@
                         <div class="card-body">
                             <div class="row align-items-center">
                                 <div class="col-12 col-lg-3 mb-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input"
-                                               type="checkbox"
-                                               id="tarefa_concluido"
-                                               name="tarefa_concluido"
-                                               value="1"
-                                               {{ action == 'editar' and tarefa and tarefa.concluido ? 'checked' : '' }}>
-                                        <label class="form-check-label" for="tarefa_concluido">
-                                            <strong>Marcar como concluído</strong>
-                                        </label>
-                                    </div>
+                                    <label class="form-label" for="tarefa_data_conclusao">Data prevista (prazo)</label>
                                     <input type="date"
                                            class="form-control"
                                            name="tarefa_data_conclusao"
@@ -200,6 +192,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ PATH }}/view/assets/js/processo-vinculo.js"></script>
 <script>
     window.DOMAIN = '{{ DOMAIN }}';
 
@@ -282,6 +275,21 @@
                 }
             });
 
+            $('#numero_processo_manifestacao').select2({
+                tags: true,
+                placeholder: 'Selecione um número ou digite um novo',
+                allowClear: true,
+                width: '100%',
+                language: {
+                    noResults: function() {
+                        return 'Digite para informar um novo número';
+                    },
+                    searching: function() {
+                        return 'Buscando...';
+                    }
+                }
+            });
+
             // Select2 para Usuário Responsável (Tarefas)
             $('#tarefa_usuario_responsavel_id').select2({
                 placeholder: 'Selecione o usuário responsável',
@@ -296,6 +304,17 @@
                     }
                 }
             });
+
+            if (typeof initVinculoProcesso === 'function') {
+                initVinculoProcesso({
+                    inputSelector: '#numero_processo_manifestacao',
+                    excludeFonte: {% if action == 'editar' %}'manifestacao'{% else %}null{% endif %},
+                    excludeId: {% if action == 'editar' %}{{ manifestacao.id }}{% else %}null{% endif %},
+                    reclamada: '#reclamada_id',
+                    reclamante: '#reclamante_id',
+                    perito: '#perito_id'
+                });
+            }
         });
 
         /**
@@ -610,7 +629,8 @@
                         timer: 2000,
                         showConfirmButton: false
                     }).then(() => {
-                        window.location.href = window.DOMAIN + '/manifestacoes-impugnacoes';
+                        const path = typeof data.redirect === 'string' ? data.redirect : '/manifestacoes-impugnacoes';
+                        window.location.href = window.DOMAIN + path;
                     });
                 } else {
                     Swal.fire({
