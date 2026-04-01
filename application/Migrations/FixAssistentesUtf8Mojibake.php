@@ -35,8 +35,7 @@ class FixAssistentesUtf8Mojibake extends Migration
             return;
         }
 
-        // Caractere Ã (U+00C3) em UTF-8 — indício comum de mojibake em português
-        $likePattern = '%' . "\xC3\x83" . '%';
+        $likePattern = Utf8MojibakeFixer::likePattern();
 
         $selectList = '`id`, `' . implode('`, `', $columns) . '`';
         $whereParts = array_map(static fn (string $c) => "`{$c}` LIKE ?", $columns);
@@ -54,7 +53,7 @@ class FixAssistentesUtf8Mojibake extends Migration
                 if ($val === null || $val === '') {
                     continue;
                 }
-                $fixed = $this->tryFixMojibake((string) $val);
+                $fixed = Utf8MojibakeFixer::tryFix((string) $val);
                 if ($fixed === null) {
                     continue;
                 }
@@ -62,34 +61,6 @@ class FixAssistentesUtf8Mojibake extends Migration
                 $uq->execute([$fixed, $id]);
             }
         }
-    }
-
-    /**
-     * Inverte o padrão clássico de double-encoding (equivalente ao CONVERT MySQL),
-     * ou null se não for seguro gravar o resultado.
-     */
-    private function tryFixMojibake(string $value): ?string
-    {
-        if (!str_contains($value, "\xC3\x83")) {
-            return null;
-        }
-
-        $asLatin1 = mb_convert_encoding($value, 'ISO-8859-1', 'UTF-8');
-        $decoded = mb_convert_encoding($asLatin1, 'UTF-8', 'ISO-8859-1');
-
-        if ($decoded === $value) {
-            return null;
-        }
-
-        if ($decoded === '' || !mb_check_encoding($decoded, 'UTF-8')) {
-            return null;
-        }
-
-        if (@preg_match('//u', $decoded) !== 1) {
-            return null;
-        }
-
-        return $decoded;
     }
 
     public function down(): void

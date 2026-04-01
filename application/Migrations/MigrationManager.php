@@ -127,7 +127,7 @@ class MigrationManager extends Conn
         
         foreach ($files as $file) {
             $fileName = basename($file, '.php');
-            if ($fileName === 'Migration' || $fileName === 'MigrationManager') {
+            if ($fileName === 'Migration' || $fileName === 'MigrationManager' || $fileName === 'Utf8MojibakeFixer') {
                 continue;
             }
             
