@@ -143,7 +143,7 @@ class Tarefa extends Model
         $where = "WHERE t.empresa = :empresa AND t.usuario_responsavel_id = :usuario_id";
         $parseString = "empresa={$empresa}&usuario_id={$usuarioId}";
 
-        // Filtro de status (concluído ou não)
+        // Pendente = concluido 0 | Concluída = concluido 1
         if (!empty($filtros['status'])) {
             if ($filtros['status'] === 'concluido') {
                 $where .= " AND t.concluido = 1";

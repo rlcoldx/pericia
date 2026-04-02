@@ -35,15 +35,22 @@
             { data: 7, name: 'acoes', orderable: false, searchable: false, className: 'text-center' }
         ];
 
+        function isHomeApenasPendentes() {
+            return table.getAttribute('data-home-apenas-pendentes') === '1';
+        }
+
         // Função para obter filtros do formulário dinamicamente
         function getFiltersFromForm() {
+            if (isHomeApenasPendentes()) {
+                return { status: 'pendente', apenas_pendentes_home: '1' };
+            }
             const filtroStatus = document.getElementById('filtroStatusTarefas');
             const filters = {};
-            
+
             if (filtroStatus && filtroStatus.value) {
                 filters.status = filtroStatus.value;
             }
-            
+
             return filters;
         }
 
@@ -58,7 +65,11 @@
             customConfig: {
                 ajax: {
                     data: function(d) {
-                        // Adiciona filtro de status dinamicamente do select
+                        if (isHomeApenasPendentes()) {
+                            d.status = 'pendente';
+                            d.apenas_pendentes_home = '1';
+                            return d;
+                        }
                         const filtroStatus = document.getElementById('filtroStatusTarefas');
                         if (filtroStatus && filtroStatus.value) {
                             d.status = filtroStatus.value;
@@ -104,7 +115,9 @@
      */
     function setupStatusFilter() {
         const filtroStatus = document.getElementById('filtroStatusTarefas');
-        if (!filtroStatus) return;
+        if (!filtroStatus) {
+            return;
+        }
 
         filtroStatus.addEventListener('change', function() {
             if (dataTableInstance && dataTableInstance.reload) {

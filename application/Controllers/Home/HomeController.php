@@ -11,7 +11,7 @@ use Agencia\Close\Helpers\DataTableResponse;
 
 class HomeController extends Controller
 {
-  /** Marcelo Pasqualini Souza — não exibir gráficos Apex na home */
+  /** Marcelo Pasqualini Souza — sem gráficos Apex nem bloco Financeiro (Contas a Receber) na home */
   private const USUARIO_ID_SEM_GRAFICOS_HOME = 3;
 
   public $today = false;
@@ -37,6 +37,17 @@ class HomeController extends Controller
     $estatisticasModel = new EstatisticasHome();
     $usuarioId = (int) ($_SESSION['pericia_perfil_id'] ?? 0);
     $ocultarGraficosHome = ($usuarioId === self::USUARIO_ID_SEM_GRAFICOS_HOME);
+    $ocultarFinanceiroHome = ($usuarioId === self::USUARIO_ID_SEM_GRAFICOS_HOME);
+
+    $estatisticas = [
+      'quesitos' => $estatisticasModel->getEstatisticasQuesitos((int)$empresa, $dataInicio, $dataFim),
+      'manifestacoes' => $estatisticasModel->getEstatisticasManifestacoes((int)$empresa, $dataInicio, $dataFim),
+      'pareceres' => $estatisticasModel->getEstatisticasPareceres((int)$empresa, $dataInicio, $dataFim),
+      'agendamentos' => $estatisticasModel->getEstatisticasAgendamentos((int)$empresa, $dataInicio, $dataFim),
+    ];
+    if (!$ocultarFinanceiroHome) {
+      $estatisticas['financeiro'] = $estatisticasModel->getEstatisticasFinanceiro((int)$empresa, $dataInicio, $dataFim);
+    }
 
     $this->render('pages/home/home.twig', [
       'page' => 'home',
@@ -44,13 +55,8 @@ class HomeController extends Controller
       'data_inicio' => $dataInicio,
       'data_fim' => $dataFim,
       'ocultar_graficos_home' => $ocultarGraficosHome,
-      'estatisticas' => [
-        'quesitos' => $estatisticasModel->getEstatisticasQuesitos((int)$empresa, $dataInicio, $dataFim),
-        'manifestacoes' => $estatisticasModel->getEstatisticasManifestacoes((int)$empresa, $dataInicio, $dataFim),
-        'pareceres' => $estatisticasModel->getEstatisticasPareceres((int)$empresa, $dataInicio, $dataFim),
-        'agendamentos' => $estatisticasModel->getEstatisticasAgendamentos((int)$empresa, $dataInicio, $dataFim),
-        'financeiro' => $estatisticasModel->getEstatisticasFinanceiro((int)$empresa, $dataInicio, $dataFim),
-      ]
+      'ocultar_financeiro_home' => $ocultarFinanceiroHome,
+      'estatisticas' => $estatisticas,
     ]);
   }
 
@@ -91,16 +97,22 @@ class HomeController extends Controller
     }
 
     $estatisticasModel = new EstatisticasHome();
+    $usuarioId = (int) ($_SESSION['pericia_perfil_id'] ?? 0);
+    $ocultarFinanceiroHome = ($usuarioId === self::USUARIO_ID_SEM_GRAFICOS_HOME);
+
+    $data = [
+      'quesitos' => $estatisticasModel->getEstatisticasQuesitos((int)$empresa, $dataInicio, $dataFim),
+      'manifestacoes' => $estatisticasModel->getEstatisticasManifestacoes((int)$empresa, $dataInicio, $dataFim),
+      'pareceres' => $estatisticasModel->getEstatisticasPareceres((int)$empresa, $dataInicio, $dataFim),
+      'agendamentos' => $estatisticasModel->getEstatisticasAgendamentos((int)$empresa, $dataInicio, $dataFim),
+    ];
+    if (!$ocultarFinanceiroHome) {
+      $data['financeiro'] = $estatisticasModel->getEstatisticasFinanceiro((int)$empresa, $dataInicio, $dataFim);
+    }
 
     $this->responseJson([
       'success' => true,
-      'data' => [
-        'quesitos' => $estatisticasModel->getEstatisticasQuesitos((int)$empresa, $dataInicio, $dataFim),
-        'manifestacoes' => $estatisticasModel->getEstatisticasManifestacoes((int)$empresa, $dataInicio, $dataFim),
-        'pareceres' => $estatisticasModel->getEstatisticasPareceres((int)$empresa, $dataInicio, $dataFim),
-        'agendamentos' => $estatisticasModel->getEstatisticasAgendamentos((int)$empresa, $dataInicio, $dataFim),
-        'financeiro' => $estatisticasModel->getEstatisticasFinanceiro((int)$empresa, $dataInicio, $dataFim),
-      ]
+      'data' => $data,
     ]);
   }
 
@@ -133,9 +145,14 @@ class HomeController extends Controller
 
       $dtParams = DataTableResponse::getParams();
 
-      $filtros = [];
-      if (!empty($_GET['status'])) {
-        $filtros['status'] = $_GET['status'];
+      // Home: só linhas com t.concluido = 0 (um único critério, sem EXISTS nem join extra)
+      if (isset($_GET['apenas_pendentes_home']) && (string) $_GET['apenas_pendentes_home'] === '1') {
+        $filtros = ['status' => 'pendente'];
+      } else {
+        $filtros = [];
+        if (!empty($_GET['status'])) {
+          $filtros['status'] = $_GET['status'];
+        }
       }
 
       $tarefaModel = new Tarefa();
@@ -202,7 +219,7 @@ class HomeController extends Controller
       $celulaDrive = '<span class="text-center d-inline-block w-100">—</span>';
       if ($linkDriveRaw !== '' && preg_match('#^https?://#i', $linkDriveRaw)) {
         $urlDrive = htmlspecialchars($linkDriveRaw, ENT_QUOTES, 'UTF-8');
-        $celulaDrive = '<a href="' . $urlDrive . '" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary py-1 px-2" data-bs-toggle="tooltip" title="Abrir pasta no Google Drive">'
+        $celulaDrive = '<a href="' . $urlDrive . '" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-info py-1 px-2" data-bs-toggle="tooltip" title="Abrir pasta no Google Drive">'
           . '<i class="fa fa-folder-open"></i></a>';
       }
 
