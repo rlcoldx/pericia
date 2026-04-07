@@ -139,18 +139,26 @@ class ManifestacaoImpugnacaoController extends Controller
 
         // Salvar tarefa se fornecida (não bloqueia o cadastro se falhar)
         try {
-            $temDadosTarefa = !empty($_POST['tarefa_usuario_responsavel_id'])
+            $tarefaConcluido = isset($_POST['tarefa_concluido'])
+                && ($_POST['tarefa_concluido'] === '1' || $_POST['tarefa_concluido'] === 'on');
+
+            $temDadosTarefa = $tarefaConcluido
+                || !empty($_POST['tarefa_usuario_responsavel_id'])
                 || !empty($_POST['tarefa_data_conclusao'])
-                || trim((string) ($_POST['tarefa_texto'] ?? '')) !== '';
+                || !empty($_POST['tarefa_texto']);
 
             if ($temDadosTarefa) {
                 $tarefaModel = new Tarefa();
-                $usuarioResponsavelId = !empty($_POST['tarefa_usuario_responsavel_id'])
-                    ? (int) $_POST['tarefa_usuario_responsavel_id']
-                    : null;
+
+                $usuarioResponsavelId = null;
+                if (!empty($_POST['tarefa_usuario_responsavel_id'])) {
+                    $usuarioResponsavelId = (int) $_POST['tarefa_usuario_responsavel_id'];
+                } elseif ($tarefaConcluido) {
+                    $usuarioResponsavelId = $_SESSION['pericia_perfil_id'] ?? null;
+                }
 
                 $tarefaModel->salvarTarefa('manifestacao', $idManifestacao, (int) $empresa, [
-                    'concluido' => 0,
+                    'concluido' => $tarefaConcluido ? 1 : 0,
                     'usuario_responsavel_id' => $usuarioResponsavelId,
                     'data_conclusao' => $_POST['tarefa_data_conclusao'] ?? null,
                     'tarefa_texto' => $_POST['tarefa_texto'] ?? null,
@@ -292,27 +300,30 @@ class ManifestacaoImpugnacaoController extends Controller
 
         // Salvar tarefa se fornecida (não bloqueia a atualização se falhar)
         try {
-            $tarefaModel = new Tarefa();
-            $tarefaExistente = $tarefaModel->getPorModuloRegistro('manifestacao', $id, (int) $empresa);
-            $tarefaData = $tarefaExistente->getResult()[0] ?? null;
+            $tarefaConcluido = isset($_POST['tarefa_concluido'])
+                && ($_POST['tarefa_concluido'] === '1' || $_POST['tarefa_concluido'] === 'on');
 
-            $temDadosTarefa = !empty($_POST['tarefa_usuario_responsavel_id'])
+            $temDadosTarefa = $tarefaConcluido
+                || !empty($_POST['tarefa_usuario_responsavel_id'])
                 || !empty($_POST['tarefa_data_conclusao'])
-                || trim((string) ($_POST['tarefa_texto'] ?? '')) !== ''
-                || $tarefaData !== null;
+                || !empty($_POST['tarefa_texto']);
 
             if ($temDadosTarefa) {
-                $concluidoPersistir = $tarefaData ? (int) ($tarefaData['concluido'] ?? 0) : 0;
+                $tarefaModel = new Tarefa();
+                $tarefaExistente = $tarefaModel->getPorModuloRegistro('manifestacao', $id, (int) $empresa);
+                $tarefaData = $tarefaExistente->getResult()[0] ?? null;
 
                 $usuarioResponsavelId = null;
                 if (!empty($_POST['tarefa_usuario_responsavel_id'])) {
                     $usuarioResponsavelId = (int) $_POST['tarefa_usuario_responsavel_id'];
                 } elseif ($tarefaData && !empty($tarefaData['usuario_responsavel_id'])) {
                     $usuarioResponsavelId = (int) $tarefaData['usuario_responsavel_id'];
+                } elseif ($tarefaConcluido) {
+                    $usuarioResponsavelId = $_SESSION['pericia_perfil_id'] ?? null;
                 }
 
                 $tarefaModel->salvarTarefa('manifestacao', $id, (int) $empresa, [
-                    'concluido' => $concluidoPersistir,
+                    'concluido' => $tarefaConcluido ? 1 : 0,
                     'usuario_responsavel_id' => $usuarioResponsavelId,
                     'data_conclusao' => $_POST['tarefa_data_conclusao'] ?? null,
                     'tarefa_texto' => $_POST['tarefa_texto'] ?? null,
