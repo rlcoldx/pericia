@@ -10,6 +10,7 @@ use Agencia\Close\Models\Notificacao\NotificacaoUsuario;
 use Agencia\Close\Services\Notificacao\EmailNotificationService;
 use Agencia\Close\Conn\Read;
 use Agencia\Close\Helpers\DataTableResponse;
+use Agencia\Close\Services\Login\PermissionsService;
 use Agencia\Close\Models\Equipe\Equipe;
 use Agencia\Close\Models\Tarefa\Tarefa;
 use Agencia\Close\Services\Processo\ProcessoVinculoService;
@@ -111,6 +112,7 @@ class QuesitoController extends Controller
             $formattedData[] = [
                 date('d/m/Y', strtotime($q['data'])),
                 htmlspecialchars($q['tipo'] ?? '', ENT_QUOTES, 'UTF-8'),
+                htmlspecialchars(($q['tipo_trabalho'] ?? '') !== '' ? $q['tipo_trabalho'] : '-', ENT_QUOTES, 'UTF-8'),
                 htmlspecialchars($q['vara'] ?? '', ENT_QUOTES, 'UTF-8'),
                 htmlspecialchars($q['reclamante_nome'] ?? '', ENT_QUOTES, 'UTF-8'),
                 htmlspecialchars($q['reclamada_nome'] ?? '', ENT_QUOTES, 'UTF-8'),
@@ -128,6 +130,40 @@ class QuesitoController extends Controller
         );
 
         $this->responseJson($response);
+    }
+
+    /**
+     * Exclui apenas o registro em quesitos (sem cascata em outros módulos).
+     */
+    public function excluir($params)
+    {
+        header('Content-Type: application/json; charset=utf-8');
+
+        $this->setParams($params);
+        $this->requirePermission('quesito_gerenciar');
+
+        $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
+        $id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
+
+        if (!$empresa || $id <= 0) {
+            $this->responseJson(['success' => false, 'message' => 'Dados inválidos.']);
+            return;
+        }
+
+        $model = new Quesito();
+        $existente = $model->getPorId($id, (int) $empresa);
+        if (!$existente->getResult()) {
+            $this->responseJson(['success' => false, 'message' => 'Registro não encontrado.']);
+            return;
+        }
+
+        $result = $model->remover($id, (int) $empresa);
+        if ($result->getResult()) {
+            $this->responseJson(['success' => true, 'message' => 'Quesito excluído.']);
+            return;
+        }
+
+        $this->responseJson(['success' => false, 'message' => 'Não foi possível excluir o registro.']);
     }
 
     private function formatStatusBadge(string $status): string
@@ -229,6 +265,7 @@ class QuesitoController extends Controller
             'reclamadas' => $reclamadaModel->listar((int) $empresa)->getResult() ?? [],
             'reclamantes' => $reclamanteModel->listar((int) $empresa)->getResult() ?? [],
             'tipos' => $quesitoModel->getTiposDistinct((int) $empresa)->getResult() ?? [],
+            'tipos_trabalho' => $quesitoModel->getTiposTrabalhoDistinct((int) $empresa)->getResult() ?? [],
             'usuarios' => $equipeModel->getUsuariosAtivos((int) $empresa)->getResult() ?? [],
             'numeros_processo' => $processoVinculo->listarNumerosProcessoDistintos((int) $empresa),
             'tarefa' => null,
@@ -286,6 +323,13 @@ class QuesitoController extends Controller
             $tipo = mb_strtoupper($tipo, 'UTF-8');
         }
 
+        $tipoTrabalho = isset($_POST['tipo_trabalho']) ? trim((string) $_POST['tipo_trabalho']) : '';
+        if ($tipoTrabalho !== '') {
+            $tipoTrabalho = mb_strtoupper($tipoTrabalho, 'UTF-8');
+        } else {
+            $tipoTrabalho = null;
+        }
+
         if (empty($data) || empty($tipo) || empty($vara) || !$reclamanteId || !$reclamadaId) {
             // Limpar qualquer output buffer antes de enviar JSON
             if (ob_get_level() > 0) {
@@ -317,6 +361,7 @@ class QuesitoController extends Controller
             'empresa' => (int) $empresa,
             'data' => $data,
             'tipo' => $tipo,
+            'tipo_trabalho' => $tipoTrabalho,
             'vara' => $vara,
             'numero_processo' => isset($_POST['numero_processo']) && trim((string) $_POST['numero_processo']) !== '' ? trim((string) $_POST['numero_processo']) : null,
             'reclamante' => $reclamanteNome, // Campo antigo (NOT NULL na tabela)
@@ -347,18 +392,25 @@ class QuesitoController extends Controller
 
         // Salvar tarefa se fornecida (não bloqueia o cadastro do quesito se falhar)
         try {
-            $temDadosTarefa = !empty($_POST['tarefa_usuario_responsavel_id'])
+            $tarefaConcluido = isset($_POST['tarefa_concluido'])
+                && ($_POST['tarefa_concluido'] === '1' || $_POST['tarefa_concluido'] === 'on');
+
+            $temDadosTarefa = $tarefaConcluido
+                || !empty($_POST['tarefa_usuario_responsavel_id'])
                 || !empty($_POST['tarefa_data_conclusao'])
-                || trim((string) ($_POST['tarefa_texto'] ?? '')) !== '';
+                || !empty($_POST['tarefa_texto']);
 
             if ($temDadosTarefa) {
                 $tarefaModel = new Tarefa();
-                $usuarioResponsavelId = !empty($_POST['tarefa_usuario_responsavel_id'])
-                    ? (int) $_POST['tarefa_usuario_responsavel_id']
-                    : null;
+                $usuarioResponsavelId = null;
+                if (!empty($_POST['tarefa_usuario_responsavel_id'])) {
+                    $usuarioResponsavelId = (int) $_POST['tarefa_usuario_responsavel_id'];
+                } elseif ($tarefaConcluido) {
+                    $usuarioResponsavelId = $_SESSION['pericia_perfil_id'] ?? null;
+                }
 
                 $tarefaModel->salvarTarefa('quesito', $idQuesito, (int) $empresa, [
-                    'concluido' => 0,
+                    'concluido' => $tarefaConcluido ? 1 : 0,
                     'usuario_responsavel_id' => $usuarioResponsavelId,
                     'data_conclusao' => $_POST['tarefa_data_conclusao'] ?? null,
                     'tarefa_texto' => $_POST['tarefa_texto'] ?? null,
@@ -434,6 +486,7 @@ class QuesitoController extends Controller
             'reclamadas' => $reclamadaModel->listar((int) $empresa)->getResult() ?? [],
             'reclamantes' => $reclamanteModel->listar((int) $empresa)->getResult() ?? [],
             'tipos' => $model->getTiposDistinct((int) $empresa)->getResult() ?? [],
+            'tipos_trabalho' => $model->getTiposTrabalhoDistinct((int) $empresa)->getResult() ?? [],
             'usuarios' => $equipeModel->getUsuariosAtivos((int) $empresa)->getResult() ?? [],
             'numeros_processo' => $processoVinculo->listarNumerosProcessoDistintos((int) $empresa),
             'tarefa' => $tarefa,
@@ -493,6 +546,13 @@ class QuesitoController extends Controller
             $tipo = mb_strtoupper($tipo, 'UTF-8');
         }
 
+        $tipoTrabalho = isset($_POST['tipo_trabalho']) ? trim((string) $_POST['tipo_trabalho']) : '';
+        if ($tipoTrabalho !== '') {
+            $tipoTrabalho = mb_strtoupper($tipoTrabalho, 'UTF-8');
+        } else {
+            $tipoTrabalho = null;
+        }
+
         if (empty($data) || empty($tipo) || empty($vara) || !$reclamanteId || !$reclamadaId) {
             // Limpar qualquer output buffer antes de enviar JSON
             if (ob_get_level() > 0) {
@@ -523,6 +583,7 @@ class QuesitoController extends Controller
         $dados = [
             'data' => $data,
             'tipo' => $tipo,
+            'tipo_trabalho' => $tipoTrabalho,
             'vara' => $vara,
             'numero_processo' => isset($_POST['numero_processo']) && trim((string) $_POST['numero_processo']) !== '' ? trim((string) $_POST['numero_processo']) : null,
             'reclamante' => $reclamanteNome, // Campo antigo (NOT NULL na tabela)
@@ -555,23 +616,30 @@ class QuesitoController extends Controller
             $tarefaExistente = $tarefaModel->getPorModuloRegistro('quesito', $id, (int) $empresa);
             $tarefaData = $tarefaExistente->getResult()[0] ?? null;
 
-            $temDadosTarefa = !empty($_POST['tarefa_usuario_responsavel_id'])
+            $tarefaConcluidoPost = isset($_POST['tarefa_concluido'])
+                && ($_POST['tarefa_concluido'] === '1' || $_POST['tarefa_concluido'] === 'on');
+            // Status final no quesito implica tarefa concluída (reforço no servidor)
+            $tarefaConcluido = $tarefaConcluidoPost
+                || in_array($status, ['Finalizado', 'Finalizado e Enviado'], true);
+
+            $temDadosTarefa = $tarefaConcluido
+                || !empty($_POST['tarefa_usuario_responsavel_id'])
                 || !empty($_POST['tarefa_data_conclusao'])
-                || trim((string) ($_POST['tarefa_texto'] ?? '')) !== ''
+                || !empty($_POST['tarefa_texto'])
                 || $tarefaData !== null;
 
             if ($temDadosTarefa) {
-                $concluidoPersistir = $tarefaData ? (int) ($tarefaData['concluido'] ?? 0) : 0;
-
                 $usuarioResponsavelId = null;
                 if (!empty($_POST['tarefa_usuario_responsavel_id'])) {
                     $usuarioResponsavelId = (int) $_POST['tarefa_usuario_responsavel_id'];
                 } elseif ($tarefaData && !empty($tarefaData['usuario_responsavel_id'])) {
                     $usuarioResponsavelId = (int) $tarefaData['usuario_responsavel_id'];
+                } elseif ($tarefaConcluido) {
+                    $usuarioResponsavelId = $_SESSION['pericia_perfil_id'] ?? null;
                 }
 
                 $tarefaModel->salvarTarefa('quesito', $id, (int) $empresa, [
-                    'concluido' => $concluidoPersistir,
+                    'concluido' => $tarefaConcluido ? 1 : 0,
                     'usuario_responsavel_id' => $usuarioResponsavelId,
                     'data_conclusao' => $_POST['tarefa_data_conclusao'] ?? null,
                     'tarefa_texto' => $_POST['tarefa_texto'] ?? null,
@@ -811,13 +879,19 @@ class QuesitoController extends Controller
             return '';
         }
 
-        $html = '<div class="d-flex justify-content-end">';
+        $perm = new PermissionsService();
+        $html = '<div class="d-flex flex-row flex-nowrap justify-content-end align-items-center gap-1 text-nowrap">';
 
-        // Botão Gerenciar (editar)
-        $html .= '<a href="' . DOMAIN . '/quesitos/editar/' . $id . '" ';
-        $html .= 'class="btn btn-success shadow btn-xs sharp me-1" ';
-        $html .= 'data-bs-toggle="tooltip" data-bs-title="Gerenciar">';
-        $html .= '<i class="fa fa-pencil"></i></a>';
+        if ($perm->verifyPermissions('quesito_gerenciar')) {
+            $html .= '<a href="' . DOMAIN . '/quesitos/editar/' . $id . '" ';
+            $html .= 'class="btn btn-success shadow btn-xs sharp" ';
+            $html .= 'data-bs-toggle="tooltip" data-bs-title="Gerenciar">';
+            $html .= '<i class="fa fa-pencil"></i></a>';
+
+            $html .= '<button type="button" class="btn btn-danger shadow btn-xs sharp btn-excluir-quesito" ';
+            $html .= 'data-id="' . (int) $id . '" data-bs-toggle="tooltip" data-bs-title="Excluir">';
+            $html .= '<i class="fa fa-trash"></i></button>';
+        }
 
         $html .= '</div>';
         return $html;

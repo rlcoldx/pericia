@@ -172,13 +172,33 @@ class Tarefa extends Model
                     ''
                 )";
 
+        $exprTipoRegistro = "COALESCE(
+                    CASE 
+                        WHEN t.modulo = 'quesito' THEN (SELECT q.tipo FROM quesitos q WHERE q.id = t.registro_id AND q.empresa = t.empresa LIMIT 1)
+                        WHEN t.modulo = 'manifestacao' THEN (SELECT m.tipo FROM manifestacoes_impugnacoes m WHERE m.id = t.registro_id AND m.empresa = t.empresa LIMIT 1)
+                        WHEN t.modulo = 'parecer' THEN (SELECT p.tipo FROM pareceres p WHERE p.id = t.registro_id AND p.empresa = t.empresa LIMIT 1)
+                        WHEN t.modulo = 'agendamento' THEN (SELECT a.tipo_pericia FROM agendamentos a WHERE a.id = t.registro_id AND a.empresa = t.empresa LIMIT 1)
+                    END,
+                    ''
+                )";
+
+        $exprTipoTrabalhoRegistro = "COALESCE(
+                    CASE 
+                        WHEN t.modulo = 'quesito' THEN (SELECT q.tipo_trabalho FROM quesitos q WHERE q.id = t.registro_id AND q.empresa = t.empresa LIMIT 1)
+                        WHEN t.modulo = 'manifestacao' THEN (SELECT m.tipo_trabalho FROM manifestacoes_impugnacoes m WHERE m.id = t.registro_id AND m.empresa = t.empresa LIMIT 1)
+                    END,
+                    ''
+                )";
+
         // Busca geral
         $searchWhere = '';
         if (!empty($search)) {
             $searchWhere = " AND (
                 t.modulo LIKE :search OR
                 {$exprReclamada} LIKE :search OR
-                {$exprReclamante} LIKE :search
+                {$exprReclamante} LIKE :search OR
+                {$exprTipoRegistro} LIKE :search OR
+                {$exprTipoTrabalhoRegistro} LIKE :search
             )";
             $parseString .= "&search=%{$search}%";
         }
@@ -193,22 +213,23 @@ class Tarefa extends Model
         $this->read->FullRead($sqlFiltered, $parseString);
         $filtered = (int) ($this->read->getResult()[0]['total'] ?? 0);
 
-        $orderColumn = (int) ($params['order_column'] ?? 4);
+        $orderColumn = (int) ($params['order_column'] ?? 5);
         $orderDir = strtoupper($params['order_dir'] ?? 'ASC') === 'DESC' ? 'DESC' : 'ASC';
 
         $columnOrderMap = [
             0 => 't.modulo',
-            1 => $exprReclamante,
-            2 => $exprReclamada,
-            3 => 't.concluido',
-            4 => 't.data_conclusao',
-            5 => 't.data_create',
+            1 => $exprTipoRegistro,
+            2 => $exprReclamante,
+            3 => $exprReclamada,
+            4 => 't.concluido',
+            5 => 't.data_conclusao',
+            6 => 't.data_create',
         ];
 
         $orderBy = ' (t.data_conclusao IS NULL OR t.data_conclusao = \'0000-00-00\'), t.data_conclusao ASC, t.data_create DESC';
         if (isset($columnOrderMap[$orderColumn])) {
             $colSql = $columnOrderMap[$orderColumn];
-            if ($orderColumn === 4) {
+            if ($orderColumn === 5) {
                 $orderBy = " ({$colSql} IS NULL OR {$colSql} = '0000-00-00'), {$colSql} {$orderDir}, t.data_create DESC";
             } else {
                 $orderBy = "{$colSql} {$orderDir}, t.id DESC";
@@ -248,7 +269,9 @@ class Tarefa extends Model
                     CASE 
                         WHEN t.modulo = 'quesito' THEN (SELECT q.link_pasta_drive FROM quesitos q WHERE q.id = t.registro_id AND q.empresa = t.empresa LIMIT 1)
                         ELSE NULL
-                    END as link_pasta_drive
+                    END as link_pasta_drive,
+                    {$exprTipoRegistro} as registro_tipo,
+                    {$exprTipoTrabalhoRegistro} as registro_tipo_trabalho
                 FROM tarefas t
                 {$where}{$searchWhere}
                 ORDER BY {$orderBy}

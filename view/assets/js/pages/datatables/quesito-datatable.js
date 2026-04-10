@@ -27,12 +27,13 @@
         const columns = [
             { data: 0, name: 'data', orderable: true, searchable: false },
             { data: 1, name: 'tipo', orderable: true, searchable: true },
-            { data: 2, name: 'vara', orderable: true, searchable: true },
-            { data: 3, name: 'reclamante', orderable: true, searchable: true },
-            { data: 4, name: 'reclamada', orderable: true, searchable: true },
-            { data: 5, name: 'status', orderable: true, searchable: false },
-            { data: 6, name: 'email_cliente', orderable: false, searchable: false, className: 'text-center' },
-            { data: 7, name: 'acoes', orderable: false, searchable: false, className: 'text-center' }
+            { data: 2, name: 'tipo_trabalho', orderable: true, searchable: true },
+            { data: 3, name: 'vara', orderable: true, searchable: true },
+            { data: 4, name: 'reclamante', orderable: true, searchable: true },
+            { data: 5, name: 'reclamada', orderable: true, searchable: true },
+            { data: 6, name: 'status', orderable: true, searchable: false },
+            { data: 7, name: 'email_cliente', orderable: false, searchable: false, className: 'text-center' },
+            { data: 8, name: 'acoes', orderable: false, searchable: false, className: 'text-center text-nowrap' }
         ];
 
         const config = {
@@ -42,6 +43,10 @@
             pageLength: 10,
             lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Todos"]],
             dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip',
+            customConfig: {
+                responsive: false,
+                autoWidth: false
+            },
             customFilters: getFiltersFromForm(),
             onDraw: function() {
                 // Inicializar tooltips após desenhar a tabela
@@ -65,6 +70,62 @@
         dataTableInstance.init();
 
         setupFilterForm();
+        bindExcluirQuesito();
+    }
+
+    function bindExcluirQuesito() {
+        if (bindExcluirQuesito._done) {
+            return;
+        }
+        bindExcluirQuesito._done = true;
+
+        document.body.addEventListener('click', function (e) {
+            const btn = e.target.closest('.btn-excluir-quesito');
+            if (!btn) {
+                return;
+            }
+            e.preventDefault();
+            const id = btn.getAttribute('data-id');
+            if (!id || typeof Swal === 'undefined') {
+                return;
+            }
+
+            Swal.fire({
+                title: 'Excluir quesito?',
+                text: 'Somente este registro será removido. Nenhum outro módulo será alterado.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sim, excluir',
+                cancelButtonText: 'Cancelar'
+            }).then(function (result) {
+                if (!result.isConfirmed) {
+                    return;
+                }
+                const fd = new FormData();
+                fd.append('id', id);
+                fetch(window.DOMAIN + '/quesitos/excluir', {
+                    method: 'POST',
+                    body: fd,
+                    credentials: 'same-origin'
+                })
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (data.success) {
+                            Swal.fire('Excluído', data.message || '', 'success');
+                            if (dataTableInstance) {
+                                dataTableInstance.reload();
+                            }
+                        } else {
+                            Swal.fire('Erro', data.message || 'Não foi possível excluir.', 'error');
+                        }
+                    })
+                    .catch(function () {
+                        Swal.fire('Erro', 'Falha na requisição.', 'error');
+                    });
+            });
+        });
     }
 
     function getFiltersFromForm() {

@@ -215,6 +215,18 @@ class HomeController extends Controller
       $reclamada = htmlspecialchars($tarefa['reclamada'] ?? 'Sem Reclamada', ENT_QUOTES, 'UTF-8');
       $reclamante = htmlspecialchars($tarefa['reclamante'] ?? 'Sem Reclamante', ENT_QUOTES, 'UTF-8');
 
+      $tipoReg = trim((string) ($tarefa['registro_tipo'] ?? ''));
+      $tipoTrabalhoReg = trim((string) ($tarefa['registro_tipo_trabalho'] ?? ''));
+      if ($tipoReg === '' && $tipoTrabalhoReg === '') {
+        $tipoColuna = '—';
+      } elseif ($tipoTrabalhoReg === '') {
+        $tipoColuna = htmlspecialchars($tipoReg, ENT_QUOTES, 'UTF-8');
+      } elseif ($tipoReg === '') {
+        $tipoColuna = htmlspecialchars($tipoTrabalhoReg, ENT_QUOTES, 'UTF-8');
+      } else {
+        $tipoColuna = htmlspecialchars($tipoReg . ' — ' . $tipoTrabalhoReg, ENT_QUOTES, 'UTF-8');
+      }
+
       $linkDriveRaw = isset($tarefa['link_pasta_drive']) ? trim((string) $tarefa['link_pasta_drive']) : '';
       $celulaDrive = '<span class="text-center d-inline-block w-100">—</span>';
       if ($linkDriveRaw !== '' && preg_match('#^https?://#i', $linkDriveRaw)) {
@@ -251,6 +263,7 @@ class HomeController extends Controller
 
       $formattedData[] = [
         $moduloNome,
+        $tipoColuna,
         $reclamante,
         $reclamada,
         $statusBadge,

@@ -27,18 +27,29 @@
                 <h4 class="card-title">Manifestações e Impugnações</h4>
             </div>
             <div class="card-body">
+                <style>
+                    #datatable-manifestacoes td:nth-child(4),
+                    #datatable-manifestacoes th:nth-child(4) {
+                        max-width: 12rem;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        white-space: nowrap;
+                    }
+                </style>
                 <div class="table-responsive">
-                    <table id="datatable-manifestacoes" class="table dataTable align-middle">
+                    <table id="datatable-manifestacoes" class="table dataTable align-middle w-100">
                         <thead>
                             <tr>
                                 <th>Data</th>
                                 <th>Tipo</th>
-                                <th>N°</th>
+                                <th>Trabalho</th>
+                                <th>Processo</th>
                                 <th>Reclamada</th>
                                 <th>Reclamante</th>
                                 <th>Fav/Desfav</th>
+                                <th>Status</th>
                                 <th>Perito</th>
-                                <th>Ações</th>
+                                <th style="min-width: 5.5rem; white-space: nowrap;">Ações</th>
                             </tr>
                         </thead>
                         <tbody>

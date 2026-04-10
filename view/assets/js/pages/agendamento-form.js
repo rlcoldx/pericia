@@ -116,7 +116,6 @@
             excludeId: excludeId,
             reclamada: '#cliente_nome',
             reclamante: '#reclamante_nome',
-            vara: 'input[name="vara"]',
             perito: '#perito_id',
             assistente: '#assistente_id',
             parecerReclamada: '#parecer_reclamada_id',
@@ -177,8 +176,67 @@
         $parecer.val(trimmed).trigger('change');
     }
 
+    function statusAgendamentoEhParecerRevisar() {
+        const el = document.getElementById('agendamento_status');
+        return el && el.value === 'Parecer para Revisar';
+    }
+
     /**
-     * Ao preencher Reclamada, Reclamante e Assistente na etapa 1, espelha na etapa 2 (Dados do Parecer).
+     * Copia o assistente do 1º passo para o select do parecer (2º passo), criando a opção se faltar.
+     */
+    function copiarAssistentePrimeiroPassoParaParecer() {
+        if (typeof jQuery === 'undefined') {
+            return;
+        }
+        const $a = jQuery('#assistente_id');
+        const $pa = jQuery('#parecer_assistente_id');
+        if (!$a.length || !$pa.length) {
+            return;
+        }
+        const vRaw = getSelect2SingleVal($a);
+        if (!vRaw) {
+            return;
+        }
+        const v = String(vRaw).trim();
+        const vid = parseInt(v, 10);
+        const isNumericId = !isNaN(vid) && String(vid) === v;
+
+        if (!isNumericId) {
+            let exists = false;
+            $pa.find('option').each(function() {
+                if (String(jQuery(this).val()) === v) {
+                    exists = true;
+                    return false;
+                }
+            });
+            if (!exists) {
+                const txt = $a.find('option:selected').text() || v;
+                $pa.append(new Option(txt, v, true, true));
+            }
+            $pa.val(v).trigger('change');
+            return;
+        }
+
+        let optExists = false;
+        $pa.find('option').each(function() {
+            if (parseInt(jQuery(this).val(), 10) === vid) {
+                optExists = true;
+                return false;
+            }
+        });
+        if (!optExists) {
+            let nome = $a.find('option[value="' + vid + '"]').text();
+            if (!nome) {
+                nome = $a.find('option:selected').text();
+            }
+            $pa.append(new Option(nome || ('ID ' + vid), vid, true, true));
+        }
+        $pa.val(String(vid)).trigger('change');
+    }
+
+    /**
+     * Reclamada/Reclamante: espelha nomes → IDs no parecer.
+     * Assistente: só espelha no 2º passo quando status = Parecer para Revisar.
      */
     function initAgendamentoParecerEtapa1Sync() {
         if (typeof jQuery === 'undefined') {
@@ -189,9 +247,22 @@
         const $parecerAssistente = jQuery('#parecer_assistente_id');
         if ($assistente.length && $parecerAssistente.length) {
             $assistente.on('change', function() {
-                const v = jQuery(this).val();
-                $parecerAssistente.val(v || '').trigger('change');
+                if (statusAgendamentoEhParecerRevisar()) {
+                    copiarAssistentePrimeiroPassoParaParecer();
+                }
             });
+        }
+
+        const statusEl = document.getElementById('agendamento_status');
+        if (statusEl) {
+            statusEl.addEventListener('change', function() {
+                if (this.value === 'Parecer para Revisar') {
+                    copiarAssistentePrimeiroPassoParaParecer();
+                }
+            });
+            if (statusEl.value === 'Parecer para Revisar') {
+                setTimeout(copiarAssistentePrimeiroPassoParaParecer, 0);
+            }
         }
 
         const $cliente = jQuery('#cliente_nome');
@@ -216,26 +287,6 @@
         if (typeof jQuery === 'undefined' || typeof jQuery.fn.select2 === 'undefined') {
             return;
         }
-
-        // Select2 para Assistente (agendamento) e Assistente do Parecer
-        ['#assistente_id', '#parecer_assistente_id'].forEach(function(selector) {
-            const select = jQuery(selector);
-            if (select.length) {
-                select.select2({
-                    placeholder: 'Selecione o Assistente',
-                    allowClear: true,
-                    width: '100%',
-                    language: {
-                        noResults: function() {
-                            return "Nenhum assistente encontrado";
-                        },
-                        searching: function() {
-                            return "Buscando...";
-                        }
-                    }
-                });
-            }
-        });
 
         // Select2 para Reclamada do Parecer com tags (permite criar novos)
         const reclamadaParecerSelect = jQuery('#parecer_reclamada_id');
@@ -409,6 +460,27 @@
                 }
             });
         }
+
+        // Select2 para Assistente (1º passo) e Assistente do Parecer (2º passo) — tags como Perito/Reclamada
+        ['#assistente_id', '#parecer_assistente_id'].forEach(function(selector) {
+            const assistSelect = jQuery(selector);
+            if (assistSelect.length) {
+                assistSelect.select2({
+                    tags: true,
+                    placeholder: 'Selecione ou digite para criar um novo Assistente',
+                    allowClear: true,
+                    width: '100%',
+                    language: {
+                        noResults: function() {
+                            return "Digite para criar um novo assistente";
+                        },
+                        searching: function() {
+                            return "Buscando...";
+                        }
+                    }
+                });
+            }
+        });
     }
 
 
@@ -432,6 +504,8 @@
             endpoint = window.DOMAIN + '/reclamadas/criar-rapido';
         } else if (tipo === 'perito') {
             endpoint = window.DOMAIN + '/perito/criar-rapido';
+        } else if (tipo === 'assistente') {
+            endpoint = window.DOMAIN + '/assistentes/criar-rapido';
         } else {
             throw new Error('Tipo inválido para criação rápida');
         }
@@ -813,10 +887,135 @@
                     }
                 }
 
+                const assistenteSelect = jQuery('#assistente_id');
+                const parecerAssistenteSelect = jQuery('#parecer_assistente_id');
+
+                let assistenteVal = assistenteSelect.length ? assistenteSelect.val() : null;
+                if (Array.isArray(assistenteVal)) {
+                    assistenteVal = assistenteVal[0];
+                }
+                let assistenteIdFinal = assistenteVal;
+
+                if (assistenteSelect.length && assistenteVal && (!valorExisteNoSelect('assistente_id', assistenteVal) || isNaN(parseInt(assistenteVal, 10)))) {
+                    try {
+                        const resultadoAss = await criarRapido('assistente', String(assistenteVal).trim());
+                        assistenteIdFinal = resultadoAss.id.toString();
+
+                        assistenteSelect.find('option').each(function() {
+                            const optionValue = jQuery(this).val();
+                            if (optionValue === assistenteVal && isNaN(parseInt(optionValue, 10))) {
+                                jQuery(this).remove();
+                            }
+                        });
+
+                        let optionAssExists = false;
+                        assistenteSelect.find('option').each(function() {
+                            if (parseInt(jQuery(this).val(), 10) === resultadoAss.id) {
+                                optionAssExists = true;
+                                return false;
+                            }
+                        });
+
+                        if (!optionAssExists) {
+                            assistenteSelect.append(new Option(resultadoAss.nome, resultadoAss.id, true, true));
+                        }
+
+                        assistenteSelect.val(resultadoAss.id).trigger('change.select2');
+
+                        if (parecerAssistenteSelect.length) {
+                            let paOptExists = false;
+                            parecerAssistenteSelect.find('option').each(function() {
+                                if (parseInt(jQuery(this).val(), 10) === resultadoAss.id) {
+                                    paOptExists = true;
+                                    return false;
+                                }
+                            });
+                            if (!paOptExists) {
+                                parecerAssistenteSelect.append(new Option(resultadoAss.nome, resultadoAss.id, true, true));
+                            }
+                        }
+
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    } catch (error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Erro!',
+                            text: 'Erro ao criar assistente: ' + error.message
+                        });
+                        submitBtn.innerHTML = originalText;
+                        submitBtn.disabled = false;
+                        return;
+                    }
+                }
+
+                let paVal = parecerAssistenteSelect.length ? parecerAssistenteSelect.val() : null;
+                if (Array.isArray(paVal)) {
+                    paVal = paVal[0];
+                }
+                let parecerAssistenteIdFinal = paVal;
+
+                if (parecerAssistenteSelect.length && paVal && (!valorExisteNoSelect('parecer_assistente_id', paVal) || isNaN(parseInt(paVal, 10)))) {
+                    try {
+                        const resultadoPa = await criarRapido('assistente', String(paVal).trim());
+                        parecerAssistenteIdFinal = resultadoPa.id.toString();
+
+                        parecerAssistenteSelect.find('option').each(function() {
+                            const optionValue = jQuery(this).val();
+                            if (optionValue === paVal && isNaN(parseInt(optionValue, 10))) {
+                                jQuery(this).remove();
+                            }
+                        });
+
+                        let optionPaExists = false;
+                        parecerAssistenteSelect.find('option').each(function() {
+                            if (parseInt(jQuery(this).val(), 10) === resultadoPa.id) {
+                                optionPaExists = true;
+                                return false;
+                            }
+                        });
+
+                        if (!optionPaExists) {
+                            parecerAssistenteSelect.append(new Option(resultadoPa.nome, resultadoPa.id, true, true));
+                        }
+
+                        parecerAssistenteSelect.val(resultadoPa.id).trigger('change.select2');
+
+                        if (assistenteSelect.length) {
+                            let aOptExists = false;
+                            assistenteSelect.find('option').each(function() {
+                                if (parseInt(jQuery(this).val(), 10) === resultadoPa.id) {
+                                    aOptExists = true;
+                                    return false;
+                                }
+                            });
+                            if (!aOptExists) {
+                                assistenteSelect.append(new Option(resultadoPa.nome, resultadoPa.id, true, true));
+                            }
+                        }
+
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    } catch (error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Erro!',
+                            text: 'Erro ao criar assistente (parecer): ' + error.message
+                        });
+                        submitBtn.innerHTML = originalText;
+                        submitBtn.disabled = false;
+                        return;
+                    }
+                }
+
                 // Garantir que os valores finais estão corretos nos selects
                 reclamanteParecerSelect.val(reclamanteParecerIdFinal).trigger('change.select2');
                 reclamadaParecerSelect.val(reclamadaParecerIdFinal).trigger('change.select2');
                 peritoSelect.val(peritoIdFinal).trigger('change.select2');
+                if (assistenteSelect.length) {
+                    assistenteSelect.val(assistenteIdFinal).trigger('change.select2');
+                }
+                if (parecerAssistenteSelect.length) {
+                    parecerAssistenteSelect.val(parecerAssistenteIdFinal).trigger('change.select2');
+                }
 
                 // Aguardar um pouco para o Select2 atualizar completamente
                 await new Promise(resolve => setTimeout(resolve, 200));
@@ -860,6 +1059,28 @@
                     }
                     if (pVal !== undefined && pVal !== null && pVal !== '') {
                         formData.set('perito_id', pVal);
+                    }
+                }
+
+                const $assistenteField = jQuery('#assistente_id');
+                if ($assistenteField.length) {
+                    let aVal = $assistenteField.val();
+                    if (Array.isArray(aVal)) {
+                        aVal = aVal[0];
+                    }
+                    if (aVal !== undefined && aVal !== null && aVal !== '') {
+                        formData.set('assistente_id', aVal);
+                    }
+                }
+
+                const $parecerAssistenteField = jQuery('#parecer_assistente_id');
+                if ($parecerAssistenteField.length) {
+                    let pav = $parecerAssistenteField.val();
+                    if (Array.isArray(pav)) {
+                        pav = pav[0];
+                    }
+                    if (pav !== undefined && pav !== null && pav !== '') {
+                        formData.set('parecer_assistente_id', pav);
                     }
                 }
                 

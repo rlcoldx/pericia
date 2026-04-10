@@ -24,15 +24,17 @@
             return;
         }
 
+        // Strings '0'..'8' evitam bug do índice 0 “falsy” no DataTables 1.10; linhas no JSON como array
         const columns = [
-            { data: 0, name: 'modulo', orderable: true, searchable: true },
-            { data: 1, name: 'reclamante', orderable: true, searchable: true },
-            { data: 2, name: 'reclamada', orderable: true, searchable: true },
-            { data: 3, name: 'status', orderable: true, searchable: false },
-            { data: 4, name: 'data_conclusao', orderable: true, searchable: false },
-            { data: 5, name: 'data_create', orderable: true, searchable: false },
-            { data: 6, name: 'drive', orderable: false, searchable: false, className: 'text-center' },
-            { data: 7, name: 'acoes', orderable: false, searchable: false, className: 'text-center' }
+            { data: '0', name: 'modulo', defaultContent: '', orderable: true, searchable: true },
+            { data: '1', name: 'tipo', defaultContent: '', orderable: true, searchable: true },
+            { data: '2', name: 'reclamante', defaultContent: '', orderable: true, searchable: true },
+            { data: '3', name: 'reclamada', defaultContent: '', orderable: true, searchable: true },
+            { data: '4', name: 'status', defaultContent: '', orderable: true, searchable: false },
+            { data: '5', name: 'data_conclusao', defaultContent: '', orderable: true, searchable: false },
+            { data: '6', name: 'data_create', defaultContent: '', orderable: true, searchable: false },
+            { data: '7', name: 'drive', defaultContent: '', orderable: false, searchable: false, className: 'text-center' },
+            { data: '8', name: 'acoes', defaultContent: '', orderable: false, searchable: false, className: 'text-center' }
         ];
 
         function isHomeApenasPendentes() {
@@ -57,12 +59,13 @@
         const config = {
             ajaxUrl: window.DOMAIN + '/home/tarefas/datatable',
             columns: columns,
-            order: [[4, 'asc']], // Prazo Fatal: mais próximo primeiro (sem data por último no servidor)
+            order: [[5, 'asc']], // Prazo Fatal: mais próximo primeiro (sem data por último no servidor)
             pageLength: 10,
             lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Todos"]],
             dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip',
             customFilters: getFiltersFromForm(),
             customConfig: {
+                responsive: false,
                 ajax: {
                     data: function(d) {
                         if (isHomeApenasPendentes()) {

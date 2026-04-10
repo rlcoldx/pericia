@@ -30,7 +30,7 @@
                 <div class="col-12">
                     
                     <!-- SEÇÃO CLOVIS -->
-                    {% if 'agendamento_primeiro_passo_data_entrada'|verifyPermission or 'agendamento_primeiro_passo_data_pericia'|verifyPermission or 'agendamento_primeiro_passo_hora'|verifyPermission or 'agendamento_primeiro_passo_numero_processo'|verifyPermission or 'agendamento_primeiro_passo_vara'|verifyPermission or 'agendamento_primeiro_passo_local'|verifyPermission or 'agendamento_primeiro_passo_reclamante'|verifyPermission or 'agendamento_primeiro_passo_perito'|verifyPermission or 'agendamento_primeiro_passo_cliente'|verifyPermission or 'agendamento_primeiro_passo_valor_cobrado'|verifyPermission or 'agendamento_primeiro_passo_tipo'|verifyPermission or 'agendamento_primeiro_passo_numero_tipo'|verifyPermission or 'agendamento_primeiro_passo_assistente'|verifyPermission or 'agendamento_primeiro_passo_valor_pago_assistente'|verifyPermission %}
+                    {% if 'agendamento_primeiro_passo_data_entrada'|verifyPermission or 'agendamento_primeiro_passo_data_pericia'|verifyPermission or 'agendamento_primeiro_passo_hora'|verifyPermission or 'agendamento_primeiro_passo_numero_processo'|verifyPermission or 'agendamento_primeiro_passo_local'|verifyPermission or 'agendamento_primeiro_passo_reclamante'|verifyPermission or 'agendamento_primeiro_passo_perito'|verifyPermission or 'agendamento_primeiro_passo_cliente'|verifyPermission or 'agendamento_primeiro_passo_valor_cobrado'|verifyPermission or 'agendamento_primeiro_passo_tipo'|verifyPermission or 'agendamento_primeiro_passo_numero_tipo'|verifyPermission or 'agendamento_primeiro_passo_assistente'|verifyPermission or 'agendamento_primeiro_passo_valor_pago_assistente'|verifyPermission %}
                     <div class="card mb-3">
                         <div class="card-header">
                             <h4 class="card-title mb-0"><i class="fa fa-user-tie me-2"></i>Dados do Agendamento - Primeiro Passo</h4>
@@ -134,7 +134,7 @@
                                 
                                 <div class="col-12 col-lg-4 col-xl-3 mb-3">
                                     <label class="form-label">Status do Agendamento</label>
-                                    <select class="form-control" name="status">
+                                    <select class="form-control" name="status" id="agendamento_status">
                                         {% set currentStatus = action == 'editar' ? agendamento.status|default('Agendado') : 'Agendado' %}
                                         <option value="Agendado" {{ currentStatus == 'Agendado' ? 'selected' : '' }}>Agendado</option>
                                         <option value="Perícia Realizada" {{ currentStatus == 'Perícia Realizada' ? 'selected' : '' }}>Perícia Realizada</option>
@@ -142,17 +142,6 @@
                                         <option value="Parecer para Revisar" {{ currentStatus == 'Parecer para Revisar' ? 'selected' : '' }}>Parecer para Revisar</option>
                                     </select>
                                 </div>
-                                
-                                {% if 'agendamento_primeiro_passo_vara'|verifyPermission %}
-                                <div class="col-12 col-lg-4 col-xl-3 mb-3">
-                                    <label class="form-label">Vara</label>
-                                    <input type="text" 
-                                           class="form-control" 
-                                           name="vara" 
-                                           value="{{ action == 'editar' ? agendamento.vara : '' }}"
-                                           placeholder="Vara/Órgão">
-                                </div>
-                                {% endif %}
                                 
                                 {% if 'agendamento_primeiro_passo_valor_cobrado'|verifyPermission %}
                                 <div class="col-12 col-lg-4 col-xl-3 mb-3">
@@ -190,12 +179,12 @@
                                         <div class="row">
                                             {% if 'agendamento_primeiro_passo_numero_tipo'|verifyPermission %}
                                             <div class="col-12 col-lg-4 col-xl-4 mb-3">
-                                                <label class="form-label">N° (Tipo)</label>
+                                                <label class="form-label">Código do Reclamante</label>
                                                 <input type="text" 
                                                     class="form-control" 
                                                     name="numero_tipo_pericia" 
                                                     value="{{ action == 'editar' ? agendamento.numero_tipo_pericia : '' }}"
-                                                    placeholder="Número do tipo">
+                                                    placeholder="Código do reclamante">
                                             </div>
                                             {% endif %}
                                             
@@ -203,7 +192,7 @@
                                             <div class="col-12 col-lg-8 col-xl-8 mb-3">
                                                 <label class="form-label">Assistente (Prestador de Serviço Técnico/Médico)</label>
                                                 <select class="form-control" name="assistente_id" id="assistente_id">
-                                                    <option value="">Selecione o Assistente</option>
+                                                    <option value="">Selecione ou digite para criar um novo Assistente</option>
                                                     {% for assistente in assistentes %}
                                                     <option value="{{ assistente.id }}" {{ action == 'editar' and agendamento.assistente_id == assistente.id ? 'selected' : '' }}>
                                                         {{ assistente.nome }}
@@ -304,7 +293,7 @@
                                 <div class="col-12 col-lg-3 mb-3">
                                     <label class="form-label">Assistente</label>
                                     <select class="form-control" name="parecer_assistente_id" id="parecer_assistente_id">
-                                        <option value="">Selecione o Assistente</option>
+                                        <option value="">Selecione ou digite para criar um novo Assistente</option>
                                         {% for assistente in assistentes %}
                                         <option value="{{ assistente.id }}" {{ (parecerValores.assistente_id is defined and parecerValores.assistente_id == assistente.id) or (parecerValores.assistente_id is not defined and agendamento.assistente_id is defined and agendamento.assistente_id == assistente.id) ? 'selected' : '' }}>
                                             {{ assistente.nome }}

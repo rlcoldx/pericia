@@ -60,6 +60,22 @@
                                 </div>
 
                                 <div class="col-12 col-lg-3 mb-3">
+                                    <label class="form-label">Tipo de Trabalho</label>
+                                    <select class="form-control select2-tipo-trabalho" name="tipo_trabalho" id="tipo_trabalho">
+                                        {% if action == 'editar' and manifestacao and manifestacao.tipo_trabalho %}
+                                            <option value="{{ manifestacao.tipo_trabalho }}" selected>{{ manifestacao.tipo_trabalho }}</option>
+                                        {% endif %}
+                                        {% if tipos_trabalho is defined and tipos_trabalho is not empty %}
+                                            {% for tt in tipos_trabalho %}
+                                                {% if action != 'editar' or not manifestacao.tipo_trabalho or manifestacao.tipo_trabalho != tt.tipo %}
+                                                    <option value="{{ tt.tipo }}">{{ tt.tipo }}</option>
+                                                {% endif %}
+                                            {% endfor %}
+                                        {% endif %}
+                                    </select>
+                                </div>
+
+                                <div class="col-12 col-lg-3 mb-3">
                                     <label class="form-label">Número do Processo</label>
                                     {{ include('partials/select_numero_processo.twig', {
                                         name: 'numero',
@@ -69,8 +85,10 @@
                                     }) }}
                                     <small class="form-text">Vincula quesito, parecer e agendamentos.</small>
                                 </div>
+                            </div>
 
-                                <div class="col-12 col-lg-3 mb-3">
+                            <div class="row row-cols-1 row-cols-lg-5 g-3">
+                                <div class="col mb-3">
                                     <label class="form-label">Reclamada</label>
                                     <select class="form-control" name="reclamada_id" id="reclamada_id">
                                         <option value="">Selecione a Reclamada</option>
@@ -82,7 +100,7 @@
                                     </select>
                                 </div>
 
-                                <div class="col-12 col-lg-3 mb-3">
+                                <div class="col mb-3">
                                     <label class="form-label">Reclamante</label>
                                     <select class="form-control" name="reclamante_id" id="reclamante_id">
                                         <option value="">Selecione o Reclamante</option>
@@ -94,17 +112,7 @@
                                     </select>
                                 </div>
 
-                                <div class="col-12 col-lg-3 mb-3">
-                                    <label class="form-label">Situação</label>
-                                    <select class="form-control" name="favoravel">
-                                        <option value="">Selecione</option>
-                                        <option value="Favorável" {{ action == 'editar' and manifestacao.favoravel == 'Favorável' ? 'selected' : '' }}>Favorável</option>
-                                        <option value="Desfavorável" {{ action == 'editar' and manifestacao.favoravel == 'Desfavorável' ? 'selected' : '' }}>Desfavorável</option>
-                                        <option value="Parcialmente Favorável" {{ action == 'editar' and manifestacao.favoravel == 'Parcialmente Favorável' ? 'selected' : '' }}>Parcialmente Favorável</option>
-                                    </select>
-                                </div>
-
-                                <div class="col-12 col-lg-3 mb-3">
+                                <div class="col mb-3">
                                     <label class="form-label">Perito</label>
                                     <select class="form-control select2" name="perito_id" id="perito_id">
                                         <option value="">Selecione o Perito</option>
@@ -116,13 +124,36 @@
                                     </select>
                                 </div>
 
-                                <div class="col-12 mb-3">
-                                    <label class="form-label">Função / Observação</label>
-                                    <textarea class="form-control"
-                                              name="funcao_observacao"
-                                              rows="4"
-                                              placeholder="Função ou observações sobre a manifestação/impugnação">{{ action == 'editar' ? manifestacao.funcao_observacao : '' }}</textarea>
+                                <div class="col mb-3">
+                                    <label class="form-label">Situação</label>
+                                    <select class="form-control" name="favoravel">
+                                        <option value="">Selecione</option>
+                                        <option value="Favorável" {{ action == 'editar' and manifestacao.favoravel == 'Favorável' ? 'selected' : '' }}>Favorável</option>
+                                        <option value="Desfavorável" {{ action == 'editar' and manifestacao.favoravel == 'Desfavorável' ? 'selected' : '' }}>Desfavorável</option>
+                                        <option value="Parcialmente Favorável" {{ action == 'editar' and manifestacao.favoravel == 'Parcialmente Favorável' ? 'selected' : '' }}>Parcialmente Favorável</option>
+                                    </select>
                                 </div>
+
+                                <div class="col mb-3">
+                                    <label class="form-label">Status</label>
+                                    <select name="status" class="form-control">
+                                        {% set currentStatus = manifestacao ? manifestacao.status|default('Pendente') : 'Pendente' %}
+                                        <option value="Pendente" {{ currentStatus == 'Pendente' ? 'selected' : '' }}>Pendente</option>
+                                        <option value="Finalizado" {{ currentStatus == 'Finalizado' ? 'selected' : '' }}>Finalizado</option>
+                                        <option value="Finalizado e Enviado" {{ currentStatus == 'Finalizado e Enviado' ? 'selected' : '' }}>Finalizado e Enviado</option>
+                                        <option value="Pendente de Envio" {{ currentStatus == 'Pendente de Envio' ? 'selected' : '' }}>Pendente de Envio</option>
+                                        <option value="Recusado" {{ currentStatus == 'Recusado' ? 'selected' : '' }}>Recusado</option>
+                                    </select>
+                                </div>
+
+
+                            </div>
+                            <div class="col-12 mb-3">
+                                <label class="form-label">Função / Observação</label>
+                                <textarea class="form-control"
+                                            name="funcao_observacao"
+                                            rows="4"
+                                            placeholder="Função ou observações sobre a manifestação/impugnação">{{ action == 'editar' ? manifestacao.funcao_observacao : '' }}</textarea>
                             </div>
                         </div>
                     </div>
@@ -236,6 +267,30 @@
             }
         });
 
+        const tipoTrabalhoSelect = $('#tipo_trabalho');
+        tipoTrabalhoSelect.select2({
+            tags: true,
+            placeholder: 'Selecione ou digite um tipo de trabalho',
+            allowClear: true,
+            width: '100%',
+            language: {
+                noResults: function() {
+                    return "Digite para criar um novo";
+                },
+                searching: function() {
+                    return "Buscando...";
+                }
+            }
+        });
+        tipoTrabalhoSelect.on('select2:select', function (e) {
+            const data = e.params.data;
+            if (data && data.id && data.element === undefined) {
+                const upper = data.id.toUpperCase();
+                const newOption = new Option(upper, upper, true, true);
+                tipoTrabalhoSelect.append(newOption).trigger('change');
+            }
+        });
+
         // Inicializar Select2 para Perito com tags (permite criar novos)
         $(document).ready(function() {
             $('#perito_id').select2({
@@ -324,6 +379,22 @@
                     reclamante: '#reclamante_id',
                     perito: '#perito_id'
                 });
+            }
+
+            const statusManifestacao = document.querySelector('#formManifestacao select[name="status"]');
+            const chkTarefaConcluido = document.getElementById('tarefa_concluido');
+            function marcarTarefaConcluidoSeStatusFinal() {
+                if (!statusManifestacao || !chkTarefaConcluido) {
+                    return;
+                }
+                const v = statusManifestacao.value;
+                if (v === 'Finalizado' || v === 'Finalizado e Enviado') {
+                    chkTarefaConcluido.checked = true;
+                }
+            }
+            if (statusManifestacao && chkTarefaConcluido) {
+                marcarTarefaConcluidoSeStatusFinal();
+                statusManifestacao.addEventListener('change', marcarTarefaConcluidoSeStatusFinal);
             }
         });
 

@@ -7,4 +7,5 @@ $router->post("/quesitos/add/save", "QuesitoController:salvarCriar");
 $router->get("/quesitos/editar/{id}", "QuesitoController:editar");
 $router->post("/quesitos/editar/save", "QuesitoController:salvarEditar");
 $router->get("/quesitos/datatable", "QuesitoController:datatable");
+$router->post("/quesitos/excluir", "QuesitoController:excluir");
 

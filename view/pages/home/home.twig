@@ -110,6 +110,7 @@
                                 <thead>
                                     <tr>
                                         <th>Módulo</th>
+                                        <th>Tipo</th>
                                         <th>Reclamante</th>
                                         <th>Reclamada</th>
                                         <th>Status</th>
@@ -200,6 +201,6 @@
 {% if not ocultar_graficos_home|default(false) %}
 <script src="{{ PATH }}/view/assets/vendor/apexchart/apexchart.js"></script>
 {% endif %}
-<script src="{{ PATH }}/view/assets/js/pages/datatables/tarefas-datatable.js"></script>
+<script src="{{ PATH }}/view/assets/js/pages/datatables/tarefas-datatable.js?v=3"></script>
 <script src="{{ PATH }}/view/assets/js/pages/home.js"></script>
 {% endblock %}

@@ -7,3 +7,4 @@ $router->post("/manifestacoes-impugnacoes/add/save", "ManifestacaoImpugnacaoCont
 $router->get("/manifestacoes-impugnacoes/editar/{id}", "ManifestacaoImpugnacaoController:editar");
 $router->post("/manifestacoes-impugnacoes/editar/save", "ManifestacaoImpugnacaoController:salvarEditar");
 $router->get("/manifestacoes-impugnacoes/datatable", "ManifestacaoImpugnacaoController:datatable");
+$router->post("/manifestacoes-impugnacoes/excluir", "ManifestacaoImpugnacaoController:excluir");

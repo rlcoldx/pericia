@@ -72,6 +72,25 @@ class ManifestacaoImpugnacao extends Model
         return $this->read;
     }
 
+    /**
+     * Lista distinta de tipos de trabalho (Select2 com tags).
+     */
+    public function getTiposTrabalhoDistinct(int $empresa): Read
+    {
+        $this->read = new Read();
+        $this->read->FullRead(
+            "SELECT DISTINCT tipo_trabalho AS tipo
+             FROM manifestacoes_impugnacoes
+             WHERE empresa = :empresa
+               AND tipo_trabalho IS NOT NULL
+               AND tipo_trabalho <> ''
+             ORDER BY tipo_trabalho ASC",
+            "empresa={$empresa}"
+        );
+
+        return $this->read;
+    }
+
     public function getPorId(int $id, int $empresa): Read
     {
         $this->read = new Read();
@@ -101,11 +120,13 @@ class ManifestacaoImpugnacao extends Model
         $columnMap = [
             0 => 'mi.data',
             1 => 'mi.tipo',
-            2 => 'mi.numero',
-            3 => 'r.nome',
-            4 => 'r2.nome',
-            5 => 'mi.favoravel',
-            6 => 'p.nome',
+            2 => 'mi.tipo_trabalho',
+            3 => 'mi.numero',
+            4 => 'r.nome',
+            5 => 'r2.nome',
+            6 => 'mi.favoravel',
+            7 => 'mi.status',
+            8 => 'p.nome',
         ];
 
         $orderBy = 'mi.data DESC, mi.id DESC';
@@ -150,7 +171,9 @@ class ManifestacaoImpugnacao extends Model
         if (!empty($search)) {
             $searchWhere .= " AND (
                 mi.tipo LIKE :search OR
+                mi.tipo_trabalho LIKE :search OR
                 mi.numero LIKE :search OR
+                mi.status LIKE :search OR
                 r.nome LIKE :search OR
                 r2.nome LIKE :search OR
                 p.nome LIKE :search

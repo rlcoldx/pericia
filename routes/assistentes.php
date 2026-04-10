@@ -7,6 +7,7 @@ $router->post("/assistentes/add/save", "AssistenteController:salvarCriar");
 $router->get("/assistentes/editar/{id}", "AssistenteController:editar");
 $router->post("/assistentes/editar/save", "AssistenteController:salvarEditar");
 $router->post("/assistentes/remover", "AssistenteController:remover");
+$router->post("/assistentes/criar-rapido", "AssistenteController:criarRapido");
 $router->get("/assistentes/datatable", "AssistenteController:datatable");
 $router->get("/assistentes/importar", "AssistenteController:importar");
 $router->post("/assistentes/importar/processar", "AssistenteController:processarImportacao");

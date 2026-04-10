@@ -469,4 +469,65 @@ class AssistenteController extends Controller
             ]);
         }
     }
+
+    /**
+     * Cria um assistente rapidamente via AJAX (ex.: formulário de agendamento com Select2 tags).
+     */
+    public function criarRapido($params)
+    {
+        header('Content-Type: application/json; charset=utf-8');
+
+        $this->setParams($params);
+        $this->requirePermission('assistentes_criar');
+
+        $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
+        $nome = trim($_POST['nome'] ?? '');
+
+        if (!$empresa) {
+            $this->responseJson(['success' => false, 'message' => 'Empresa não encontrada.']);
+            return;
+        }
+
+        if ($nome === '') {
+            $this->responseJson(['success' => false, 'message' => 'Nome é obrigatório.']);
+            return;
+        }
+
+        $read = new \Agencia\Close\Conn\Read();
+        $read->ExeRead(
+            'assistentes',
+            'WHERE empresa = :empresa AND nome = :nome',
+            "empresa={$empresa}&nome={$nome}"
+        );
+
+        if ($read->getResult()) {
+            $existente = $read->getResult()[0];
+            $this->responseJson([
+                'success' => true,
+                'id' => (int) $existente['id'],
+                'nome' => $existente['nome'],
+                'message' => 'Assistente já existe.',
+            ]);
+            return;
+        }
+
+        $model = new Assistente();
+        $result = $model->criar([
+            'empresa' => (int) $empresa,
+            'nome' => $nome,
+        ]);
+
+        if ($result->getResult()) {
+            $id = (int) $result->getResult();
+            $this->responseJson([
+                'success' => true,
+                'id' => $id,
+                'nome' => $nome,
+                'message' => 'Assistente criado com sucesso.',
+            ]);
+            return;
+        }
+
+        $this->responseJson(['success' => false, 'message' => 'Erro ao criar assistente.']);
+    }
 }

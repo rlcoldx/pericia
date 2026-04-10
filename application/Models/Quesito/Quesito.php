@@ -72,6 +72,25 @@ class Quesito extends Model
         return $this->read;
     }
 
+    /**
+     * Lista distinta de tipos de trabalho (Select2 com tags).
+     */
+    public function getTiposTrabalhoDistinct(int $empresa): Read
+    {
+        $this->read = new Read();
+        $this->read->FullRead(
+            "SELECT DISTINCT tipo_trabalho AS tipo
+             FROM quesitos
+             WHERE empresa = :empresa
+               AND tipo_trabalho IS NOT NULL
+               AND tipo_trabalho <> ''
+             ORDER BY tipo_trabalho ASC",
+            "empresa={$empresa}"
+        );
+
+        return $this->read;
+    }
+
     public function getPorId(int $id, int $empresa): Read
     {
         $this->read = new Read();
@@ -151,10 +170,11 @@ class Quesito extends Model
         $columnMap = [
             0 => 'q.data',
             1 => 'q.tipo',
-            2 => 'q.vara',
-            3 => 'rq.nome',
-            4 => 'rd.nome',
-            5 => 'q.status',
+            2 => 'q.tipo_trabalho',
+            3 => 'q.vara',
+            4 => 'rq.nome',
+            5 => 'rd.nome',
+            6 => 'q.status',
         ];
 
         $orderBy = 'q.data DESC, q.id DESC';
@@ -208,6 +228,7 @@ class Quesito extends Model
         if (!empty($search)) {
             $searchWhere .= " AND (
                 q.tipo LIKE :search OR
+                q.tipo_trabalho LIKE :search OR
                 q.vara LIKE :search OR
                 rq.nome LIKE :search OR
                 rd.nome LIKE :search

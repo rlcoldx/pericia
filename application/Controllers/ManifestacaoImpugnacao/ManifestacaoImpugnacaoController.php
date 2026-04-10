@@ -12,6 +12,7 @@ use Agencia\Close\Helpers\DataTableResponse;
 use Agencia\Close\Models\Equipe\Equipe;
 use Agencia\Close\Models\Tarefa\Tarefa;
 use Agencia\Close\Services\Processo\ProcessoVinculoService;
+use Agencia\Close\Services\Login\PermissionsService;
 
 class ManifestacaoImpugnacaoController extends Controller
 {
@@ -68,6 +69,7 @@ class ManifestacaoImpugnacaoController extends Controller
             'reclamantes' => $reclamanteModel->listar((int) $empresa)->getResult() ?? [],
             'peritos' => $peritoModel->getPeritosAtivos((int) $empresa)->getResult() ?? [],
             'tipos' => $manifestacaoModel->getTiposDistinct((int) $empresa)->getResult() ?? [],
+            'tipos_trabalho' => $manifestacaoModel->getTiposTrabalhoDistinct((int) $empresa)->getResult() ?? [],
             'usuarios' => $equipeModel->getUsuariosAtivos((int) $empresa)->getResult() ?? [],
             'numeros_processo' => $processoVinculo->listarNumerosProcessoDistintos((int) $empresa),
             'tarefa' => null,
@@ -105,6 +107,13 @@ class ManifestacaoImpugnacaoController extends Controller
             $tipo = mb_strtoupper($tipo, 'UTF-8');
         }
 
+        $tipoTrabalho = isset($_POST['tipo_trabalho']) ? trim((string) $_POST['tipo_trabalho']) : '';
+        if ($tipoTrabalho !== '') {
+            $tipoTrabalho = mb_strtoupper($tipoTrabalho, 'UTF-8');
+        } else {
+            $tipoTrabalho = null;
+        }
+
         // Salvar o nome completo da situação (sem conversão)
         $favoravel = $_POST['favoravel'] ?? null;
         if (empty($favoravel)) {
@@ -115,12 +124,14 @@ class ManifestacaoImpugnacaoController extends Controller
             'empresa' => (int) $empresa,
             'data' => $data,
             'tipo' => $tipo,
+            'tipo_trabalho' => $tipoTrabalho,
             'numero' => $_POST['numero'] !== '' ? $_POST['numero'] : null,
             'reclamada_id' => !empty($_POST['reclamada_id']) ? (int) $_POST['reclamada_id'] : null,
             'reclamante_id' => !empty($_POST['reclamante_id']) ? (int) $_POST['reclamante_id'] : null,
             'favoravel' => $favoravel,
             'perito_id' => !empty($_POST['perito_id']) ? (int) $_POST['perito_id'] : null,
             'funcao_observacao' => $_POST['funcao_observacao'] !== '' ? $_POST['funcao_observacao'] : null,
+            'status' => $this->resolverStatusManifestacaoPost(),
         ];
 
         $model = new ManifestacaoImpugnacao();
@@ -227,6 +238,7 @@ class ManifestacaoImpugnacaoController extends Controller
             'reclamantes' => $reclamanteModel->listar((int) $empresa)->getResult() ?? [],
             'peritos' => $peritoModel->getPeritosAtivos((int) $empresa)->getResult() ?? [],
             'tipos' => $manifestacaoModel->getTiposDistinct((int) $empresa)->getResult() ?? [],
+            'tipos_trabalho' => $manifestacaoModel->getTiposTrabalhoDistinct((int) $empresa)->getResult() ?? [],
             'usuarios' => $equipeModel->getUsuariosAtivos((int) $empresa)->getResult() ?? [],
             'numeros_processo' => $processoVinculo->listarNumerosProcessoDistintos((int) $empresa),
             'tarefa' => $tarefa,
@@ -269,6 +281,13 @@ class ManifestacaoImpugnacaoController extends Controller
             $tipo = mb_strtoupper($tipo, 'UTF-8');
         }
 
+        $tipoTrabalho = isset($_POST['tipo_trabalho']) ? trim((string) $_POST['tipo_trabalho']) : '';
+        if ($tipoTrabalho !== '') {
+            $tipoTrabalho = mb_strtoupper($tipoTrabalho, 'UTF-8');
+        } else {
+            $tipoTrabalho = null;
+        }
+
         // Salvar o nome completo da situação (sem conversão)
         $favoravel = $_POST['favoravel'] ?? null;
         if (empty($favoravel)) {
@@ -278,12 +297,14 @@ class ManifestacaoImpugnacaoController extends Controller
         $dados = [
             'data' => $data,
             'tipo' => $tipo,
+            'tipo_trabalho' => $tipoTrabalho,
             'numero' => $_POST['numero'] !== '' ? $_POST['numero'] : null,
             'reclamada_id' => !empty($_POST['reclamada_id']) ? (int) $_POST['reclamada_id'] : null,
             'reclamante_id' => !empty($_POST['reclamante_id']) ? (int) $_POST['reclamante_id'] : null,
             'favoravel' => $favoravel,
             'perito_id' => !empty($_POST['perito_id']) ? (int) $_POST['perito_id'] : null,
             'funcao_observacao' => $_POST['funcao_observacao'] !== '' ? $_POST['funcao_observacao'] : null,
+            'status' => $this->resolverStatusManifestacaoPost(),
         ];
 
         $model = new ManifestacaoImpugnacao();
@@ -383,13 +404,14 @@ class ManifestacaoImpugnacaoController extends Controller
                 'modulo' => 'Manifestação/Impugnação',
                 'acao' => $acao === 'criar' ? 'Criada' : 'Editada',
                 'detalhes' => sprintf(
-                    '<p><strong>Data:</strong> %s</p><p><strong>Tipo:</strong> %s</p><p><strong>N°:</strong> %s</p><p><strong>Reclamada:</strong> %s</p><p><strong>Reclamante:</strong> %s</p><p><strong>Fav/Desfav:</strong> %s</p><p><strong>Perito:</strong> %s</p>',
+                    '<p><strong>Data:</strong> %s</p><p><strong>Tipo:</strong> %s</p><p><strong>N°:</strong> %s</p><p><strong>Reclamada:</strong> %s</p><p><strong>Reclamante:</strong> %s</p><p><strong>Fav/Desfav:</strong> %s</p><p><strong>Status:</strong> %s</p><p><strong>Perito:</strong> %s</p>',
                     date('d/m/Y', strtotime($dados['data'])),
                     htmlspecialchars($dados['tipo'] ?? 'N/A'),
                     htmlspecialchars($dados['numero'] ?? 'N/A'),
                     htmlspecialchars($reclamadaNome),
                     htmlspecialchars($reclamanteNome),
                     htmlspecialchars($dados['favoravel'] ?? 'N/A'),
+                    htmlspecialchars($dados['status'] ?? 'Pendente'),
                     htmlspecialchars($peritoNome)
                 ),
                 'mensagem' => sprintf(
@@ -457,13 +479,25 @@ class ManifestacaoImpugnacaoController extends Controller
 
         $formattedData = [];
         foreach ($result['data'] as $m) {
+            $numeroRaw = isset($m['numero']) && (string) $m['numero'] !== ''
+                ? (string) $m['numero']
+                : '';
+            if ($numeroRaw !== '') {
+                $numeroEsc = htmlspecialchars($numeroRaw, ENT_QUOTES, 'UTF-8');
+                $numeroCell = '<span title="' . $numeroEsc . '">' . $numeroEsc . '</span>';
+            } else {
+                $numeroCell = '-';
+            }
+
             $formattedData[] = [
                 date('d/m/Y', strtotime($m['data'])),
                 htmlspecialchars($m['tipo'] ?? '', ENT_QUOTES, 'UTF-8'),
-                htmlspecialchars($m['numero'] ?? '-', ENT_QUOTES, 'UTF-8'),
+                htmlspecialchars(($m['tipo_trabalho'] ?? '') !== '' ? $m['tipo_trabalho'] : '-', ENT_QUOTES, 'UTF-8'),
+                $numeroCell,
                 htmlspecialchars($m['reclamada_nome'] ?? '-', ENT_QUOTES, 'UTF-8'),
                 htmlspecialchars($m['reclamante_nome'] ?? '-', ENT_QUOTES, 'UTF-8'),
                 $this->formatFavoravelBadge($m['favoravel'] ?? null),
+                $this->formatStatusBadgeManifestacao($m['status'] ?? 'Pendente'),
                 htmlspecialchars($m['perito_nome'] ?? '-', ENT_QUOTES, 'UTF-8'),
                 $this->formatAcoesCell($m['id'] ?? null),
             ];
@@ -477,6 +511,71 @@ class ManifestacaoImpugnacaoController extends Controller
         );
 
         $this->responseJson($response);
+    }
+
+    /**
+     * Exclui apenas o registro em manifestacoes_impugnacoes (sem cascata em outros módulos).
+     */
+    public function excluir($params)
+    {
+        header('Content-Type: application/json; charset=utf-8');
+
+        $this->setParams($params);
+        $this->requirePermission('manifestacao_impugnacao_deletar');
+
+        $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
+        $id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
+
+        if (!$empresa || $id <= 0) {
+            $this->responseJson(['success' => false, 'message' => 'Dados inválidos.']);
+            return;
+        }
+
+        $model = new ManifestacaoImpugnacao();
+        $existente = $model->getPorId($id, (int) $empresa);
+        if (!$existente->getResult()) {
+            $this->responseJson(['success' => false, 'message' => 'Registro não encontrado.']);
+            return;
+        }
+
+        $result = $model->remover($id, (int) $empresa);
+        if ($result->getResult()) {
+            $this->responseJson(['success' => true, 'message' => 'Manifestação/impugnação excluída.']);
+            return;
+        }
+
+        $this->responseJson(['success' => false, 'message' => 'Não foi possível excluir o registro.']);
+    }
+
+    private function resolverStatusManifestacaoPost(): string
+    {
+        $status = $_POST['status'] ?? 'Pendente';
+        $validos = ['Pendente', 'Finalizado', 'Finalizado e Enviado', 'Pendente de Envio', 'Recusado'];
+
+        return in_array($status, $validos, true) ? $status : 'Pendente';
+    }
+
+    private function formatStatusBadgeManifestacao(string $status): string
+    {
+        $badgeClass = 'bg-secondary';
+
+        switch ($status) {
+            case 'Pendente':
+                $badgeClass = 'bg-warning';
+                break;
+            case 'Finalizado':
+            case 'Finalizado e Enviado':
+                $badgeClass = 'bg-success';
+                break;
+            case 'Pendente de Envio':
+                $badgeClass = 'bg-info';
+                break;
+            case 'Recusado':
+                $badgeClass = 'bg-danger';
+                break;
+        }
+
+        return '<span class="badge ' . $badgeClass . '">' . htmlspecialchars($status, ENT_QUOTES, 'UTF-8') . '</span>';
     }
 
     private function formatFavoravelBadge(?string $favoravel): string
@@ -504,11 +603,22 @@ class ManifestacaoImpugnacaoController extends Controller
             return '';
         }
 
-        $html = '<div class="d-flex">';
-        $html .= '<a href="' . DOMAIN . '/manifestacoes-impugnacoes/editar/' . $id . '" ';
-        $html .= 'class="btn btn-success shadow btn-xs sharp me-1" ';
-        $html .= 'data-bs-toggle="tooltip" data-bs-title="Editar">';
-        $html .= '<i class="fa fa-pencil"></i></a>';
+        $perm = new PermissionsService();
+        $html = '<div class="d-flex flex-row flex-nowrap align-items-center justify-content-center gap-1 text-nowrap">';
+
+        if ($perm->verifyPermissions('manifestacao_impugnacao_editar')) {
+            $html .= '<a href="' . DOMAIN . '/manifestacoes-impugnacoes/editar/' . $id . '" ';
+            $html .= 'class="btn btn-success shadow btn-xs sharp" ';
+            $html .= 'data-bs-toggle="tooltip" data-bs-title="Editar">';
+            $html .= '<i class="fa fa-pencil"></i></a>';
+        }
+
+        if ($perm->verifyPermissions('manifestacao_impugnacao_deletar')) {
+            $html .= '<button type="button" class="btn btn-danger shadow btn-xs sharp btn-excluir-manifestacao" ';
+            $html .= 'data-id="' . (int) $id . '" data-bs-toggle="tooltip" data-bs-title="Excluir">';
+            $html .= '<i class="fa fa-trash"></i></button>';
+        }
+
         $html .= '</div>';
         return $html;
     }
