@@ -126,22 +126,22 @@ class Quesito extends Model
 
         if (!empty($filtros['tipo'])) {
             $where .= ' AND tipo LIKE :tipo';
-            $params .= "&tipo=%{$filtros['tipo']}%";
+            $params .= '&tipo=' . rawurlencode('%' . $filtros['tipo'] . '%');
         }
 
         if (!empty($filtros['vara'])) {
             $where .= ' AND vara LIKE :vara';
-            $params .= "&vara=%{$filtros['vara']}%";
+            $params .= '&vara=' . rawurlencode('%' . $filtros['vara'] . '%');
         }
 
         if (!empty($filtros['reclamante'])) {
             $where .= ' AND reclamante LIKE :reclamante';
-            $params .= "&reclamante=%{$filtros['reclamante']}%";
+            $params .= '&reclamante=' . rawurlencode('%' . $filtros['reclamante'] . '%');
         }
 
         if (!empty($filtros['reclamada'])) {
             $where .= ' AND reclamada LIKE :reclamada';
-            $params .= "&reclamada=%{$filtros['reclamada']}%";
+            $params .= '&reclamada=' . rawurlencode('%' . $filtros['reclamada'] . '%');
         }
 
         $where .= ' ORDER BY data DESC, id DESC';
@@ -204,36 +204,38 @@ class Quesito extends Model
 
         if (!empty($filtros['tipo'])) {
             $where       .= ' AND q.tipo LIKE :tipo';
-            $whereParams .= '&tipo=%' . $filtros['tipo'] . '%';
+            $whereParams .= '&tipo=' . rawurlencode('%' . $filtros['tipo'] . '%');
         }
 
         if (!empty($filtros['vara'])) {
             $where       .= ' AND q.vara LIKE :vara';
-            $whereParams .= '&vara=%' . $filtros['vara'] . '%';
+            $whereParams .= '&vara=' . rawurlencode('%' . $filtros['vara'] . '%');
         }
 
         if (!empty($filtros['reclamante'])) {
             $where       .= ' AND rq.nome LIKE :reclamante';
-            $whereParams .= '&reclamante=%' . $filtros['reclamante'] . '%';
+            $whereParams .= '&reclamante=' . rawurlencode('%' . $filtros['reclamante'] . '%');
         }
 
         if (!empty($filtros['reclamada'])) {
             $where       .= ' AND rd.nome LIKE :reclamada';
-            $whereParams .= '&reclamada=%' . $filtros['reclamada'] . '%';
+            $whereParams .= '&reclamada=' . rawurlencode('%' . $filtros['reclamada'] . '%');
         }
 
         // Busca global
         $searchWhere  = $where;
         $searchParams = $whereParams;
-        if (!empty($search)) {
+        if ($search !== '') {
             $searchWhere .= " AND (
-                q.tipo LIKE :search OR
-                q.tipo_trabalho LIKE :search OR
-                q.vara LIKE :search OR
-                rq.nome LIKE :search OR
-                rd.nome LIKE :search
+                q.tipo LIKE :search1 OR
+                q.tipo_trabalho LIKE :search2 OR
+                q.vara LIKE :search3 OR
+                rq.nome LIKE :search4 OR
+                rd.nome LIKE :search5
             )";
-            $searchParams .= "&search=%{$search}%";
+            // parse_str() decodifica %XX: wildcards % no padrão LIKE devem ser passados codificados (ex.: %FABIANA vira %FA inválido).
+            $termEnc = rawurlencode('%' . $search . '%');
+            $searchParams .= '&search1=' . $termEnc . '&search2=' . $termEnc . '&search3=' . $termEnc . '&search4=' . $termEnc . '&search5=' . $termEnc;
         }
 
         // Query base com JOINs

@@ -15,6 +15,15 @@ ini_set('session.gc_maxlifetime', (string) $lifetimeSeconds);
 // Evita que o coletor apague sessões válidas em ambientes com baixo tráfego
 ini_set('session.gc_probability', '1');
 ini_set('session.gc_divisor', '100');
+/*
+ * PHP 7+ (padrão On): com lazy_write, se $_SESSION não mudar entre requisições o arquivo
+ * da sessão pode não ser regravado — o mtime fica antigo e o GC apaga a sessão mesmo com
+ * o usuário navegando. Isso derruba o login antes dos 7 dias e impede o cookie persistente
+ * de “salvar” a tempo. Desligar força gravação a cada request e renova o ciclo de vida.
+ */
+if (PHP_VERSION_ID >= 70000) {
+    ini_set('session.lazy_write', '0');
+}
 
 if (PHP_VERSION_ID >= 70300) {
     session_set_cookie_params([

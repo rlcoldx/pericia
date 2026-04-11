@@ -45,9 +45,17 @@
             dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip',
             customConfig: {
                 responsive: false,
-                autoWidth: false
+                autoWidth: false,
+                ajax: {
+                    data: function(d) {
+                        const f = getFiltersFromForm();
+                        Object.keys(f).forEach(function(key) {
+                            d[key] = f[key];
+                        });
+                        return d;
+                    }
+                }
             },
-            customFilters: getFiltersFromForm(),
             onDraw: function() {
                 // Inicializar tooltips após desenhar a tabela
                 if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
@@ -129,7 +137,7 @@
     }
 
     function getFiltersFromForm() {
-        const form = document.querySelector('form[method="GET"]');
+        const form = document.getElementById('filtrosQuesito');
         if (!form) return {};
 
         const formData = new FormData(form);
@@ -160,13 +168,13 @@
     }
 
     function setupFilterForm() {
-        filterForm = document.querySelector('form[method="GET"]');
+        filterForm = document.getElementById('filtrosQuesito');
         if (!filterForm) return;
 
         filterForm.addEventListener('submit', function(e) {
             e.preventDefault();
             if (dataTableInstance) {
-                dataTableInstance.updateFilters(getFiltersFromForm());
+                dataTableInstance.reload();
             }
         });
     }

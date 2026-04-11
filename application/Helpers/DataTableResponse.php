@@ -36,7 +36,7 @@ class DataTableResponse
         $draw = (int) ($_GET['draw'] ?? 1);
         $start = (int) ($_GET['start'] ?? 0);
         $length = (int) ($_GET['length'] ?? 10);
-        $search = $_GET['search']['value'] ?? '';
+        $search = trim((string) ($_GET['search']['value'] ?? ''));
         $orderColumn = (int) ($_GET['order'][0]['column'] ?? 0);
         $orderDir = $_GET['order'][0]['dir'] ?? 'asc';
         $columns = $_GET['columns'] ?? [];

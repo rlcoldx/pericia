@@ -4,7 +4,6 @@ namespace Agencia\Close\Middleware\Login;
 
 use Agencia\Close\Middleware\Middleware;
 use Agencia\Close\Services\Login\LoginSession;
-use Agencia\Close\Services\Login\Logon;
 
 class LoginCheckMiddleware extends Middleware
 {
@@ -12,8 +11,9 @@ class LoginCheckMiddleware extends Middleware
     public function run()
     {
         $loginSession = new LoginSession();
-        if ( !$loginSession->userIsLogged() AND (strpos($this->getCurrentUrl(), 'login') === false)) {
-           header('Location: '. DOMAIN .'/login');
+        if (!$loginSession->userIsLogged() && strpos($this->getCurrentUrl(), 'login') === false) {
+            header('Location: ' . DOMAIN . '/login');
+            exit;
         }
     }
 
