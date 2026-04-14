@@ -913,8 +913,13 @@ class AgendamentoController extends Controller
     return $permissionService->verifyPermissions($permission);
   }
 
-  /** @see AddCamposAgendamentoGranular — coluna enum em `agendamentos.tipo_pericia` */
-  private const TIPOS_PERICIA_AGENDAMENTO_VALIDOS = ['MÉDICA', 'TECNICA', 'ERGONO', 'CINESIO', 'VISTORIA', 'X1', 'X2'];
+  /**
+   * @see AddCamposAgendamentoGranular — coluna enum em `agendamentos.tipo_pericia`
+   *
+   * Observação: em alguns ambientes o ENUM foi criado sem acento (MEDICA) e em outros com acento (MÉDICA).
+   * Normalizamos sempre para MEDICA (ASCII) para evitar "Data truncated" em MySQL.
+   */
+  private const TIPOS_PERICIA_AGENDAMENTO_VALIDOS = ['MEDICA', 'TECNICA', 'ERGONO', 'CINESIO', 'VISTORIA', 'X1', 'X2'];
 
   /**
    * Hora padrão quando o campo não vem no POST (permissão granular oculta o input; coluna é NOT NULL).
@@ -950,6 +955,8 @@ class AgendamentoController extends Controller
       $valor = $valor[0] ?? '';
     }
     $v = strtoupper(trim((string) $valor));
+    // Normaliza acentuação (MÉDICA -> MEDICA) para compatibilidade com ENUM sem acento
+    $v = str_replace('É', 'E', $v);
 
     return in_array($v, self::TIPOS_PERICIA_AGENDAMENTO_VALIDOS, true) ? $v : null;
   }

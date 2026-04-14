@@ -45,9 +45,16 @@ class LoginController extends Controller
 
         // Limpa cookie no browser (mesmos parâmetros de path/samesite)
         $secure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+        $host = (string) ($_SERVER['HTTP_HOST'] ?? '');
+        $hostNoPort = preg_replace('/:\d+$/', '', $host) ?? $host;
+        $domain = null;
+        if ($hostNoPort !== '' && $hostNoPort !== 'localhost' && !filter_var($hostNoPort, FILTER_VALIDATE_IP)) {
+            $domain = '.' . ltrim($hostNoPort, '.');
+        }
         setcookie('CookieLoginEmail', '', [
             'expires' => time() - 3600,
             'path' => '/',
+            'domain' => $domain,
             'secure' => $secure,
             'httponly' => true,
             'samesite' => 'Lax',
@@ -55,6 +62,7 @@ class LoginController extends Controller
         setcookie('CookieLoginHash', '', [
             'expires' => time() - 3600,
             'path' => '/',
+            'domain' => $domain,
             'secure' => $secure,
             'httponly' => true,
             'samesite' => 'Lax',

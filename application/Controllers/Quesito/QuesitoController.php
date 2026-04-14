@@ -159,6 +159,8 @@ class QuesitoController extends Controller
 
         $result = $model->remover($id, (int) $empresa);
         if ($result->getResult()) {
+            // Evita tarefas órfãs após excluir o quesito
+            (new Tarefa())->removerPorModuloRegistro('quesito', $id, (int) $empresa);
             $this->responseJson(['success' => true, 'message' => 'Quesito excluído.']);
             return;
         }

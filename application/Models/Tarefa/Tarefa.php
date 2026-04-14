@@ -3,6 +3,7 @@
 namespace Agencia\Close\Models\Tarefa;
 
 use Agencia\Close\Conn\Create;
+use Agencia\Close\Conn\Delete;
 use Agencia\Close\Conn\Read;
 use Agencia\Close\Conn\Update;
 use Agencia\Close\Models\Model;
@@ -10,12 +11,14 @@ use Agencia\Close\Models\Model;
 class Tarefa extends Model
 {
     protected Create $create;
+    protected Delete $delete;
     protected Read $read;
     protected Update $update;
 
     public function __construct()
     {
         $this->create = new Create();
+        $this->delete = new Delete();
         $this->read = new Read();
         $this->update = new Update();
     }
@@ -57,6 +60,29 @@ class Tarefa extends Model
             "id={$id}&empresa={$empresa}"
         );
         return $this->update;
+    }
+
+    /**
+     * Remove tarefas vinculadas a um registro (hard delete).
+     *
+     * Usado quando o cadastro (quesito/manifestação/parecer/agendamento) é excluído,
+     * para não deixar tarefas órfãs na listagem do usuário.
+     */
+    public function removerPorModuloRegistro(string $modulo, int $registroId, int $empresa): bool
+    {
+        try {
+            $this->delete = new Delete();
+            $this->delete->ExeDelete(
+                'tarefas',
+                'WHERE modulo = :modulo AND registro_id = :registro_id AND empresa = :empresa',
+                "modulo={$modulo}&registro_id={$registroId}&empresa={$empresa}"
+            );
+            return (bool) $this->delete->getResult();
+        } catch (\Exception $e) {
+            return false;
+        } catch (\Error $e) {
+            return false;
+        }
     }
 
     /**

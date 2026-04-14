@@ -10,6 +10,12 @@ if (session_status() !== PHP_SESSION_NONE) {
 
 $lifetimeSeconds = 60 * 60 * 24 * 7; // 7 dias
 $secure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+$host = (string) ($_SERVER['HTTP_HOST'] ?? '');
+$hostNoPort = preg_replace('/:\d+$/', '', $host) ?? $host;
+$domain = null;
+if ($hostNoPort !== '' && $hostNoPort !== 'localhost' && !filter_var($hostNoPort, FILTER_VALIDATE_IP)) {
+    $domain = '.' . ltrim($hostNoPort, '.');
+}
 
 ini_set('session.gc_maxlifetime', (string) $lifetimeSeconds);
 // Evita que o coletor apague sessões válidas em ambientes com baixo tráfego
@@ -29,12 +35,14 @@ if (PHP_VERSION_ID >= 70300) {
     session_set_cookie_params([
         'lifetime' => $lifetimeSeconds,
         'path' => '/',
+        'domain' => $domain,
         'secure' => $secure,
         'httponly' => true,
         'samesite' => 'Lax',
     ]);
 } else {
-    session_set_cookie_params($lifetimeSeconds, '/', '', $secure, true);
+    // assinatura antiga: lifetime, path, domain, secure, httponly
+    session_set_cookie_params($lifetimeSeconds, '/', (string) ($domain ?? ''), $secure, true);
 }
 
 session_start();

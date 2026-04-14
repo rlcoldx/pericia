@@ -48,10 +48,19 @@ class User extends Model
         // 7 dias
         $expire = time() + 3600 * 24 * 7;
         $secure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+        $host = (string) ($_SERVER['HTTP_HOST'] ?? '');
+        // remove porta (ex.: localhost:8080)
+        $hostNoPort = preg_replace('/:\d+$/', '', $host) ?? $host;
+        // para domínio normal (sem localhost/IP), usar cookie de domínio para não perder login entre www/sem-www
+        $domain = null;
+        if ($hostNoPort !== '' && $hostNoPort !== 'localhost' && !filter_var($hostNoPort, FILTER_VALIDATE_IP)) {
+            $domain = '.' . ltrim($hostNoPort, '.');
+        }
 
         setcookie('CookieLoginEmail', (string) $email, [
             'expires' => $expire,
             'path' => '/',
+            'domain' => $domain,
             'secure' => $secure,
             'httponly' => true,
             'samesite' => 'Lax',
@@ -60,6 +69,7 @@ class User extends Model
         setcookie('CookieLoginHash', (string) $cookieValue, [
             'expires' => $expire,
             'path' => '/',
+            'domain' => $domain,
             'secure' => $secure,
             'httponly' => true,
             'samesite' => 'Lax',

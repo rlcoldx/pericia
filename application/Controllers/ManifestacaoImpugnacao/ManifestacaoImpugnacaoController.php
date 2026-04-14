@@ -540,6 +540,8 @@ class ManifestacaoImpugnacaoController extends Controller
 
         $result = $model->remover($id, (int) $empresa);
         if ($result->getResult()) {
+            // Evita tarefas órfãs após excluir a manifestação/impugnação
+            (new Tarefa())->removerPorModuloRegistro('manifestacao', $id, (int) $empresa);
             $this->responseJson(['success' => true, 'message' => 'Manifestação/impugnação excluída.']);
             return;
         }
