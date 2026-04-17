@@ -2,7 +2,6 @@
 
 namespace Agencia\Close\Middleware;
 
-use Agencia\Close\Middleware\Login\LoginMiddleware;
 use Agencia\Close\Middleware\Login\LoginCheckMiddleware;
 use Agencia\Close\Middleware\Login\UserPermissionMiddleware;
 
@@ -12,7 +11,7 @@ class MiddlewareCollection
 
     public function default()
     {
-        $this->push(new LoginMiddleware());
+        // Restauração de sessão (cookie `loginHash` + legado) centralizada no LoginCheckMiddleware
         $this->push(new LoginCheckMiddleware());
         $this->push(new UserPermissionMiddleware());
     }

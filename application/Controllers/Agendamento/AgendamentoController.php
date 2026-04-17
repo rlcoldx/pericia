@@ -914,10 +914,8 @@ class AgendamentoController extends Controller
   }
 
   /**
-   * @see AddCamposAgendamentoGranular — coluna enum em `agendamentos.tipo_pericia`
-   *
-   * Observação: em alguns ambientes o ENUM foi criado sem acento (MEDICA) e em outros com acento (MÉDICA).
-   * Normalizamos sempre para MEDICA (ASCII) para evitar "Data truncated" em MySQL.
+   * Valores exatamente como no ENUM do MySQL (`tipo_pericia`), ex.: `MEDICA` (ASCII).
+   * O sanitizador aceita aliases (MÉDICA, MEDIACA legado, etc.) e grava sempre um destes literais.
    */
   private const TIPOS_PERICIA_AGENDAMENTO_VALIDOS = ['MEDICA', 'TECNICA', 'ERGONO', 'CINESIO', 'VISTORIA', 'X1', 'X2'];
 
@@ -954,9 +952,19 @@ class AgendamentoController extends Controller
     if (is_array($valor)) {
       $valor = $valor[0] ?? '';
     }
-    $v = strtoupper(trim((string) $valor));
-    // Normaliza acentuação (MÉDICA -> MEDICA) para compatibilidade com ENUM sem acento
-    $v = str_replace('É', 'E', $v);
+    $v = trim((string) $valor);
+    if ($v === '') {
+      return null;
+    }
+    if (function_exists('mb_strtoupper')) {
+      $v = mb_strtoupper($v, 'UTF-8');
+    } else {
+      $v = strtoupper($v);
+    }
+    // Aliases comuns (UI antiga / ENUM legado) → valor literal atual do ENUM (`MEDICA`)
+    if (in_array($v, ['MÉDICA', 'MEDIÇÃO', 'MEDIACAO', 'MEDIACA'], true)) {
+      $v = 'MEDICA';
+    }
 
     return in_array($v, self::TIPOS_PERICIA_AGENDAMENTO_VALIDOS, true) ? $v : null;
   }

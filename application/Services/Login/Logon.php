@@ -7,6 +7,7 @@ use Agencia\Close\Models\Log\LoginLog;
 use Agencia\Close\Models\Login;
 use Agencia\Close\Services\Login\LoginSession;
 use Agencia\Close\Services\Login\LoginCookie;
+use Agencia\Close\Services\Login\PersistentLoginService;
 
 class Logon
 {
@@ -90,6 +91,7 @@ class Logon
         $loginResult = $result->getResult()[0];
         $token = $this->loginCookie($loginResult['id'], $loginResult['email']);
         (new \Agencia\Close\Models\User\User())->saveCookie($loginResult['email'], $token);
+        PersistentLoginService::issueForUser((int) $loginResult['id']);
         //$this->saveLog($loginResult['id'], $company);
         $this->actionAfterFoundUser($loginResult);
     }

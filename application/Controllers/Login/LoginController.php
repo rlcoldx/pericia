@@ -8,6 +8,7 @@ use Agencia\Close\Helpers\User\Identification;
 use Agencia\Close\Models\Log\RegisterLog;
 use Agencia\Close\Models\User\User;
 use Agencia\Close\Services\Login\Logon;
+use Agencia\Close\Services\Login\PersistentLoginService;
 
 class LoginController extends Controller
 {
@@ -40,6 +41,15 @@ class LoginController extends Controller
 
         $email = $_SESSION['pericia_perfil_email'] ?? null;
         $userId = $_SESSION['pericia_perfil_id'] ?? null;
+
+        if ($userId) {
+            try {
+                PersistentLoginService::revokeCurrentDevice((int) $userId);
+            } catch (\Throwable $e) {
+                // não bloqueia logout
+            }
+        }
+        PersistentLoginService::clearCookie();
 
         session_destroy();
 

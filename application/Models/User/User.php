@@ -125,4 +125,104 @@ class User extends Model
         $this->update->ExeUpdate($this->table, $data, "WHERE email = :email", "email={$email}");
         return $this->update->getResult();
     }
+
+    /**
+     * Acrescenta hash (SHA-256 hex do token) em `loginHash`, lista separada por vírgula (vários PCs).
+     */
+    public function appendLoginHash(int $userId, string $hashHex): bool
+    {
+        if ($userId <= 0 || $hashHex === '' || !preg_match('/^[a-f0-9]{64}$/i', $hashHex)) {
+            return false;
+        }
+
+        $read = $this->getUserByID((string) $userId);
+        $rows = $read->getResult();
+        if ($rows === null || !isset($rows[0])) {
+            return false;
+        }
+
+        $existing = isset($rows[0]['loginHash']) ? trim((string) $rows[0]['loginHash']) : '';
+        $parts = [];
+        if ($existing !== '') {
+            foreach (explode(',', $existing) as $p) {
+                $p = trim($p);
+                if ($p !== '') {
+                    $parts[] = $p;
+                }
+            }
+        }
+
+        $lower = strtolower($hashHex);
+        $filtered = [];
+        foreach ($parts as $p) {
+            if (strtolower($p) !== $lower) {
+                $filtered[] = $p;
+            }
+        }
+        $filtered[] = $hashHex;
+
+        $max = 25;
+        if (count($filtered) > $max) {
+            $filtered = array_slice($filtered, -$max);
+        }
+
+        $merged = implode(',', $filtered);
+        $update = new Update();
+        $update->ExeUpdate($this->table, ['loginHash' => $merged], 'WHERE id = :idUser', "idUser={$userId}");
+
+        return (bool) $update->getResult();
+    }
+
+    /**
+     * Busca usuário ativo cujo `loginHash` contém o hash informado (FIND_IN_SET).
+     */
+    public function findUserByLoginHash(string $hashHex): Read
+    {
+        $this->read = new Read();
+        if (!preg_match('/^[a-f0-9]{64}$/i', $hashHex)) {
+            $this->read->FullRead('SELECT * FROM usuarios WHERE 1=0');
+
+            return $this->read;
+        }
+
+        $this->read->FullRead(
+            "SELECT * FROM usuarios WHERE tipo <> '4' AND loginHash IS NOT NULL AND loginHash <> '' AND FIND_IN_SET(:h, loginHash) > 0 LIMIT 1",
+            'h=' . $hashHex
+        );
+
+        return $this->read;
+    }
+
+    /**
+     * Remove um hash da lista `loginHash` (logout neste dispositivo).
+     */
+    public function removeLoginHash(int $userId, string $hashHex): void
+    {
+        if ($userId <= 0 || $hashHex === '' || !preg_match('/^[a-f0-9]{64}$/i', $hashHex)) {
+            return;
+        }
+
+        $read = $this->getUserByID((string) $userId);
+        $rows = $read->getResult();
+        if ($rows === null || !isset($rows[0])) {
+            return;
+        }
+
+        $existing = isset($rows[0]['loginHash']) ? trim((string) $rows[0]['loginHash']) : '';
+        if ($existing === '') {
+            return;
+        }
+
+        $parts = [];
+        foreach (explode(',', $existing) as $p) {
+            $p = trim($p);
+            if ($p !== '' && strtolower($p) !== strtolower($hashHex)) {
+                $parts[] = $p;
+            }
+        }
+
+        $newVal = count($parts) > 0 ? implode(',', $parts) : null;
+        $update = new Update();
+        $update->ExeUpdate($this->table, ['loginHash' => $newVal], 'WHERE id = :idUser', "idUser={$userId}");
+    }
 }

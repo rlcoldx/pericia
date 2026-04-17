@@ -163,7 +163,7 @@
                                     <label class="form-label">Tipo de Perícia</label>
                                     <select class="form-control" name="tipo_pericia" id="tipo_pericia">
                                         <option value="">Selecione</option>
-                                        <option value="MEDICA" {{ (action == 'editar' and (agendamento.tipo_pericia == 'MEDICA' or agendamento.tipo_pericia == 'MÉDICA')) ? 'selected' : '' }}>MÉDICA</option>
+                                        <option value="MEDICA" {{ (action == 'editar' and (agendamento.tipo_pericia == 'MEDICA' or agendamento.tipo_pericia == 'MÉDICA' or agendamento.tipo_pericia == 'MEDIACA')) ? 'selected' : '' }}>MÉDICA</option>
                                         <option value="TECNICA" {{ (action == 'editar' and agendamento.tipo_pericia == 'TECNICA') ? 'selected' : '' }}>TECNICA</option>
                                         <option value="ERGONO" {{ (action == 'editar' and agendamento.tipo_pericia == 'ERGONO') ? 'selected' : '' }}>ERGONO</option>
                                         <option value="CINESIO" {{ (action == 'editar' and agendamento.tipo_pericia == 'CINESIO') ? 'selected' : '' }}>CINESIO</option>
