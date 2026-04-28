@@ -1040,10 +1040,14 @@ class AgendamentoController extends Controller
   {
     try {
       $dataRealizacao = $_POST['parecer_data_realizacao'] ?? '';
-      $tipoParecer = $_POST['parecer_tipo'] ?? '';
+      $dataFatal = $_POST['parecer_data_fatal'] ?? '';
+      // Tipo do parecer é obrigatório na tabela `pareceres`.
+      // Se o card não enviar `parecer_tipo`, usa o `tipo_pericia` do agendamento como fallback.
+      $tipoParecer = $_POST['parecer_tipo'] ?? ($_POST['tipo_pericia'] ?? '');
 
       // Se não preencher os campos principais, não cria/atualiza
-      if (empty($dataRealizacao) || empty($tipoParecer)) {
+      // Regra solicitada: criar/atualizar SEMPRE que Data da Realização e Data Fatal estiverem preenchidas.
+      if (empty($dataRealizacao) || empty($dataFatal) || empty($tipoParecer)) {
         return null;
       }
 
@@ -1053,7 +1057,7 @@ class AgendamentoController extends Controller
         'empresa' => $empresa,
         'agendamento_id' => $agendamentoId,
         'data_realizacao' => $dataRealizacao,
-        'data_fatal' => $_POST['parecer_data_fatal'] ?? null,
+        'data_fatal' => $dataFatal,
         'data_entrega_parecer' => $_POST['parecer_data_entrega_parecer'] ?? null,
         'tipo' => $tipoParecer,
         'assistente' => null,

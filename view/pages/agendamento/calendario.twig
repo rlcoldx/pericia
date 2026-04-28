@@ -36,10 +36,10 @@
                         <label class="form-label">Status</label>
                         <select name="status" id="filtroStatus" class="form-control">
                             <option value="">Todos</option>
-                            <option value="Pendente">Pendente</option>
-                            <option value="Agendado">Agendado</option>
-                            <option value="Realizado">Realizado</option>
-                            <option value="Cancelado">Cancelado</option>
+                            <option value="Agendado" {{ get.status|default('') == 'Agendado' ? 'selected' : '' }}>Agendado</option>
+                            <option value="Perícia Realizada" {{ get.status|default('') == 'Perícia Realizada' ? 'selected' : '' }}>Perícia Realizada</option>
+                            <option value="Não Realizada" {{ get.status|default('') == 'Não Realizada' ? 'selected' : '' }}>Não Realizada</option>
+                            <option value="Parecer para Revisar" {{ get.status|default('') == 'Parecer para Revisar' ? 'selected' : '' }}>Parecer para Revisar</option>
                         </select>
                     </div>
                     <div class="col-md-4">
