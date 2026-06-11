@@ -13,6 +13,7 @@ use Agencia\Close\Models\Reclamada\Reclamada;
 use Agencia\Close\Models\Reclamante\Reclamante;
 use Agencia\Close\Models\Parecer\Parecer;
 use Agencia\Close\Services\Notificacao\EmailNotificationService;
+use Agencia\Close\Services\Parecer\ParecerSalvarService;
 use Agencia\Close\Helpers\DataTableResponse;
 use Agencia\Close\Models\Tarefa\Tarefa;
 
@@ -385,7 +386,8 @@ class AgendamentoController extends Controller
     $idAgendamento = (int) $result->getResult();
 
     // Salva/atualiza parecer vinculado se os campos foram preenchidos
-    $parecerId = $this->salvarOuAtualizarParecerDoAgendamento((int) $empresa, $idAgendamento);
+    $parecerResult = $this->salvarOuAtualizarParecerDoAgendamento((int) $empresa, $idAgendamento);
+    $parecerId = $parecerResult['id'] ?? null;
 
     // Salvar tarefa se fornecida (não bloqueia o cadastro se falhar)
     try {
@@ -434,7 +436,12 @@ class AgendamentoController extends Controller
       ob_clean();
     }
     
-    $this->responseJson(['success' => true, 'message' => 'Agendamento criado com sucesso']);
+    $mensagemSucesso = 'Agendamento criado com sucesso.';
+    if (!($parecerResult['skipped'] ?? true) && !($parecerResult['success'] ?? false)) {
+      $mensagemSucesso .= ' Atenção: ' . ($parecerResult['message'] ?? 'Não foi possível salvar o parecer vinculado.');
+    }
+
+    $this->responseJson(['success' => true, 'message' => $mensagemSucesso]);
   }
 
   public function editarSalvar($params)
@@ -568,7 +575,8 @@ class AgendamentoController extends Controller
       }
 
       // Salva/atualiza parecer vinculado se os campos foram preenchidos
-      $parecerId = $this->salvarOuAtualizarParecerDoAgendamento((int) $empresa, (int) $id);
+      $parecerResult = $this->salvarOuAtualizarParecerDoAgendamento((int) $empresa, (int) $id);
+      $parecerId = $parecerResult['id'] ?? null;
 
       // Salvar tarefa se fornecida (não bloqueia a atualização se falhar)
       try {
@@ -623,9 +631,14 @@ class AgendamentoController extends Controller
         ob_clean();
       }
       
+      $mensagemSucesso = 'Agendamento atualizado com sucesso';
+      if (!($parecerResult['skipped'] ?? true) && !($parecerResult['success'] ?? false)) {
+        $mensagemSucesso .= '. Atenção: ' . ($parecerResult['message'] ?? 'Não foi possível salvar o parecer vinculado.');
+      }
+
       $this->responseJson($this->mergeRedirectHomeAposEditarUsuarioMarcelo([
         'success' => true,
-        'message' => 'Agendamento atualizado com sucesso',
+        'message' => $mensagemSucesso,
       ]));
     } catch (\Exception $e) {
       // Limpar qualquer output buffer antes de enviar JSON
@@ -752,25 +765,19 @@ class AgendamentoController extends Controller
     $model = new Agendamento();
     $result = $model->getAgendamentosDataTable($empresa, $dtParams, $filtros);
     
-    // Formata dados para o DataTables
+    // Formata dados para o DataTables (chaves nomeadas evitam desalinhamento de colunas)
     $formattedData = [];
     foreach ($result['data'] as $agendamento) {
-      // Formata cada linha conforme necessário
       $formattedData[] = [
-        // Coluna 0: Cliente
-        $this->formatClienteCell($agendamento),
-        // Coluna 1: Data/Hora
-        $this->formatDataHoraCell($agendamento),
-        // Coluna 2: Perito
-        $this->formatPeritoCell($agendamento),
-        // Coluna 3: Tipo
-        $this->formatTipoCell($agendamento),
-        // Coluna 4: Status
-        $this->formatStatusCell($agendamento),
-        // Coluna 5: Local
-        $this->formatLocalCell($agendamento),
-        // Coluna 6: Ações
-        $this->formatAcoesCell($agendamento)
+        'status' => $this->formatStatusCell($agendamento),
+        'data_hora' => $this->formatDataHoraCell($agendamento),
+        'tipo' => $this->formatTipoCell($agendamento),
+        'reclamada' => $this->formatReclamadaCell($agendamento),
+        'reclamante' => $this->formatReclamanteCell($agendamento),
+        'assistente' => $this->formatAssistenteCell($agendamento),
+        'perito' => $this->formatPeritoCell($agendamento),
+        'local' => $this->formatLocalCell($agendamento),
+        'acoes' => $this->formatAcoesCell($agendamento),
       ];
     }
 
@@ -786,17 +793,41 @@ class AgendamentoController extends Controller
   }
 
   /**
-   * Formata célula de Cliente
+   * Formata célula de Reclamada
    */
-  private function formatClienteCell($agendamento): string
+  private function formatReclamadaCell($agendamento): string
   {
-    $html = '<div>';
-    $html .= '<h6 class="mb-0">' . htmlspecialchars($agendamento['cliente_nome']) . '</h6>';
-    if (!empty($agendamento['cliente_email'])) {
-      $html .= '<small><a href="mailto:' . htmlspecialchars($agendamento['cliente_email']) . '" class="text-primary">' . htmlspecialchars($agendamento['cliente_email']) . '</a></small>';
+    if (!empty($agendamento['cliente_nome'])) {
+      return '<span>' . htmlspecialchars($agendamento['cliente_nome']) . '</span>';
     }
-    $html .= '</div>';
-    return $html;
+
+    return '<span class="opacity-50">-</span>';
+  }
+
+  /**
+   * Formata célula de Reclamante
+   */
+  private function formatReclamanteCell($agendamento): string
+  {
+    if (!empty($agendamento['reclamante_nome'])) {
+      return '<span>' . htmlspecialchars($agendamento['reclamante_nome']) . '</span>';
+    }
+
+    return '<span class="opacity-50">-</span>';
+  }
+
+  /**
+   * Formata célula de Assistente
+   */
+  private function formatAssistenteCell($agendamento): string
+  {
+    $nome = $agendamento['assistente_nome_cadastro'] ?? $agendamento['assistente_nome'] ?? null;
+
+    if (!empty($nome)) {
+      return '<span>' . htmlspecialchars($nome) . '</span>';
+    }
+
+    return '<span class="opacity-50">-</span>';
   }
 
   /**
@@ -865,8 +896,11 @@ class AgendamentoController extends Controller
   private function formatLocalCell($agendamento): string
   {
     if (!empty($agendamento['local_pericia'])) {
-      return '<small>' . htmlspecialchars($agendamento['local_pericia']) . '</small>';
+      return '<div class="text-wrap" style="min-width: 200px; max-width: 320px;">'
+        . htmlspecialchars($agendamento['local_pericia'])
+        . '</div>';
     }
+
     return '<span class="opacity-50">-</span>';
   }
 
@@ -875,7 +909,7 @@ class AgendamentoController extends Controller
    */
   private function formatAcoesCell($agendamento): string
   {
-    $html = '<div class="d-flex">';
+    $html = '<div class="d-flex flex-nowrap justify-content-center">';
     
     // Botão Visualizar
     $html .= '<a href="' . DOMAIN . '/agendamento/view/' . $agendamento['id'] . '" ';
@@ -1033,56 +1067,29 @@ class AgendamentoController extends Controller
   }
 
   /**
-   * Cria ou atualiza um parecer vinculado ao agendamento, se os campos do card foram preenchidos.
-   * Retorna o ID do parecer salvo ou null se não houve criação/atualização.
+   * Cria ou atualiza um parecer vinculado ao agendamento quando Data da Realização,
+   * Data Fatal e Tipo estiverem preenchidos.
+   *
+   * @return array{success: bool, id: ?int, message: string, skipped: bool}
    */
-  private function salvarOuAtualizarParecerDoAgendamento(int $empresa, int $agendamentoId): ?int
+  private function salvarOuAtualizarParecerDoAgendamento(int $empresa, int $agendamentoId): array
   {
-    try {
-      $dataRealizacao = $_POST['parecer_data_realizacao'] ?? '';
-      $dataFatal = $_POST['parecer_data_fatal'] ?? '';
-      // Tipo do parecer é obrigatório na tabela `pareceres`.
-      // Se o card não enviar `parecer_tipo`, usa o `tipo_pericia` do agendamento como fallback.
-      $tipoParecer = $_POST['parecer_tipo'] ?? ($_POST['tipo_pericia'] ?? '');
+    $service = new ParecerSalvarService();
 
-      // Se não preencher os campos principais, não cria/atualiza
-      // Regra solicitada: criar/atualizar SEMPRE que Data da Realização e Data Fatal estiverem preenchidas.
-      if (empty($dataRealizacao) || empty($dataFatal) || empty($tipoParecer)) {
-        return null;
-      }
-
-      $tipoParecer = mb_strtoupper($tipoParecer, 'UTF-8');
-
-      $dadosParecer = [
-        'empresa' => $empresa,
-        'agendamento_id' => $agendamentoId,
-        'data_realizacao' => $dataRealizacao,
-        'data_fatal' => $dataFatal,
-        'data_entrega_parecer' => $_POST['parecer_data_entrega_parecer'] ?? null,
-        'tipo' => $tipoParecer,
-        'assistente' => null,
-        'assistente_id' => !empty($_POST['parecer_assistente_id']) ? (int) $_POST['parecer_assistente_id'] : null,
-        'reclamada_id' => !empty($_POST['parecer_reclamada_id']) ? (int) $_POST['parecer_reclamada_id'] : null,
-        'reclamante_id' => !empty($_POST['parecer_reclamante_id']) ? (int) $_POST['parecer_reclamante_id'] : null,
-        'funcoes' => isset($_POST['parecer_funcoes']) && $_POST['parecer_funcoes'] !== '' ? $_POST['parecer_funcoes'] : null,
-        'observacoes' => isset($_POST['parecer_observacoes']) && $_POST['parecer_observacoes'] !== '' ? $_POST['parecer_observacoes'] : null,
-      ];
-
-      $parecerModel = new Parecer();
-      $parecerExistente = $parecerModel->getPorAgendamento($agendamentoId, $empresa)->getResult()[0] ?? null;
-
-      if ($parecerExistente) {
-        $parecerModel->atualizar((int) $parecerExistente['id'], $empresa, $dadosParecer);
-        return (int) $parecerExistente['id'];
-      }
-
-      $result = $parecerModel->criar($dadosParecer);
-      return $result->getResult() ? (int) $result->getResult() : null;
-    } catch (\Exception $e) {
-      return null;
-    } catch (\Error $e) {
-      return null;
-    }
+    return $service->salvarVinculadoAgendamento($empresa, $agendamentoId, [
+      'data_realizacao' => $_POST['parecer_data_realizacao'] ?? '',
+      'data_fatal' => $_POST['parecer_data_fatal'] ?? '',
+      'data_entrega_parecer' => $_POST['parecer_data_entrega_parecer'] ?? '',
+      'tipo' => $_POST['parecer_tipo'] ?? ($_POST['tipo_pericia'] ?? ''),
+      'assistente_id' => $_POST['parecer_assistente_id'] ?? ($_POST['assistente_id'] ?? null),
+      'reclamada_id' => $_POST['parecer_reclamada_id'] ?? null,
+      'reclamante_id' => $_POST['parecer_reclamante_id'] ?? null,
+      'funcoes' => $_POST['parecer_funcoes'] ?? '',
+      'observacoes' => $_POST['parecer_observacoes'] ?? '',
+      'numero_processo' => $_POST['numero_processo'] ?? null,
+      'cliente_nome' => $_POST['cliente_nome'] ?? null,
+      'reclamante_nome' => $_POST['reclamante_nome'] ?? null,
+    ]);
   }
 
   /**

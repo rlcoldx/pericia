@@ -158,12 +158,14 @@ class Agendamento extends Model
 
         // Mapeamento de colunas do DataTable para colunas do banco
         $columnMap = [
-            0 => 'a.cliente_nome',
+            0 => 'a.status',
             1 => 'a.data_agendamento',
-            2 => 'a.perito_id',
-            3 => 'a.tipo_pericia',
-            4 => 'a.status',
-            5 => 'a.local_pericia'
+            2 => 'a.tipo_pericia',
+            3 => 'a.cliente_nome',
+            4 => 'a.reclamante_nome',
+            5 => 'COALESCE(ass.nome, a.assistente_nome)',
+            6 => 'a.perito_id',
+            7 => 'a.local_pericia',
         ];
 
         $orderBy = 'a.data_agendamento DESC, a.hora_agendamento DESC';
@@ -201,6 +203,8 @@ class Agendamento extends Model
                 cliente_nome LIKE :search OR 
                 cliente_email LIKE :search OR 
                 cliente_cpf LIKE :search OR 
+                reclamante_nome LIKE :search OR
+                assistente_nome LIKE :search OR
                 tipo_pericia LIKE :search OR 
                 local_pericia LIKE :search
             )";
@@ -247,6 +251,9 @@ class Agendamento extends Model
                 a.cliente_nome LIKE :search OR 
                 a.cliente_email LIKE :search OR 
                 a.cliente_cpf LIKE :search OR 
+                a.reclamante_nome LIKE :search OR
+                a.assistente_nome LIKE :search OR
+                ass.nome LIKE :search OR
                 a.tipo_pericia LIKE :search OR 
                 a.local_pericia LIKE :search
             )";
@@ -255,9 +262,10 @@ class Agendamento extends Model
 
         // Busca dados paginados com JOIN para pegar nome do perito
         $this->read = new Read();
-        $query = "SELECT a.*, p.nome as perito_nome 
+        $query = "SELECT a.*, p.nome as perito_nome, ass.nome as assistente_nome_cadastro 
                   FROM agendamentos a 
                   LEFT JOIN peritos p ON a.perito_id = p.id AND a.empresa = p.empresa 
+                  LEFT JOIN assistentes ass ON a.assistente_id = ass.id AND a.empresa = ass.empresa 
                   {$searchWhereWithAlias} 
                   ORDER BY {$orderBy} 
                   LIMIT :limit OFFSET :offset";

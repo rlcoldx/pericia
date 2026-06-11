@@ -12,6 +12,7 @@ use Agencia\Close\Helpers\DataTableResponse;
 use Agencia\Close\Models\Equipe\Equipe;
 use Agencia\Close\Models\Tarefa\Tarefa;
 use Agencia\Close\Services\Processo\ProcessoVinculoService;
+use Agencia\Close\Services\Parecer\ParecerSalvarService;
 
 class ParecerController extends Controller
 {
@@ -93,57 +94,20 @@ class ParecerController extends Controller
             return;
         }
 
-        $dataRealizacao = $_POST['data_realizacao'] ?? '';
-        $tipo = $_POST['tipo'] ?? '';
+        $parecerSalvar = new ParecerSalvarService();
+        $input = $this->montarInputParecerFromPost();
+        $resultado = $parecerSalvar->criar((int) $empresa, $input);
 
-        if (empty($dataRealizacao) || empty($tipo)) {
-            $this->responseJson(['success' => false, 'message' => 'Data da Realização e Tipo são obrigatórios.']);
-            return;
-        }
-
-        // Força o tipo em letras maiúsculas
-        if (!empty($tipo)) {
-            $tipo = mb_strtoupper($tipo, 'UTF-8');
-        }
-
-        // Verifica se o tipo existe, se não, cria
-        $parecerModel = new Parecer();
-        $tiposExistentes = $parecerModel->listarTipos((int) $empresa)->getResult() ?? [];
-        $tiposNomes = array_column($tiposExistentes, 'nome');
-        
-        if (!in_array($tipo, $tiposNomes, true)) {
-            $parecerModel->criarTipo((int) $empresa, $tipo);
-        }
-
-        $dados = [
-            'empresa' => (int) $empresa,
-            'numero_processo' => isset($_POST['numero_processo']) && trim((string) $_POST['numero_processo']) !== '' ? trim((string) $_POST['numero_processo']) : null,
-            'data_realizacao' => $dataRealizacao,
-            'data_fatal' => $_POST['data_fatal'] !== '' ? $_POST['data_fatal'] : null,
-            'data_entrega_parecer' => $_POST['data_entrega_parecer'] !== '' ? $_POST['data_entrega_parecer'] : null,
-            'status_parecer' => $_POST['status_parecer'] !== '' ? $_POST['status_parecer'] : null,
-            'status_revisao' => $_POST['status_revisao'] !== '' ? $_POST['status_revisao'] : null,
-            'tipo' => $tipo,
-            'assistente' => $_POST['assistente'] !== '' ? $_POST['assistente'] : null,
-            'assistente_id' => !empty($_POST['assistente_id']) ? (int) $_POST['assistente_id'] : null,
-            'reclamada_id' => !empty($_POST['reclamada_id']) ? (int) $_POST['reclamada_id'] : null,
-            'reclamante_id' => !empty($_POST['reclamante_id']) ? (int) $_POST['reclamante_id'] : null,
-            'funcoes' => $_POST['funcoes'] !== '' ? $_POST['funcoes'] : null,
-            'observacoes' => $_POST['observacoes'] !== '' ? $_POST['observacoes'] : null,
-        ];
-
-        $result = $parecerModel->criar($dados);
-
-        if (!$result->getResult()) {
-            // Limpar qualquer output buffer antes de enviar JSON
+        if (!$resultado['success']) {
             if (ob_get_level() > 0) {
                 ob_clean();
             }
-            $this->responseJson(['success' => false, 'message' => 'Erro ao cadastrar.']);
+            $this->responseJson(['success' => false, 'message' => $resultado['message']]);
             return;
         }
 
-        $idParecer = (int) $result->getResult();
+        $idParecer = (int) $resultado['id'];
+        $dados = $parecerSalvar->montarDados((int) $empresa, $input);
 
         // Salvar tarefa se fornecida (não bloqueia o cadastro se falhar)
         try {
@@ -261,58 +225,19 @@ class ParecerController extends Controller
             return;
         }
 
-        $dataRealizacao = $_POST['data_realizacao'] ?? '';
-        $tipo = $_POST['tipo'] ?? '';
+        $parecerSalvar = new ParecerSalvarService();
+        $input = $this->montarInputParecerFromPost();
+        $resultado = $parecerSalvar->atualizar($id, (int) $empresa, $input);
 
-        if (empty($dataRealizacao) || empty($tipo)) {
-            // Limpar qualquer output buffer antes de enviar JSON
+        if (!$resultado['success']) {
             if (ob_get_level() > 0) {
                 ob_clean();
             }
-            $this->responseJson(['success' => false, 'message' => 'Data da Realização e Tipo são obrigatórios.']);
+            $this->responseJson(['success' => false, 'message' => $resultado['message']]);
             return;
         }
 
-        // Força o tipo em letras maiúsculas
-        if (!empty($tipo)) {
-            $tipo = mb_strtoupper($tipo, 'UTF-8');
-        }
-
-        // Verifica se o tipo existe, se não, cria
-        $parecerModel = new Parecer();
-        $tiposExistentes = $parecerModel->listarTipos((int) $empresa)->getResult() ?? [];
-        $tiposNomes = array_column($tiposExistentes, 'nome');
-        
-        if (!in_array($tipo, $tiposNomes, true)) {
-            $parecerModel->criarTipo((int) $empresa, $tipo);
-        }
-
-        $dados = [
-            'numero_processo' => isset($_POST['numero_processo']) && trim((string) $_POST['numero_processo']) !== '' ? trim((string) $_POST['numero_processo']) : null,
-            'data_realizacao' => $dataRealizacao,
-            'data_fatal' => $_POST['data_fatal'] !== '' ? $_POST['data_fatal'] : null,
-            'data_entrega_parecer' => $_POST['data_entrega_parecer'] !== '' ? $_POST['data_entrega_parecer'] : null,
-            'status_parecer' => $_POST['status_parecer'] !== '' ? $_POST['status_parecer'] : null,
-            'status_revisao' => $_POST['status_revisao'] !== '' ? $_POST['status_revisao'] : null,
-            'tipo' => $tipo,
-            'assistente' => $_POST['assistente'] !== '' ? $_POST['assistente'] : null,
-            'assistente_id' => !empty($_POST['assistente_id']) ? (int) $_POST['assistente_id'] : null,
-            'reclamada_id' => !empty($_POST['reclamada_id']) ? (int) $_POST['reclamada_id'] : null,
-            'reclamante_id' => !empty($_POST['reclamante_id']) ? (int) $_POST['reclamante_id'] : null,
-            'funcoes' => $_POST['funcoes'] !== '' ? $_POST['funcoes'] : null,
-            'observacoes' => $_POST['observacoes'] !== '' ? $_POST['observacoes'] : null,
-        ];
-
-        $result = $parecerModel->atualizar($id, (int) $empresa, $dados);
-
-        if (!$result->getResult()) {
-            // Limpar qualquer output buffer antes de enviar JSON
-            if (ob_get_level() > 0) {
-                ob_clean();
-            }
-            $this->responseJson(['success' => false, 'message' => 'Erro ao atualizar.']);
-            return;
-        }
+        $dados = $parecerSalvar->montarDados((int) $empresa, $input, null, false);
 
         // Salvar tarefa se fornecida (não bloqueia a atualização se falhar)
         try {
@@ -482,6 +407,25 @@ class ParecerController extends Controller
         );
 
         $this->responseJson($response);
+    }
+
+    private function montarInputParecerFromPost(): array
+    {
+        return [
+            'numero_processo' => $_POST['numero_processo'] ?? null,
+            'data_realizacao' => $_POST['data_realizacao'] ?? '',
+            'data_fatal' => $_POST['data_fatal'] ?? '',
+            'data_entrega_parecer' => $_POST['data_entrega_parecer'] ?? '',
+            'status_parecer' => $_POST['status_parecer'] ?? '',
+            'status_revisao' => $_POST['status_revisao'] ?? '',
+            'tipo' => $_POST['tipo'] ?? '',
+            'assistente' => $_POST['assistente'] ?? '',
+            'assistente_id' => $_POST['assistente_id'] ?? null,
+            'reclamada_id' => $_POST['reclamada_id'] ?? null,
+            'reclamante_id' => $_POST['reclamante_id'] ?? null,
+            'funcoes' => $_POST['funcoes'] ?? '',
+            'observacoes' => $_POST['observacoes'] ?? '',
+        ];
     }
 
     private function formatAcoesCell(?int $id): string

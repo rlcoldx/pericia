@@ -133,13 +133,15 @@
                     <table id="datatable-agendamentos" class="table dataTable align-middle">
                         <thead>
                             <tr role="row">
-                                <th>Cliente</th>
-                                <th>Data/Hora</th>
-                                <th>Perito</th>
-                                <th>Tipo</th>
                                 <th>Status</th>
-                                <th>Local</th>
-                                <th width="150">Ações</th>
+                                <th>Data</th>
+                                <th>Tipo</th>
+                                <th>Reclamada</th>
+                                <th>Reclamante</th>
+                                <th>Assistente</th>
+                                <th>Perito</th>
+                                <th style="min-width: 220px;">Local</th>
+                                <th style="min-width: 150px; white-space: nowrap;">Ações</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -180,7 +182,7 @@
     window.DOMAIN = '{{ DOMAIN }}';
 </script>
 <script src="{{ PATH }}/view/assets/vendor/datatables/js/jquery.dataTables.min.js"></script>
-<script src="{{ PATH }}/view/assets/js/datatables/datatables-ajax.js"></script>
-<script src="{{ PATH }}/view/assets/js/pages/datatables/agendamento-datatable.js"></script>
+<script src="{{ PATH }}/view/assets/js/datatables/datatables-ajax.js?v=20260610-4"></script>
+<script src="{{ PATH }}/view/assets/js/pages/datatables/agendamento-datatable.js?v=20260610-4"></script>
 {% endblock %}
 

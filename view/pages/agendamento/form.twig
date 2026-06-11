@@ -278,7 +278,7 @@
                                 <div class="col-12 col-lg-3 mb-3">
                                     <label class="form-label">Tipo</label>
                                     <select class="form-control select2-tags" name="parecer_tipo" id="parecer_tipo">
-                                        {% set tipoAtual = parecerValores.tipo ?? '' %}
+                                        {% set tipoAtual = parecerValores.tipo ?? (agendamento.tipo_pericia ?? '') %}
                                         {% if tipoAtual %}
                                         <option value="{{ tipoAtual }}" selected>{{ tipoAtual }}</option>
                                         {% endif %}
@@ -307,7 +307,7 @@
                                     <select class="form-control" name="parecer_reclamada_id" id="parecer_reclamada_id">
                                         <option value="">Selecione a Reclamada</option>
                                         {% for reclamada in reclamadas %}
-                                        <option value="{{ reclamada.id }}" {{ parecerValores.reclamada_id is defined and parecerValores.reclamada_id == reclamada.id ? 'selected' : '' }}>
+                                        <option value="{{ reclamada.id }}" {{ (parecerValores.reclamada_id is defined and parecerValores.reclamada_id == reclamada.id) or ((parecerValores.reclamada_id is not defined or not parecerValores.reclamada_id) and agendamento.cliente_nome is defined and agendamento.cliente_nome == reclamada.nome) ? 'selected' : '' }}>
                                             {{ reclamada.nome }}
                                         </option>
                                         {% endfor %}
@@ -319,7 +319,7 @@
                                     <select class="form-control" name="parecer_reclamante_id" id="parecer_reclamante_id">
                                         <option value="">Selecione o Reclamante</option>
                                         {% for reclamante in reclamantes %}
-                                        <option value="{{ reclamante.id }}" {{ parecerValores.reclamante_id is defined and parecerValores.reclamante_id == reclamante.id ? 'selected' : '' }}>
+                                        <option value="{{ reclamante.id }}" {{ (parecerValores.reclamante_id is defined and parecerValores.reclamante_id == reclamante.id) or ((parecerValores.reclamante_id is not defined or not parecerValores.reclamante_id) and agendamento.reclamante_nome is defined and agendamento.reclamante_nome == reclamante.nome) ? 'selected' : '' }}>
                                             {{ reclamante.nome }}
                                         </option>
                                         {% endfor %}
