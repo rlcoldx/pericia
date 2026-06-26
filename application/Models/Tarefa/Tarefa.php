@@ -294,6 +294,9 @@ class Tarefa extends Model
                     END as favoravel,
                     CASE 
                         WHEN t.modulo = 'quesito' THEN (SELECT q.link_pasta_drive FROM quesitos q WHERE q.id = t.registro_id AND q.empresa = t.empresa LIMIT 1)
+                        WHEN t.modulo = 'manifestacao' THEN (SELECT m.link_pasta_drive FROM manifestacoes_impugnacoes m WHERE m.id = t.registro_id AND m.empresa = t.empresa LIMIT 1)
+                        WHEN t.modulo = 'parecer' THEN (SELECT p.link_pasta_drive FROM pareceres p WHERE p.id = t.registro_id AND p.empresa = t.empresa LIMIT 1)
+                        WHEN t.modulo = 'agendamento' THEN (SELECT a.link_pasta_drive FROM agendamentos a WHERE a.id = t.registro_id AND a.empresa = t.empresa LIMIT 1)
                         ELSE NULL
                     END as link_pasta_drive,
                     {$exprTipoRegistro} as registro_tipo,

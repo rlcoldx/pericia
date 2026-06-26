@@ -1,6 +1,5 @@
 /**
  * DataTable específico para Pareceres
- * Configuração e inicialização do DataTable com AJAX
  */
 
 (function() {
@@ -12,36 +11,42 @@
         init();
     }
 
-    let dataTableInstance = null;
+    function renderHtml(data) {
+        return data == null ? '' : data;
+    }
 
     function init() {
         const table = document.getElementById('datatable-pareceres');
         if (!table) return;
 
         if (typeof DataTableAjax === 'undefined') {
-            console.error('DataTableAjax não está carregado. Certifique-se de incluir datatables-ajax.js antes deste arquivo.');
+            console.error('DataTableAjax não está carregado.');
             return;
         }
 
         const columns = [
-            { data: 0, name: 'data_realizacao', orderable: true, searchable: false },
-            { data: 1, name: 'data_fatal', orderable: true, searchable: false },
-            { data: 2, name: 'tipo', orderable: true, searchable: true },
-            { data: 3, name: 'assistente', orderable: true, searchable: true },
-            { data: 4, name: 'reclamada', orderable: true, searchable: true },
-            { data: 5, name: 'reclamante', orderable: true, searchable: true },
-            { data: 6, name: 'acoes', orderable: false, searchable: false, className: 'text-center' }
+            { data: 'status', name: 'status', orderable: true, searchable: false, render: renderHtml },
+            { data: 'data_realizacao', name: 'data_realizacao', orderable: true, searchable: false, render: renderHtml },
+            { data: 'data_fatal', name: 'data_fatal', orderable: true, searchable: false, render: renderHtml },
+            { data: 'tipo', name: 'tipo', orderable: true, searchable: true, render: renderHtml },
+            { data: 'assistente', name: 'assistente', orderable: true, searchable: true, render: renderHtml },
+            { data: 'reclamada', name: 'reclamada', orderable: true, searchable: true, render: renderHtml },
+            { data: 'reclamante', name: 'reclamante', orderable: true, searchable: true, render: renderHtml },
+            { data: 'acoes', name: 'acoes', orderable: false, searchable: false, render: renderHtml, className: 'text-center text-nowrap' }
         ];
 
         const config = {
             ajaxUrl: window.DOMAIN + '/pareceres/datatable',
             columns: columns,
-            order: [[0, 'desc']],
+            order: [[1, 'desc']],
             pageLength: 10,
-            lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Todos"]],
+            lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'Todos']],
             dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip',
             customFilters: {},
-            onDraw: function() {},
+            customConfig: {
+                responsive: false,
+                autoWidth: false
+            },
             onError: function() {
                 Swal.fire({
                     icon: 'error',
@@ -51,8 +56,6 @@
             }
         };
 
-        dataTableInstance = new DataTableAjax('datatable-pareceres', config);
-        dataTableInstance.init();
+        new DataTableAjax('datatable-pareceres', config).init();
     }
-
 })();

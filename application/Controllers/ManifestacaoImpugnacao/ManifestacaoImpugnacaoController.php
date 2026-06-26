@@ -131,6 +131,7 @@ class ManifestacaoImpugnacaoController extends Controller
             'favoravel' => $favoravel,
             'perito_id' => !empty($_POST['perito_id']) ? (int) $_POST['perito_id'] : null,
             'funcao_observacao' => $_POST['funcao_observacao'] !== '' ? $_POST['funcao_observacao'] : null,
+            'link_pasta_drive' => isset($_POST['link_pasta_drive']) && $_POST['link_pasta_drive'] !== '' ? trim((string) $_POST['link_pasta_drive']) : null,
             'status' => $this->resolverStatusManifestacaoPost(),
         ];
 
@@ -304,6 +305,7 @@ class ManifestacaoImpugnacaoController extends Controller
             'favoravel' => $favoravel,
             'perito_id' => !empty($_POST['perito_id']) ? (int) $_POST['perito_id'] : null,
             'funcao_observacao' => $_POST['funcao_observacao'] !== '' ? $_POST['funcao_observacao'] : null,
+            'link_pasta_drive' => isset($_POST['link_pasta_drive']) && $_POST['link_pasta_drive'] !== '' ? trim((string) $_POST['link_pasta_drive']) : null,
             'status' => $this->resolverStatusManifestacaoPost(),
         ];
 

@@ -9,17 +9,11 @@ use Agencia\Close\Models\Reclamante\Reclamante;
 
 class ParecerSalvarService
 {
-    private const STATUS_PARECER_VALIDOS = [
-        'OK',
-        'FAVORAVEL',
-        'DESFAVORAVEL',
-        'PARCIAL FAVORAVEL',
-        'NR (NÃO REALIZADO)',
-    ];
-
-    private const STATUS_REVISAO_VALIDOS = [
-        'Revisão de Parecer',
-        'Enviado',
+    private const STATUS_FLUXO_VALIDOS = [
+        'Aguardando Parecer',
+        'Parecer para Revisão',
+        'Parecer Revisado',
+        'Finalizado',
     ];
 
     /**
@@ -170,8 +164,8 @@ class ParecerSalvarService
             'data_realizacao' => $this->normalizarData($input['data_realizacao'] ?? null),
             'data_fatal' => $this->normalizarData($input['data_fatal'] ?? null),
             'data_entrega_parecer' => $this->normalizarData($input['data_entrega_parecer'] ?? null),
-            'status_parecer' => $this->sanitizarStatusParecer($input['status_parecer'] ?? null),
-            'status_revisao' => $this->sanitizarStatusRevisao($input['status_revisao'] ?? null),
+            'status' => $this->sanitizarStatusFluxo($input['status'] ?? null),
+            'link_pasta_drive' => $this->normalizarTexto($input['link_pasta_drive'] ?? null),
             'tipo' => $this->normalizarTipo($input['tipo'] ?? ''),
             'assistente' => $assistenteNome,
             'assistente_id' => $assistenteId,
@@ -243,24 +237,14 @@ class ParecerSalvarService
         return mb_strtoupper(trim((string) $value), 'UTF-8');
     }
 
-    public function sanitizarStatusParecer($value): ?string
+    public function sanitizarStatusFluxo($value): string
     {
         $texto = $this->normalizarTexto($value);
-        if ($texto === null) {
-            return null;
+        if ($texto === null || !in_array($texto, self::STATUS_FLUXO_VALIDOS, true)) {
+            return 'Aguardando Parecer';
         }
 
-        return in_array($texto, self::STATUS_PARECER_VALIDOS, true) ? $texto : null;
-    }
-
-    public function sanitizarStatusRevisao($value): ?string
-    {
-        $texto = $this->normalizarTexto($value);
-        if ($texto === null) {
-            return null;
-        }
-
-        return in_array($texto, self::STATUS_REVISAO_VALIDOS, true) ? $texto : null;
+        return $texto;
     }
 
     public function mensagemErroDriver(object $result): string

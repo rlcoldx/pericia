@@ -45,6 +45,9 @@
 
         // Data do agendamento → Data da Realização (igual) e Data Fatal (+5 dias)
         initAgendamentoParecerDatesSync(form);
+
+        // Resumo para Google Calendar
+        initResumoGoogleCalendar(form);
         
         // Inicializa submissão do formulário
         initFormSubmit(form);
@@ -91,6 +94,138 @@
         if (dataAgendamento.value && String(dataRealizacao.value || '').trim() === '') {
             syncParecerDatesFromAgendamento();
         }
+    }
+
+    function formatYmdToBr(ymd) {
+        if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) {
+            return '';
+        }
+        const p = ymd.split('-');
+        return p[2] + '/' + p[1] + '/' + p[0];
+    }
+
+    function formatTimeHm(timeValue) {
+        if (!timeValue) {
+            return '';
+        }
+        return String(timeValue).substring(0, 5);
+    }
+
+    function getSelectText(selector) {
+        const el = document.querySelector(selector);
+        if (!el) {
+            return '';
+        }
+        if (el.tagName === 'SELECT') {
+            const opt = el.options[el.selectedIndex];
+            return opt ? String(opt.text || '').trim() : '';
+        }
+        return String(el.value || '').trim();
+    }
+
+    function getProcessoNumero() {
+        const el = document.querySelector('#numero_processo');
+        if (!el) {
+            return '';
+        }
+        if (typeof jQuery !== 'undefined' && jQuery(el).data('select2')) {
+            return getSelect2SingleVal(jQuery(el)).trim();
+        }
+        return String(el.value || '').trim();
+    }
+
+    function initResumoGoogleCalendar(form) {
+        const resumoEl = document.getElementById('agendamento_resumo_google');
+        if (!resumoEl) {
+            return;
+        }
+
+        const campos = [
+            'input[name="data_agendamento"]',
+            'input[name="hora_agendamento"]',
+            '#numero_processo',
+            '#cliente_nome',
+            '#reclamante_nome',
+            '#perito_id',
+            'input[name="local_pericia"]'
+        ];
+
+        function atualizarResumo() {
+            const data = form.querySelector('input[name="data_agendamento"]');
+            const hora = form.querySelector('input[name="hora_agendamento"]');
+            const local = form.querySelector('input[name="local_pericia"]');
+
+            const linhas = [];
+            const dataHora = [formatYmdToBr(data ? data.value : ''), formatTimeHm(hora ? hora.value : '')].filter(Boolean).join(' - ');
+            if (dataHora) {
+                linhas.push(dataHora);
+            }
+
+            const processo = getProcessoNumero();
+            if (processo) {
+                linhas.push(processo);
+            }
+
+            const reclamada = getSelectText('#cliente_nome');
+            if (reclamada) {
+                linhas.push(reclamada);
+            }
+
+            const reclamante = getSelectText('#reclamante_nome');
+            if (reclamante) {
+                linhas.push(reclamante);
+            }
+
+            const perito = getSelectText('#perito_id');
+            if (perito && perito !== 'Selecione ou digite para criar um novo Perito') {
+                linhas.push(perito);
+            }
+
+            const endereco = local ? String(local.value || '').trim() : '';
+            if (endereco) {
+                linhas.push(endereco);
+            }
+
+            resumoEl.value = linhas.join('\n');
+        }
+
+        campos.forEach(function(selector) {
+            const el = form.querySelector(selector) || document.querySelector(selector);
+            if (!el) {
+                return;
+            }
+            el.addEventListener('change', atualizarResumo);
+            el.addEventListener('input', atualizarResumo);
+        });
+
+        if (typeof jQuery !== 'undefined') {
+            jQuery('#numero_processo, #cliente_nome, #reclamante_nome, #perito_id').on('change select2:select select2:clear', atualizarResumo);
+        }
+
+        const btnCopiar = document.getElementById('btnCopiarResumoAgendamento');
+        if (btnCopiar) {
+            btnCopiar.addEventListener('click', function() {
+                atualizarResumo();
+                const texto = resumoEl.value;
+                if (!texto) {
+                    Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Preencha os dados do agendamento para gerar o resumo.' });
+                    return;
+                }
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(texto).then(function() {
+                        Swal.fire({ icon: 'success', title: 'Copiado!', text: 'Resumo copiado para a área de transferência.', timer: 1500, showConfirmButton: false });
+                    }).catch(function() {
+                        resumoEl.select();
+                        document.execCommand('copy');
+                    });
+                } else {
+                    resumoEl.select();
+                    document.execCommand('copy');
+                }
+            });
+        }
+
+        atualizarResumo();
     }
 
     function initVinculoProcessoAgendamento() {

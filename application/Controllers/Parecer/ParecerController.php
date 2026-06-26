@@ -388,14 +388,16 @@ class ParecerController extends Controller
 
         $formattedData = [];
         foreach ($result['data'] as $p) {
+            $status = $p['status'] ?? 'Aguardando Parecer';
             $formattedData[] = [
-                date('d/m/Y', strtotime($p['data_realizacao'])),
-                $p['data_fatal'] ? date('d/m/Y', strtotime($p['data_fatal'])) : '-',
-                htmlspecialchars($p['tipo'] ?? '', ENT_QUOTES, 'UTF-8'),
-                htmlspecialchars($p['assistente'] ?? '-', ENT_QUOTES, 'UTF-8'),
-                htmlspecialchars($p['reclamada_nome'] ?? '-', ENT_QUOTES, 'UTF-8'),
-                htmlspecialchars($p['reclamante_nome'] ?? '-', ENT_QUOTES, 'UTF-8'),
-                $this->formatAcoesCell($p['id'] ?? null),
+                'status' => $this->formatStatusBadge($status),
+                'data_realizacao' => date('d/m/Y', strtotime($p['data_realizacao'])),
+                'data_fatal' => $p['data_fatal'] ? date('d/m/Y', strtotime($p['data_fatal'])) : '-',
+                'tipo' => htmlspecialchars($p['tipo'] ?? '', ENT_QUOTES, 'UTF-8'),
+                'assistente' => htmlspecialchars($p['assistente'] ?? '-', ENT_QUOTES, 'UTF-8'),
+                'reclamada' => htmlspecialchars($p['reclamada_nome'] ?? '-', ENT_QUOTES, 'UTF-8'),
+                'reclamante' => htmlspecialchars($p['reclamante_nome'] ?? '-', ENT_QUOTES, 'UTF-8'),
+                'acoes' => $this->formatAcoesCell($p['id'] ?? null),
             ];
         }
 
@@ -416,8 +418,8 @@ class ParecerController extends Controller
             'data_realizacao' => $_POST['data_realizacao'] ?? '',
             'data_fatal' => $_POST['data_fatal'] ?? '',
             'data_entrega_parecer' => $_POST['data_entrega_parecer'] ?? '',
-            'status_parecer' => $_POST['status_parecer'] ?? '',
-            'status_revisao' => $_POST['status_revisao'] ?? '',
+            'status' => $_POST['status'] ?? 'Aguardando Parecer',
+            'link_pasta_drive' => $_POST['link_pasta_drive'] ?? '',
             'tipo' => $_POST['tipo'] ?? '',
             'assistente' => $_POST['assistente'] ?? '',
             'assistente_id' => $_POST['assistente_id'] ?? null,
@@ -426,6 +428,28 @@ class ParecerController extends Controller
             'funcoes' => $_POST['funcoes'] ?? '',
             'observacoes' => $_POST['observacoes'] ?? '',
         ];
+    }
+
+    private function formatStatusBadge(string $status): string
+    {
+        $badgeClass = 'bg-secondary';
+
+        switch ($status) {
+            case 'Aguardando Parecer':
+                $badgeClass = 'bg-warning';
+                break;
+            case 'Parecer para Revisão':
+                $badgeClass = 'bg-primary';
+                break;
+            case 'Parecer Revisado':
+                $badgeClass = 'bg-info';
+                break;
+            case 'Finalizado':
+                $badgeClass = 'bg-success';
+                break;
+        }
+
+        return '<span class="badge ' . $badgeClass . '">' . htmlspecialchars($status, ENT_QUOTES, 'UTF-8') . '</span>';
     }
 
     private function formatAcoesCell(?int $id): string

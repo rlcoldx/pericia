@@ -350,6 +350,7 @@ class AgendamentoController extends Controller
       'local_pericia' => $normalizeText($_POST['local_pericia'] ?? null),
       'status' => $status,
       'observacoes' => $normalizeText($_POST['observacoes'] ?? null),
+      'link_pasta_drive' => $normalizeText($_POST['link_pasta_drive'] ?? null),
       // MARCELO
       'data_realizada' => $normalizeDate($_POST['parecer_data_realizacao'] ?? null),
       'data_fatal' => $normalizeDate($_POST['parecer_data_fatal'] ?? null),
@@ -539,6 +540,7 @@ class AgendamentoController extends Controller
       'local_pericia' => $normalizeText($_POST['local_pericia'] ?? null),
       'status' => isset($_POST['status']) && $_POST['status'] !== '' ? $_POST['status'] : null,
       'observacoes' => $normalizeText($_POST['observacoes'] ?? null),
+      'link_pasta_drive' => $normalizeText($_POST['link_pasta_drive'] ?? null),
       // MARCELO
       'data_realizada' => $normalizeDate($_POST['parecer_data_realizacao'] ?? null),
       'data_fatal' => $normalizeDate($_POST['parecer_data_fatal'] ?? null),

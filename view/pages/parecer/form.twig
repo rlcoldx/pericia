@@ -71,23 +71,22 @@
                                 </div>
 
                                 <div class="col-12 col-lg-3 mb-3">
-                                    <label class="form-label">Status do Parecer</label>
-                                    <select class="form-control" name="status_parecer">
-                                        <option value="">Selecione</option>
-                                        <option value="OK" {{ action == 'editar' and parecer.status_parecer == 'OK' ? 'selected' : '' }}>OK</option>
-                                        <option value="FAVORAVEL" {{ action == 'editar' and parecer.status_parecer == 'FAVORAVEL' ? 'selected' : '' }}>Favorável</option>
-                                        <option value="DESFAVORAVEL" {{ action == 'editar' and parecer.status_parecer == 'DESFAVORAVEL' ? 'selected' : '' }}>Desfavorável</option>
-                                        <option value="PARCIAL FAVORAVEL" {{ action == 'editar' and parecer.status_parecer == 'PARCIAL FAVORAVEL' ? 'selected' : '' }}>Parcial Favorável</option>
-                                        <option value="NR (NÃO REALIZADO)" {{ action == 'editar' and parecer.status_parecer == 'NR (NÃO REALIZADO)' ? 'selected' : '' }}>NR (Não Realizado)</option>
-                                    </select>
+                                    <label class="form-label">Link da Pasta do Drive</label>
+                                    <input type="url"
+                                           class="form-control"
+                                           name="link_pasta_drive"
+                                           value="{{ action == 'editar' ? parecer.link_pasta_drive|default('') : '' }}"
+                                           placeholder="https://drive.google.com/....">
                                 </div>
 
                                 <div class="col-12 col-lg-3 mb-3">
-                                    <label class="form-label">Revisão de Parecer</label>
-                                    <select class="form-control" name="status_revisao">
-                                        <option value="">Selecione</option>
-                                        <option value="Revisão de Parecer" {{ action == 'editar' and parecer.status_revisao == 'Revisão de Parecer' ? 'selected' : '' }}>Revisão de Parecer</option>
-                                        <option value="Enviado" {{ action == 'editar' and parecer.status_revisao == 'Enviado' ? 'selected' : '' }}>Enviado</option>
+                                    <label class="form-label">Status</label>
+                                    <select name="status" id="parecer_status" class="form-control">
+                                        {% set currentStatus = action == 'editar' ? parecer.status|default('Aguardando Parecer') : 'Aguardando Parecer' %}
+                                        <option value="Aguardando Parecer" {{ currentStatus == 'Aguardando Parecer' ? 'selected' : '' }}>Aguardando Parecer</option>
+                                        <option value="Parecer para Revisão" {{ currentStatus == 'Parecer para Revisão' ? 'selected' : '' }}>Parecer para Revisão</option>
+                                        <option value="Parecer Revisado" {{ currentStatus == 'Parecer Revisado' ? 'selected' : '' }}>Parecer Revisado</option>
+                                        <option value="Finalizado" {{ currentStatus == 'Finalizado' ? 'selected' : '' }}>Finalizado</option>
                                     </select>
                                 </div>
 

@@ -31,13 +31,14 @@
                     <table id="datatable-pareceres" class="table dataTable align-middle">
                         <thead>
                             <tr>
+                                <th>Status</th>
                                 <th>Data Realização</th>
                                 <th>Data Fatal</th>
                                 <th>Tipo</th>
                                 <th>Assistente</th>
                                 <th>Reclamada</th>
                                 <th>Reclamante</th>
-                                <th>Ações</th>
+                                <th style="min-width: 5.5rem; white-space: nowrap;">Ações</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -52,6 +53,9 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ PATH }}/view/assets/js/datatables/datatables-ajax.js"></script>
-<script src="{{ PATH }}/view/assets/js/pages/datatables/parecer-datatable.js"></script>
+<script>
+    window.DOMAIN = '{{ DOMAIN }}';
+</script>
+<script src="{{ PATH }}/view/assets/js/datatables/datatables-ajax.js?v=20260610-5"></script>
+<script src="{{ PATH }}/view/assets/js/pages/datatables/parecer-datatable.js?v=20260610-5"></script>
 {% endblock %}

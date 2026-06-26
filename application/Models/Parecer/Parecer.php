@@ -96,12 +96,13 @@ class Parecer extends Model
         $orderDir = $params['order_dir'] ?? 'ASC';
 
         $columnMap = [
-            0 => 'p.data_realizacao',
-            1 => 'p.data_fatal',
-            2 => 'p.tipo',
-            3 => 'p.assistente',
-            4 => 'r.nome',
-            5 => 'r2.nome',
+            0 => 'p.status',
+            1 => 'p.data_realizacao',
+            2 => 'p.data_fatal',
+            3 => 'p.tipo',
+            4 => 'p.assistente',
+            5 => 'r.nome',
+            6 => 'r2.nome',
         ];
 
         $orderBy = 'p.data_realizacao DESC, p.id DESC';
@@ -109,7 +110,9 @@ class Parecer extends Model
             $orderBy = $columnMap[$orderColumn] . ' ' . $orderDir;
         }
 
-        $where = 'WHERE p.empresa = :empresa';
+        $filtroAgendamento = " AND (p.agendamento_id IS NULL OR a.status IS NULL OR a.status <> 'Não Realizada')";
+
+        $where = 'WHERE p.empresa = :empresa' . $filtroAgendamento;
         $whereParams = "empresa={$empresa}";
 
         if (!empty($filtros['data_inicio'])) {
@@ -141,6 +144,7 @@ class Parecer extends Model
         $searchParams = $whereParams;
         if (!empty($search)) {
             $searchWhere .= " AND (
+                p.status LIKE :search OR
                 p.tipo LIKE :search OR
                 p.assistente LIKE :search OR
                 r.nome LIKE :search OR
@@ -151,10 +155,12 @@ class Parecer extends Model
 
         $baseQuery = "SELECT p.*, 
                              r.nome as reclamada_nome,
-                             r2.nome as reclamante_nome
+                             r2.nome as reclamante_nome,
+                             a.status as agendamento_status
                       FROM pareceres p
                       LEFT JOIN reclamadas r ON p.reclamada_id = r.id AND p.empresa = r.empresa
-                      LEFT JOIN reclamantes r2 ON p.reclamante_id = r2.id AND p.empresa = r2.empresa";
+                      LEFT JOIN reclamantes r2 ON p.reclamante_id = r2.id AND p.empresa = r2.empresa
+                      LEFT JOIN agendamentos a ON p.agendamento_id = a.id AND p.empresa = a.empresa";
 
         $this->read = new Read();
         $this->read->FullRead($baseQuery . ' ' . $where, $whereParams);
