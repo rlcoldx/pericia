@@ -124,13 +124,20 @@ class ContaReceber extends Model
         if (empty($data['etapa'])) {
             $data['etapa'] = 'PERICIA';
         }
+
+        // Evita INSERT com string vazia em colunas DATE (falha silenciosa no MySQL strict)
+        foreach (['data_vencimento', 'data_emissao', 'data_pericia', 'data_envio', 'data_situacao'] as $campoData) {
+            if (array_key_exists($campoData, $data) && ($data[$campoData] === '' || $data[$campoData] === false)) {
+                $data[$campoData] = null;
+            }
+        }
         
         // Calcula valor pendente
         $valorPendente = $data['valor_total'] - ($data['valor_recebido'] ?? 0);
         $data['valor_pendente'] = $valorPendente;
 
         // Define status baseado no valor
-        if (!isset($data['status'])) {
+        if (!isset($data['status']) || $data['status'] === null || $data['status'] === '') {
             if ($valorPendente <= 0) {
                 $data['status'] = 'Recebido';
             } elseif ($data['valor_recebido'] > 0) {
@@ -140,8 +147,9 @@ class ContaReceber extends Model
             }
         }
 
+        $this->create = new Create();
         $this->create->ExeCreate("contas_receber", $data);
-        return $this->create->getResult();
+        return (bool) $this->create->getResult();
     }
     
     /**
@@ -225,6 +233,12 @@ class ContaReceber extends Model
      */
     public function atualizar($id, $company, $data): bool
     {
+        foreach (['data_vencimento', 'data_emissao', 'data_pericia', 'data_envio', 'data_situacao'] as $campoData) {
+            if (array_key_exists($campoData, $data) && ($data[$campoData] === '' || $data[$campoData] === false)) {
+                $data[$campoData] = null;
+            }
+        }
+
         // Recalcula valor pendente
         $valorTotal = $data['valor_total'] ?? 0;
         $valorRecebido = $data['valor_recebido'] ?? 0;
@@ -236,14 +250,15 @@ class ContaReceber extends Model
             $data['status'] = 'Recebido';
         } elseif ($valorRecebido > 0) {
             $data['status'] = 'Parcial';
-        } elseif (isset($data['data_vencimento']) && strtotime($data['data_vencimento']) < strtotime('today')) {
+        } elseif (!empty($data['data_vencimento']) && strtotime($data['data_vencimento']) < strtotime('today')) {
             $data['status'] = 'Vencido';
         } else {
             $data['status'] = 'Pendente';
         }
 
+        $this->update = new Update();
         $this->update->ExeUpdate("contas_receber", $data, "WHERE id = :id AND empresa = :empresa", "id={$id}&empresa={$company}");
-        return $this->update->getResult();
+        return (bool) $this->update->getResult();
     }
 
     /**

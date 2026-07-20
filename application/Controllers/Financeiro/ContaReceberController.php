@@ -164,54 +164,70 @@ class ContaReceberController extends Controller
 
     public function criarSalvar($params)
     {
+        header('Content-Type: application/json; charset=utf-8');
         $this->setParams($params);
-        $this->requirePermission('contas_receber_criar');
+
+        if (!$this->temPermissaoJson('contas_receber_criar')) {
+            return;
+        }
         
         $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
         
         if (!$empresa) {
-            $this->responseJson(['success' => false, 'message' => 'Empresa não encontrada']);
+            $this->responseJson(['success' => false, 'message' => 'Empresa não encontrada. Faça login novamente.']);
             return;
         }
 
-        $descricao = $_POST['descricao'] ?? '';
-        $clienteNome = $_POST['cliente_nome'] ?? '';
-        $valorTotal = $_POST['valor_total'] ?? '0';
-        $dataVencimento = $_POST['data_vencimento'] ?? null;
+        $descricao = trim((string) ($_POST['descricao'] ?? ''));
+        $clienteNome = trim((string) ($_POST['cliente_nome'] ?? ''));
+        $dataVencimento = $this->normalizarDataPost($_POST['data_vencimento'] ?? null);
 
-        if (empty($descricao) || empty($clienteNome) || empty($dataVencimento)) {
-            $this->responseJson(['success' => false, 'message' => 'Preencha todos os campos obrigatórios']);
+        if ($descricao === '' || $clienteNome === '' || $dataVencimento === null) {
+            $this->responseJson([
+                'success' => false,
+                'message' => 'Preencha Descrição, Cliente e Data de Vencimento (obrigatórios).'
+            ]);
             return;
         }
 
-        $valorTotal = $this->parseCurrency($valorTotal);
+        $valorTotal = $this->parseCurrency($_POST['valor_total'] ?? '0');
+        if ($valorTotal <= 0) {
+            $this->responseJson(['success' => false, 'message' => 'Informe um Valor Total maior que zero.']);
+            return;
+        }
+
         $valorRecebido = $this->parseCurrency($_POST['valor_recebido'] ?? '0');
+        $valorAssistenteRaw = $this->normalizarTextoPost($_POST['valor_assistente'] ?? null);
+        $tipo = $this->normalizarTextoPost($_POST['tipo'] ?? 'Perícia') ?? 'Perícia';
+        $tiposValidos = ['Perícia', 'Serviço', 'Outro'];
+        if (!in_array($tipo, $tiposValidos, true)) {
+            $tipo = 'Perícia';
+        }
 
         $data = [
-            'empresa' => $empresa,
-            'agendamento_id' => !empty($_POST['agendamento_id']) ? $_POST['agendamento_id'] : null,
+            'empresa' => (int) $empresa,
+            'agendamento_id' => !empty($_POST['agendamento_id']) ? (int) $_POST['agendamento_id'] : null,
             'descricao' => $descricao,
             'cliente_nome' => $clienteNome,
-            'cliente_documento' => $_POST['cliente_documento'] ?? null,
-            'local_pericia' => $_POST['local_pericia'] ?? null,
-            'reclamante_nome' => $_POST['reclamante_nome'] ?? null,
-            'numero_processo' => $_POST['numero_processo'] ?? null,
+            'cliente_documento' => $this->normalizarTextoPost($_POST['cliente_documento'] ?? null),
+            'local_pericia' => $this->normalizarTextoPost($_POST['local_pericia'] ?? null),
+            'reclamante_nome' => $this->normalizarTextoPost($_POST['reclamante_nome'] ?? null),
+            'numero_processo' => $this->normalizarTextoPost($_POST['numero_processo'] ?? null),
             'valor_total' => $valorTotal,
             'valor_recebido' => $valorRecebido,
             'data_vencimento' => $dataVencimento,
-            'data_emissao' => $_POST['data_emissao'] ?? date('Y-m-d'),
-            'data_pericia' => $_POST['data_pericia'] ?? null,
-            'data_envio' => $_POST['data_envio'] ?? null,
-            'status' => $_POST['status'] ?? null,
-            'tipo' => $_POST['tipo'] ?? 'Perícia',
-            'etapa' => $_POST['etapa'] ?? 'PERICIA',
-            'situacao' => $_POST['situacao'] ?? null,
-            'data_situacao' => $_POST['data_situacao'] ?? null,
-            'numero_nota_fiscal' => $_POST['numero_nota_fiscal'] ?? null,
-            'numero_boleto' => $_POST['numero_boleto'] ?? null,
-            'assistente_nome' => $_POST['assistente_nome'] ?? null,
-            'valor_assistente' => !empty($_POST['valor_assistente']) ? $this->parseCurrency($_POST['valor_assistente']) : null,
-            'observacoes' => $_POST['observacoes'] ?? null
+            'data_emissao' => $this->normalizarDataPost($_POST['data_emissao'] ?? null) ?? date('Y-m-d'),
+            'data_pericia' => $this->normalizarDataPost($_POST['data_pericia'] ?? null),
+            'data_envio' => $this->normalizarDataPost($_POST['data_envio'] ?? null),
+            'tipo' => $tipo,
+            'etapa' => $this->normalizarTextoPost($_POST['etapa'] ?? null) ?? 'PERICIA',
+            'situacao' => $this->normalizarTextoPost($_POST['situacao'] ?? null),
+            'data_situacao' => $this->normalizarDataPost($_POST['data_situacao'] ?? null),
+            'numero_nota_fiscal' => $this->normalizarTextoPost($_POST['numero_nota_fiscal'] ?? null),
+            'numero_boleto' => $this->normalizarTextoPost($_POST['numero_boleto'] ?? null),
+            'assistente_nome' => $this->normalizarTextoPost($_POST['assistente_nome'] ?? null),
+            'valor_assistente' => $valorAssistenteRaw !== null ? $this->parseCurrency($valorAssistenteRaw) : null,
+            'observacoes' => $this->normalizarTextoPost($_POST['observacoes'] ?? null),
         ];
 
         $model = new ContaReceber();
@@ -219,17 +235,25 @@ class ContaReceberController extends Controller
         
         if ($result) {
             $this->responseJson(['success' => true, 'message' => 'Conta a receber criada com sucesso']);
-        } else {
-            $this->responseJson(['success' => false, 'message' => 'Erro ao criar conta a receber']);
+            return;
         }
+
+        $this->responseJson([
+            'success' => false,
+            'message' => 'Erro ao criar conta a receber. Verifique se o agendamento vinculado existe e se os dados estão corretos.',
+        ]);
     }
 
     public function editarSalvar($params)
     {
+        header('Content-Type: application/json; charset=utf-8');
         $this->setParams($params);
-        $this->requirePermission('contas_receber_editar');
+
+        if (!$this->temPermissaoJson('contas_receber_editar')) {
+            return;
+        }
         
-        $id = $_POST['id'] ?? null;
+        $id = isset($_POST['id']) ? (int) $_POST['id'] : null;
         $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
         
         if (!$id || !$empresa) {
@@ -237,52 +261,66 @@ class ContaReceberController extends Controller
             return;
         }
 
-        $descricao = $_POST['descricao'] ?? '';
-        $clienteNome = $_POST['cliente_nome'] ?? '';
-        $valorTotal = $_POST['valor_total'] ?? '0';
-        $dataVencimento = $_POST['data_vencimento'] ?? null;
+        $descricao = trim((string) ($_POST['descricao'] ?? ''));
+        $clienteNome = trim((string) ($_POST['cliente_nome'] ?? ''));
+        $dataVencimento = $this->normalizarDataPost($_POST['data_vencimento'] ?? null);
 
-        if (empty($descricao) || empty($clienteNome) || empty($dataVencimento)) {
-            $this->responseJson(['success' => false, 'message' => 'Preencha todos os campos obrigatórios']);
+        if ($descricao === '' || $clienteNome === '' || $dataVencimento === null) {
+            $this->responseJson([
+                'success' => false,
+                'message' => 'Preencha Descrição, Cliente e Data de Vencimento (obrigatórios).'
+            ]);
             return;
         }
 
-        $valorTotal = $this->parseCurrency($valorTotal);
+        $valorTotal = $this->parseCurrency($_POST['valor_total'] ?? '0');
+        if ($valorTotal <= 0) {
+            $this->responseJson(['success' => false, 'message' => 'Informe um Valor Total maior que zero.']);
+            return;
+        }
+
         $valorRecebido = $this->parseCurrency($_POST['valor_recebido'] ?? '0');
+        $valorAssistenteRaw = $this->normalizarTextoPost($_POST['valor_assistente'] ?? null);
+        $tipo = $this->normalizarTextoPost($_POST['tipo'] ?? 'Perícia') ?? 'Perícia';
+        $tiposValidos = ['Perícia', 'Serviço', 'Outro'];
+        if (!in_array($tipo, $tiposValidos, true)) {
+            $tipo = 'Perícia';
+        }
 
         $data = [
-            'agendamento_id' => !empty($_POST['agendamento_id']) ? $_POST['agendamento_id'] : null,
+            'agendamento_id' => !empty($_POST['agendamento_id']) ? (int) $_POST['agendamento_id'] : null,
             'descricao' => $descricao,
             'cliente_nome' => $clienteNome,
-            'cliente_documento' => $_POST['cliente_documento'] ?? null,
-            'local_pericia' => $_POST['local_pericia'] ?? null,
-            'reclamante_nome' => $_POST['reclamante_nome'] ?? null,
-            'numero_processo' => $_POST['numero_processo'] ?? null,
+            'cliente_documento' => $this->normalizarTextoPost($_POST['cliente_documento'] ?? null),
+            'local_pericia' => $this->normalizarTextoPost($_POST['local_pericia'] ?? null),
+            'reclamante_nome' => $this->normalizarTextoPost($_POST['reclamante_nome'] ?? null),
+            'numero_processo' => $this->normalizarTextoPost($_POST['numero_processo'] ?? null),
             'valor_total' => $valorTotal,
             'valor_recebido' => $valorRecebido,
             'data_vencimento' => $dataVencimento,
-            'data_emissao' => $_POST['data_emissao'] ?? null,
-            'data_pericia' => $_POST['data_pericia'] ?? null,
-            'data_envio' => $_POST['data_envio'] ?? null,
-            'tipo' => $_POST['tipo'] ?? 'Perícia',
-            'etapa' => $_POST['etapa'] ?? 'PERICIA',
-            'situacao' => $_POST['situacao'] ?? null,
-            'data_situacao' => $_POST['data_situacao'] ?? null,
-            'numero_nota_fiscal' => $_POST['numero_nota_fiscal'] ?? null,
-            'numero_boleto' => $_POST['numero_boleto'] ?? null,
-            'assistente_nome' => $_POST['assistente_nome'] ?? null,
-            'valor_assistente' => !empty($_POST['valor_assistente']) ? $this->parseCurrency($_POST['valor_assistente']) : null,
-            'observacoes' => $_POST['observacoes'] ?? null
+            'data_emissao' => $this->normalizarDataPost($_POST['data_emissao'] ?? null),
+            'data_pericia' => $this->normalizarDataPost($_POST['data_pericia'] ?? null),
+            'data_envio' => $this->normalizarDataPost($_POST['data_envio'] ?? null),
+            'tipo' => $tipo,
+            'etapa' => $this->normalizarTextoPost($_POST['etapa'] ?? null) ?? 'PERICIA',
+            'situacao' => $this->normalizarTextoPost($_POST['situacao'] ?? null),
+            'data_situacao' => $this->normalizarDataPost($_POST['data_situacao'] ?? null),
+            'numero_nota_fiscal' => $this->normalizarTextoPost($_POST['numero_nota_fiscal'] ?? null),
+            'numero_boleto' => $this->normalizarTextoPost($_POST['numero_boleto'] ?? null),
+            'assistente_nome' => $this->normalizarTextoPost($_POST['assistente_nome'] ?? null),
+            'valor_assistente' => $valorAssistenteRaw !== null ? $this->parseCurrency($valorAssistenteRaw) : null,
+            'observacoes' => $this->normalizarTextoPost($_POST['observacoes'] ?? null),
         ];
 
         $model = new ContaReceber();
-        $result = $model->atualizar($id, $empresa, $data);
+        $result = $model->atualizar($id, (int) $empresa, $data);
         
         if ($result) {
             $this->responseJson(['success' => true, 'message' => 'Conta a receber atualizada com sucesso']);
-        } else {
-            $this->responseJson(['success' => false, 'message' => 'Erro ao atualizar conta a receber']);
+            return;
         }
+
+        $this->responseJson(['success' => false, 'message' => 'Erro ao atualizar conta a receber.']);
     }
 
     public function remover($params)
@@ -412,17 +450,66 @@ class ContaReceberController extends Controller
      */
     private function parseCurrency($value): float
     {
+        if ($value === null || $value === '') {
+            return 0.0;
+        }
+
         if (is_numeric($value)) {
             return (float) $value;
         }
         
-        // Remove tudo exceto números, vírgula e ponto
-        $value = preg_replace('/[^0-9,.]/', '', $value);
-        
-        // Substitui vírgula por ponto
+        $value = preg_replace('/[^0-9,.]/', '', (string) $value);
         $value = str_replace(',', '.', str_replace('.', '', $value));
         
         return (float) $value;
+    }
+
+    private function normalizarTextoPost($value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+        if (is_array($value)) {
+            $value = $value[0] ?? null;
+        }
+        $texto = trim((string) $value);
+
+        return $texto !== '' ? $texto : null;
+    }
+
+    private function normalizarDataPost($value): ?string
+    {
+        $texto = $this->normalizarTextoPost($value);
+        if ($texto === null) {
+            return null;
+        }
+
+        if (preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/', $texto, $m)) {
+            return sprintf('%s-%s-%s', $m[3], $m[2], $m[1]);
+        }
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $texto)) {
+            return $texto;
+        }
+
+        $ts = strtotime($texto);
+
+        return $ts !== false ? date('Y-m-d', $ts) : null;
+    }
+
+    private function temPermissaoJson(string $permission): bool
+    {
+        $permissionService = new \Agencia\Close\Services\Login\PermissionsService();
+        if ($permissionService->verifyPermissions($permission)) {
+            return true;
+        }
+
+        $this->responseJson([
+            'success' => false,
+            'message' => 'Você não tem permissão para esta operação.',
+        ]);
+
+        return false;
     }
 }
 

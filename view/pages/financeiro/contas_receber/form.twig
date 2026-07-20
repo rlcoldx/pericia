@@ -13,15 +13,23 @@
                     <li class="breadcrumb-item"><a href="{{ DOMAIN }}/contas-receber">Contas a Receber</a></li>
                     <li class="breadcrumb-item active"><a href="javascript:void(0)">{{ titulo }}</a></li>
                 </ol>
+                <div class="d-flex gap-2">
+                    <button type="submit" form="formContaReceber" class="btn btn-primary">
+                        <i class="fa-solid fa-save me-2"></i>Salvar
+                    </button>
+                    <a href="{{ DOMAIN }}/contas-receber" class="btn btn-secondary">
+                        <i class="fa-solid fa-times me-2"></i>Cancelar
+                    </a>
+                </div>
             </div>
         </div>
 
         <div class="card">
             <div class="card-header">
-                <h4 class="card-title">{{ titulo }}</h4>
+                <h4 class="card-title mb-0">{{ titulo }}</h4>
             </div>
             <div class="card-body">
-                <form id="formContaReceber">
+                <form id="formContaReceber" novalidate>
                     {% if action == 'editar' %}
                     <input type="hidden" name="id" value="{{ conta.id }}">
                     {% endif %}
@@ -40,6 +48,7 @@
                                         {% for agendamento in agendamentos %}
                                         <option value="{{ agendamento.id }}" 
                                                 data-cliente="{{ agendamento.cliente_nome }}"
+                                                data-documento="{{ agendamento.cliente_cpf|default('') }}"
                                                 data-local="{{ agendamento.local_pericia|default('') }}"
                                                 data-reclamante="{{ agendamento.reclamante_nome|default('') }}"
                                                 data-processo="{{ agendamento.numero_processo|default('') }}"
@@ -57,7 +66,7 @@
                                         </option>
                                         {% endfor %}
                                     </select>
-                                    <small class="form-text">Ao selecionar um agendamento, os campos serão preenchidos automaticamente</small>
+                                    <small class="form-text">Ao selecionar um agendamento, os campos serão preenchidos automaticamente. Confira a <strong>Data de Vencimento</strong> antes de salvar.</small>
                                 </div>
                             </div>
                         </div>
@@ -80,7 +89,7 @@
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">CPF/CNPJ</label>
-                                    <input type="text" name="cliente_documento" class="form-control" value="{{ conta.cliente_documento|default('') }}">
+                                    <input type="text" name="cliente_documento" id="cliente_documento" class="form-control" value="{{ conta.cliente_documento|default('') }}">
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Local da Perícia</label>
@@ -140,15 +149,19 @@
                     </div>
                     
                     <!-- Seção: Datas -->
-                    <div class="card mb-3">
+                    <div class="card mb-3 border-warning">
                         <div class="card-header">
                             <h5 class="mb-0">Datas</h5>
                         </div>
                         <div class="card-body">
+                            <div class="alert alert-warning py-2 mb-3">
+                                <i class="fa fa-exclamation-triangle me-2"></i>
+                                <strong>Data de Vencimento</strong> é obrigatória para salvar. Se o agendamento não tiver vencimento financeiro, preencha manualmente.
+                            </div>
                             <div class="row">
                                 <div class="col-md-3 mb-3">
                                     <label class="form-label">Data Emissão</label>
-                                    <input type="date" name="data_emissao" class="form-control" value="{{ conta.data_emissao|default('now'|date('Y-m-d')) }}">
+                                    <input type="date" name="data_emissao" id="data_emissao" class="form-control" value="{{ conta.data_emissao|default('now'|date('Y-m-d')) }}">
                                 </div>
                                 <div class="col-md-3 mb-3">
                                     <label class="form-label">Data da Perícia</label>
@@ -199,8 +212,8 @@
                             <div class="row">
                                 <div class="col-md-4 mb-3">
                                     <label class="form-label">Nº Pedido</label>
-                                    <input type="text" name="numero_pedido_cliente" id="numero_pedido_cliente" class="form-control" value="{{ conta.numero_pedido_cliente|default('') }}" readonly>
-                                    <small class="form-text">Vinculado ao agendamento</small>
+                                    <input type="text" name="numero_pedido_cliente" id="numero_pedido_cliente" class="form-control" value="{{ conta.numero_pedido_cliente|default('') }}">
+                                    <small class="form-text">Pode vir do agendamento ou ser informado manualmente</small>
                                 </div>
                                 <div class="col-md-4 mb-3">
                                     <label class="form-label">Nº Nota Fiscal</label>
@@ -244,9 +257,9 @@
                         </div>
                     </div>
                     
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fa-solid fa-save me-2"></i>Salvar
+                    <div class="d-flex gap-2 sticky-bottom bg-dark p-3 rounded border" style="bottom: 1rem; z-index: 10;">
+                        <button type="submit" class="btn btn-primary" id="btnSalvarContaReceber">
+                            <i class="fa-solid fa-save me-2"></i>Salvar Conta a Receber
                         </button>
                         <a href="{{ DOMAIN }}/contas-receber" class="btn btn-secondary">
                             <i class="fa-solid fa-times me-2"></i>Cancelar
@@ -270,27 +283,20 @@
     $(document).ready(function() {
         $('.money').mask('#.##0,00', {reverse: true});
         
-        // Inicializa Select2 com busca
         $('#agendamento_id').select2({
             placeholder: 'Selecione um agendamento (opcional)',
             allowClear: true,
             width: '100%',
             language: {
-                noResults: function() {
-                    return "Nenhum agendamento encontrado";
-                },
-                searching: function() {
-                    return "Buscando...";
-                }
+                noResults: function() { return "Nenhum agendamento encontrado"; },
+                searching: function() { return "Buscando..."; }
             }
         });
 
         function definirNumeroProcessoContaReceber(valor) {
             var v = (valor === undefined || valor === null) ? '' : String(valor).trim();
             var $np = $('#numero_processo');
-            if (!$np.length) {
-                return;
-            }
+            if (!$np.length) return;
             if (!v) {
                 $np.val(null).trigger('change');
                 return;
@@ -308,42 +314,70 @@
             $np.val(v).trigger('change');
         }
 
+        function formatMoneyFromNumber(num) {
+            var n = parseFloat(num);
+            if (isNaN(n)) n = 0;
+            return n.toFixed(2).replace('.', ',');
+        }
+
+        function addDaysYmd(ymd, days) {
+            if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return '';
+            var parts = ymd.split('-').map(Number);
+            var d = new Date(parts[0], parts[1] - 1, parts[2]);
+            d.setDate(d.getDate() + days);
+            var yy = d.getFullYear();
+            var mm = String(d.getMonth() + 1).padStart(2, '0');
+            var dd = String(d.getDate()).padStart(2, '0');
+            return yy + '-' + mm + '-' + dd;
+        }
+
         $('#numero_processo').select2({
             tags: true,
             placeholder: 'Selecione um número ou digite um novo',
             allowClear: true,
             width: '100%',
             language: {
-                noResults: function() {
-                    return 'Digite para informar um novo número';
-                },
-                searching: function() {
-                    return 'Buscando...';
-                }
+                noResults: function() { return 'Digite para informar um novo número'; },
+                searching: function() { return 'Buscando...'; }
             }
         });
         
-        // Preenche campos automaticamente ao selecionar agendamento
         $('#agendamento_id').on('change', function() {
             const selectedValue = $(this).val();
             if (selectedValue) {
                 const option = $(this).find('option:selected');
-                $('#cliente_nome').val(option.data('cliente'));
-                $('#local_pericia').val(option.data('local'));
-                $('#reclamante_nome').val(option.data('reclamante'));
+                $('#cliente_nome').val(option.data('cliente') || '');
+                $('#cliente_documento').val(option.data('documento') || '');
+                $('#local_pericia').val(option.data('local') || '');
+                $('#reclamante_nome').val(option.data('reclamante') || '');
                 definirNumeroProcessoContaReceber(option.data('processo'));
-                $('#valor_total').val(parseFloat(option.data('valor')).toFixed(2).replace('.', ','));
-                $('#data_pericia').val(option.data('data-pericia'));
-                $('#assistente_nome').val(option.data('assistente'));
-                $('#valor_assistente').val(parseFloat(option.data('valor-assistente')).toFixed(2).replace('.', ','));
-                $('#numero_nota_fiscal').val(option.data('nota-fiscal'));
-                $('#numero_boleto').val(option.data('boleto'));
-                $('#numero_pedido_cliente').val(option.data('pedido'));
-                $('#data_envio').val(option.data('envio'));
-                $('#data_vencimento').val(option.data('vencimento'));
+                $('#valor_total').val(formatMoneyFromNumber(option.data('valor')));
+                $('#data_pericia').val(option.data('data-pericia') || '');
+                $('#assistente_nome').val(option.data('assistente') || '');
+                $('#valor_assistente').val(formatMoneyFromNumber(option.data('valor-assistente')));
+                $('#numero_nota_fiscal').val(option.data('nota-fiscal') || '');
+                $('#numero_boleto').val(option.data('boleto') || '');
+                $('#numero_pedido_cliente').val(option.data('pedido') || '');
+                $('#data_envio').val(option.data('envio') || '');
+
+                var vencimento = option.data('vencimento') || '';
+                if (!vencimento) {
+                    var base = option.data('envio') || $('#data_emissao').val() || '';
+                    vencimento = base ? addDaysYmd(base, 30) : '';
+                }
+                $('#data_vencimento').val(vencimento);
+
+                if (!vencimento) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Atenção',
+                        text: 'O agendamento não tem Data de Vencimento. Preencha o campo Data Vencimento antes de salvar.'
+                    });
+                    $('#data_vencimento').focus();
+                }
             } else {
-                // Limpa campos se nenhum agendamento for selecionado
                 $('#cliente_nome').val('');
+                $('#cliente_documento').val('');
                 $('#local_pericia').val('');
                 $('#reclamante_nome').val('');
                 definirNumeroProcessoContaReceber('');
@@ -358,19 +392,78 @@
                 $('#data_vencimento').val('');
             }
         });
+
+        function validarFormularioContaReceber() {
+            var descricao = String($('#descricao').val() || '').trim();
+            var cliente = String($('#cliente_nome').val() || '').trim();
+            var valorTotal = String($('#valor_total').val() || '').trim();
+            var dataVencimento = String($('#data_vencimento').val() || '').trim();
+
+            if (!descricao) {
+                return { ok: false, message: 'Preencha a Descrição.', focus: '#descricao' };
+            }
+            if (!cliente) {
+                return { ok: false, message: 'Preencha o Cliente.', focus: '#cliente_nome' };
+            }
+            if (!valorTotal || valorTotal === '0,00' || valorTotal === '0') {
+                return { ok: false, message: 'Informe o Valor Total maior que zero.', focus: '#valor_total' };
+            }
+            if (!dataVencimento) {
+                return {
+                    ok: false,
+                    message: 'A Data de Vencimento é obrigatória. Sem ela o cadastro não é salvo.',
+                    focus: '#data_vencimento'
+                };
+            }
+            return { ok: true };
+        }
         
         $('#formContaReceber').on('submit', function(e) {
             e.preventDefault();
+
+            var validacao = validarFormularioContaReceber();
+            if (!validacao.ok) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Não foi possível salvar',
+                    text: validacao.message
+                }).then(function() {
+                    if (validacao.focus) {
+                        var $el = $(validacao.focus);
+                        $('html, body').animate({ scrollTop: $el.offset().top - 120 }, 300);
+                        $el.focus();
+                    }
+                });
+                return;
+            }
             
             const formData = new FormData(this);
             const url = ACTION === 'criar' ? DOMAIN + '/contas-receber/add/save' : DOMAIN + '/contas-receber/edit/save';
+            const $btn = $('#btnSalvarContaReceber');
+            const originalHtml = $btn.html();
+            $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin me-2"></i>Salvando...');
             
             fetch(url, {
                 method: 'POST',
-                body: formData
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
-            .then(response => response.json())
-            .then(data => {
+            .then(async function(response) {
+                const text = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (err) {
+                    throw new Error(text && text.trim()
+                        ? ('Resposta inválida do servidor: ' + text.substring(0, 180))
+                        : 'Resposta vazia do servidor. Verifique permissões e tente novamente.');
+                }
+                if (!response.ok && !data.message) {
+                    throw new Error('Erro HTTP ' + response.status);
+                }
+                return data;
+            })
+            .then(function(data) {
                 if (data.success) {
                     Swal.fire({
                         icon: 'success',
@@ -378,19 +471,28 @@
                         text: data.message,
                         timer: 2000,
                         showConfirmButton: false
-                    }).then(() => {
+                    }).then(function() {
                         window.location.href = DOMAIN + '/contas-receber';
                     });
                 } else {
                     Swal.fire({
                         icon: 'error',
                         title: 'Erro!',
-                        text: data.message
+                        text: data.message || 'Não foi possível salvar a conta a receber.'
                     });
+                    $btn.prop('disabled', false).html(originalHtml);
                 }
+            })
+            .catch(function(error) {
+                console.error('Erro ao salvar conta a receber:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro!',
+                    text: error.message || 'Ocorreu um erro ao salvar. Verifique o console (F12).'
+                });
+                $btn.prop('disabled', false).html(originalHtml);
             });
         });
     });
 </script>
 {% endblock %}
-
