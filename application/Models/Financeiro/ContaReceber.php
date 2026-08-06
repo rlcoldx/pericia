@@ -14,6 +14,7 @@ class ContaReceber extends Model
     protected Read $read;
     protected Update $update;
     protected Delete $delete;
+    private ?string $lastCreateError = null;
 
     public function __construct()
     {
@@ -73,83 +74,198 @@ class ContaReceber extends Model
 
     /**
      * Cria uma nova conta a receber
+     *
+     * @return bool|Create true/id on success path via getResult; bool for compatibility
      */
     public function criar($data): bool
     {
-        // Se tiver agendamento_id, busca dados do agendamento para preencher campos
-        if (!empty($data['agendamento_id'])) {
-            $agendamento = $this->getAgendamentoData($data['agendamento_id'], $data['empresa']);
-            if ($agendamento) {
-                // Preenche campos do agendamento se não foram fornecidos
-                if (empty($data['local_pericia']) && !empty($agendamento['local_pericia'])) {
-                    $data['local_pericia'] = $agendamento['local_pericia'];
-                }
-                if (empty($data['reclamante_nome']) && !empty($agendamento['reclamante_nome'])) {
-                    $data['reclamante_nome'] = $agendamento['reclamante_nome'];
-                }
-                if (empty($data['numero_processo']) && !empty($agendamento['numero_processo'])) {
-                    $data['numero_processo'] = $agendamento['numero_processo'];
-                }
-                if (empty($data['data_pericia']) && !empty($agendamento['data_realizada'])) {
-                    $data['data_pericia'] = $agendamento['data_realizada'];
-                }
-                if (empty($data['assistente_nome']) && !empty($agendamento['assistente_nome'])) {
-                    $data['assistente_nome'] = $agendamento['assistente_nome'];
-                }
-                if (empty($data['valor_assistente']) && !empty($agendamento['valor_pago_assistente'])) {
-                    $data['valor_assistente'] = $agendamento['valor_pago_assistente'];
-                }
-                if (empty($data['numero_nota_fiscal']) && !empty($agendamento['numero_nota_fiscal'])) {
-                    $data['numero_nota_fiscal'] = $agendamento['numero_nota_fiscal'];
-                }
-                if (empty($data['numero_boleto']) && !empty($agendamento['numero_boleto'])) {
-                    $data['numero_boleto'] = $agendamento['numero_boleto'];
-                }
-                if (empty($data['data_envio']) && !empty($agendamento['data_envio_financeiro'])) {
-                    $data['data_envio'] = $agendamento['data_envio_financeiro'];
-                }
-                if (empty($data['data_vencimento']) && !empty($agendamento['data_vencimento_financeiro'])) {
-                    $data['data_vencimento'] = $agendamento['data_vencimento_financeiro'];
-                }
-                if (empty($data['cliente_nome']) && !empty($agendamento['cliente_nome'])) {
-                    $data['cliente_nome'] = $agendamento['cliente_nome'];
-                }
-                if (empty($data['valor_total']) && !empty($agendamento['valor_pericia_cobrado'])) {
-                    $data['valor_total'] = $agendamento['valor_pericia_cobrado'];
+        try {
+            $this->ensureContasReceberSchema();
+
+            // Se tiver agendamento_id, busca dados do agendamento para preencher campos
+            if (!empty($data['agendamento_id'])) {
+                $agendamento = $this->getAgendamentoData($data['agendamento_id'], $data['empresa']);
+                if ($agendamento) {
+                    if (empty($data['local_pericia']) && !empty($agendamento['local_pericia'])) {
+                        $data['local_pericia'] = $agendamento['local_pericia'];
+                    }
+                    if (empty($data['reclamante_nome']) && !empty($agendamento['reclamante_nome'])) {
+                        $data['reclamante_nome'] = $agendamento['reclamante_nome'];
+                    }
+                    if (empty($data['numero_processo']) && !empty($agendamento['numero_processo'])) {
+                        $data['numero_processo'] = $agendamento['numero_processo'];
+                    }
+                    if (empty($data['data_pericia']) && !empty($agendamento['data_realizada'])) {
+                        $data['data_pericia'] = $agendamento['data_realizada'];
+                    }
+                    if (empty($data['assistente_nome']) && !empty($agendamento['assistente_nome'])) {
+                        $data['assistente_nome'] = $agendamento['assistente_nome'];
+                    }
+                    if (empty($data['valor_assistente']) && !empty($agendamento['valor_pago_assistente'])) {
+                        $data['valor_assistente'] = $agendamento['valor_pago_assistente'];
+                    }
+                    if (empty($data['numero_nota_fiscal']) && !empty($agendamento['numero_nota_fiscal'])) {
+                        $data['numero_nota_fiscal'] = $agendamento['numero_nota_fiscal'];
+                    }
+                    if (empty($data['numero_boleto']) && !empty($agendamento['numero_boleto'])) {
+                        $data['numero_boleto'] = $agendamento['numero_boleto'];
+                    }
+                    if (empty($data['numero_pedido_cliente']) && !empty($agendamento['numero_pedido_cliente'])) {
+                        $data['numero_pedido_cliente'] = $agendamento['numero_pedido_cliente'];
+                    }
+                    if (empty($data['data_envio']) && !empty($agendamento['data_envio_financeiro'])) {
+                        $data['data_envio'] = $agendamento['data_envio_financeiro'];
+                    }
+                    if (empty($data['data_vencimento']) && !empty($agendamento['data_vencimento_financeiro'])) {
+                        $data['data_vencimento'] = $agendamento['data_vencimento_financeiro'];
+                    }
+                    if (empty($data['cliente_nome']) && !empty($agendamento['cliente_nome'])) {
+                        $data['cliente_nome'] = $agendamento['cliente_nome'];
+                    }
+                    if (empty($data['cliente_documento']) && !empty($agendamento['cliente_cpf'])) {
+                        $data['cliente_documento'] = $agendamento['cliente_cpf'];
+                    }
+                    if (empty($data['valor_total']) && !empty($agendamento['valor_pericia_cobrado'])) {
+                        $data['valor_total'] = $agendamento['valor_pericia_cobrado'];
+                    }
+                } else {
+                    // Agendamento inválido/inexistente: não quebra o cadastro — remove o vínculo
+                    $data['agendamento_id'] = null;
                 }
             }
-        }
-        
-        // Define etapa padrão se não fornecida
-        if (empty($data['etapa'])) {
-            $data['etapa'] = 'PERICIA';
-        }
 
-        // Evita INSERT com string vazia em colunas DATE (falha silenciosa no MySQL strict)
-        foreach (['data_vencimento', 'data_emissao', 'data_pericia', 'data_envio', 'data_situacao'] as $campoData) {
-            if (array_key_exists($campoData, $data) && ($data[$campoData] === '' || $data[$campoData] === false)) {
-                $data[$campoData] = null;
+            if (empty($data['etapa'])) {
+                $data['etapa'] = 'PERICIA';
             }
-        }
-        
-        // Calcula valor pendente
-        $valorPendente = $data['valor_total'] - ($data['valor_recebido'] ?? 0);
-        $data['valor_pendente'] = $valorPendente;
 
-        // Define status baseado no valor
-        if (!isset($data['status']) || $data['status'] === null || $data['status'] === '') {
-            if ($valorPendente <= 0) {
-                $data['status'] = 'Recebido';
-            } elseif ($data['valor_recebido'] > 0) {
-                $data['status'] = 'Parcial';
+            foreach (['data_vencimento', 'data_emissao', 'data_pericia', 'data_envio', 'data_situacao'] as $campoData) {
+                if (array_key_exists($campoData, $data) && ($data[$campoData] === '' || $data[$campoData] === false)) {
+                    $data[$campoData] = null;
+                }
+            }
+
+            if (empty($data['data_vencimento'])) {
+                $this->lastCreateError = 'Data de vencimento é obrigatória.';
+                return false;
+            }
+
+            $valorPendente = (float) $data['valor_total'] - (float) ($data['valor_recebido'] ?? 0);
+            $data['valor_pendente'] = $valorPendente;
+
+            if (!isset($data['status']) || $data['status'] === null || $data['status'] === '') {
+                if ($valorPendente <= 0) {
+                    $data['status'] = 'Recebido';
+                } elseif ((float) ($data['valor_recebido'] ?? 0) > 0) {
+                    $data['status'] = 'Parcial';
+                } else {
+                    $data['status'] = 'Pendente';
+                }
+            }
+
+            // Só envia colunas que existem na tabela (evita Unknown column)
+            $data = $this->filtrarColunasExistentes('contas_receber', $data);
+            if ($data === []) {
+                $this->lastCreateError = 'Tabela contas_receber sem colunas utilizáveis.';
+                return false;
+            }
+
+            $this->create = new Create();
+            $this->create->ExeCreate('contas_receber', $data);
+            $ok = (bool) $this->create->getResult();
+            if (!$ok) {
+                $this->lastCreateError = $this->create->getLastError()
+                    ?? (($this->create->getErrorInfo()[2] ?? null) ?: 'Falha ao inserir no banco.');
             } else {
-                $data['status'] = 'Pendente';
+                $this->lastCreateError = null;
             }
-        }
 
-        $this->create = new Create();
-        $this->create->ExeCreate("contas_receber", $data);
-        return (bool) $this->create->getResult();
+            return $ok;
+        } catch (\Throwable $e) {
+            $this->lastCreateError = $e->getMessage();
+            return false;
+        }
+    }
+
+    public function getLastCreateError(): ?string
+    {
+        return $this->lastCreateError;
+    }
+
+    private function ensureContasReceberSchema(): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+
+        try {
+            $conn = (new class extends \Agencia\Close\Conn\Conn {
+                public function pdo()
+                {
+                    return $this->getConn();
+                }
+            })->pdo();
+
+            $needed = [
+                'etapa' => "ALTER TABLE `contas_receber` ADD COLUMN `etapa` varchar(50) DEFAULT 'PERICIA'",
+                'situacao' => "ALTER TABLE `contas_receber` ADD COLUMN `situacao` varchar(255) DEFAULT NULL",
+                'data_situacao' => "ALTER TABLE `contas_receber` ADD COLUMN `data_situacao` date DEFAULT NULL",
+                'local_pericia' => "ALTER TABLE `contas_receber` ADD COLUMN `local_pericia` varchar(500) DEFAULT NULL",
+                'reclamante_nome' => "ALTER TABLE `contas_receber` ADD COLUMN `reclamante_nome` varchar(255) DEFAULT NULL",
+                'numero_processo' => "ALTER TABLE `contas_receber` ADD COLUMN `numero_processo` varchar(255) DEFAULT NULL",
+                'data_pericia' => "ALTER TABLE `contas_receber` ADD COLUMN `data_pericia` date DEFAULT NULL",
+                'assistente_nome' => "ALTER TABLE `contas_receber` ADD COLUMN `assistente_nome` varchar(255) DEFAULT NULL",
+                'valor_assistente' => "ALTER TABLE `contas_receber` ADD COLUMN `valor_assistente` decimal(10,2) DEFAULT NULL",
+                'data_envio' => "ALTER TABLE `contas_receber` ADD COLUMN `data_envio` date DEFAULT NULL",
+                'numero_pedido_cliente' => "ALTER TABLE `contas_receber` ADD COLUMN `numero_pedido_cliente` varchar(255) DEFAULT NULL",
+            ];
+
+            // Só ADD COLUMN (rápido). Nunca MODIFY no request — trava/timeout → "Failed to fetch"
+            foreach ($needed as $col => $sql) {
+                try {
+                    $check = $conn->query("SHOW COLUMNS FROM `contas_receber` LIKE " . $conn->quote($col));
+                    if ($check && !$check->fetch()) {
+                        $conn->exec($sql);
+                    }
+                } catch (\Throwable $e) {
+                    // coluna já existe ou sem permissão
+                }
+            }
+        } catch (\Throwable $e) {
+            // sem permissão ALTER — segue; filtrarColunasExistentes evita Unknown column
+        }
+    }
+
+    private function filtrarColunasExistentes(string $table, array $data): array
+    {
+        try {
+            $conn = (new class extends \Agencia\Close\Conn\Conn {
+                public function pdo()
+                {
+                    return $this->getConn();
+                }
+            })->pdo();
+            $cols = [];
+            $stmt = $conn->query('SHOW COLUMNS FROM `' . str_replace('`', '', $table) . '`');
+            if ($stmt) {
+                foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $row) {
+                    $cols[$row['Field']] = true;
+                }
+            }
+            if ($cols === []) {
+                return $data;
+            }
+            $filtered = [];
+            foreach ($data as $k => $v) {
+                if (isset($cols[$k])) {
+                    $filtered[$k] = $v;
+                }
+            }
+            return $filtered;
+        } catch (\Throwable $e) {
+            return $data;
+        }
     }
     
     /**

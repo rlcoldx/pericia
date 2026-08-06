@@ -4,28 +4,26 @@ namespace Agencia\Close\Services\Login;
 
 class LoginSession
 {
-    public function loginUser(array $login)
+    public function loginUser(array $login): void
     {
-        $_SESSION = [
-            'pericia_perfil_id' => $login['id'],
-            'pericia_perfil_empresa' => $login['empresa'],
-            'pericia_perfil_tipo' => $login['tipo'],
-            'pericia_perfil_cargo' => $login['cargo'],
-            'pericia_perfil_slug' => $login['slug'],
-            'pericia_perfil_nome' => $login['nome'],
-            'pericia_perfil_email' => $login['email']
-        ];
+        // Não zera $_SESSION inteiro — preserva outros dados e só define o perfil.
+        $_SESSION['pericia_perfil_id'] = $login['id'];
+        $_SESSION['pericia_perfil_empresa'] = $login['empresa'];
+        $_SESSION['pericia_perfil_tipo'] = $login['tipo'];
+        $_SESSION['pericia_perfil_cargo'] = $login['cargo'] ?? null;
+        $_SESSION['pericia_perfil_slug'] = $login['slug'] ?? null;
+        $_SESSION['pericia_perfil_nome'] = $login['nome'];
+        $_SESSION['pericia_perfil_email'] = $login['email'];
+        $_SESSION['_pericia_last_touch'] = time();
     }
 
     public function userIsLogged(): bool
     {
-        if (isset($_SESSION['pericia_perfil_id'])){
-            return true;
-        }
-        return false;
+        return isset($_SESSION['pericia_perfil_id']) && (int) $_SESSION['pericia_perfil_id'] > 0;
     }
 
-    public function getUserId() {
-        return $_SESSION['pericia_perfil_id'];
+    public function getUserId()
+    {
+        return $_SESSION['pericia_perfil_id'] ?? null;
     }
 }

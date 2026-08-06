@@ -42,11 +42,9 @@ class Logon
             $email = (string) $_COOKIE['CookieLoginEmail'];
             $cookieRaw = (string) $_COOKIE['CookieLoginHash'];
 
-            // Novo formato: banco guarda sha256(token), cookie guarda token raw
             $cookieHashed = hash('sha256', $cookieRaw);
             $result = $login->getUserByEmailAndCookie($email, $cookieHashed);
 
-            // Compatibilidade: se ainda existir cookie_key antigo (plain), tenta também
             if (!$result->getResult()) {
                 $result = $login->getUserByEmailAndCookie($email, $cookieRaw);
             }
@@ -54,9 +52,10 @@ class Logon
                 $user = $result->getResult()[0];
                 $this->actionAfterFoundUser($user);
 
-                // Rotaciona token e renova expiração para mais 7 dias
-                $tokenNovo = $this->loginCookie($user['id'], $user['email']);
-                (new \Agencia\Close\Models\User\User())->saveCookie($user['email'], $tokenNovo);
+                // NÃO rotaciona o token legado (isso derrubava outros dispositivos).
+                // Só renova a expiração do cookie no navegador.
+                (new \Agencia\Close\Models\User\User())->saveCookie($user['email'], $cookieRaw);
+
                 return true;
             }
         }

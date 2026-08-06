@@ -165,83 +165,95 @@ class ContaReceberController extends Controller
     public function criarSalvar($params)
     {
         header('Content-Type: application/json; charset=utf-8');
-        $this->setParams($params);
 
-        if (!$this->temPermissaoJson('contas_receber_criar')) {
-            return;
-        }
-        
-        $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
-        
-        if (!$empresa) {
-            $this->responseJson(['success' => false, 'message' => 'Empresa não encontrada. Faça login novamente.']);
-            return;
-        }
+        try {
+            $this->setParams($params);
 
-        $descricao = trim((string) ($_POST['descricao'] ?? ''));
-        $clienteNome = trim((string) ($_POST['cliente_nome'] ?? ''));
-        $dataVencimento = $this->normalizarDataPost($_POST['data_vencimento'] ?? null);
+            if (!$this->temPermissaoJson('contas_receber_criar')) {
+                return;
+            }
 
-        if ($descricao === '' || $clienteNome === '' || $dataVencimento === null) {
+            $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
+
+            if (!$empresa) {
+                $this->responseJson(['success' => false, 'message' => 'Empresa não encontrada. Faça login novamente.']);
+                return;
+            }
+
+            $descricao = trim((string) ($_POST['descricao'] ?? ''));
+            $clienteNome = trim((string) ($_POST['cliente_nome'] ?? ''));
+            $dataVencimento = $this->normalizarDataPost($_POST['data_vencimento'] ?? null);
+
+            if ($descricao === '' || $clienteNome === '' || $dataVencimento === null) {
+                $this->responseJson([
+                    'success' => false,
+                    'message' => 'Preencha Descrição, Cliente e Data de Vencimento (obrigatórios).'
+                ]);
+                return;
+            }
+
+            $valorTotal = $this->parseCurrency($_POST['valor_total'] ?? '0');
+            if ($valorTotal <= 0) {
+                $this->responseJson(['success' => false, 'message' => 'Informe um Valor Total maior que zero.']);
+                return;
+            }
+
+            $valorRecebido = $this->parseCurrency($_POST['valor_recebido'] ?? '0');
+            $valorAssistenteRaw = $this->normalizarTextoPost($_POST['valor_assistente'] ?? null);
+            $tipo = $this->normalizarTextoPost($_POST['tipo'] ?? 'Perícia') ?? 'Perícia';
+            $tiposValidos = ['Perícia', 'Serviço', 'Outro'];
+            if (!in_array($tipo, $tiposValidos, true)) {
+                $tipo = 'Perícia';
+            }
+
+            $data = [
+                'empresa' => (int) $empresa,
+                'agendamento_id' => !empty($_POST['agendamento_id']) ? (int) $_POST['agendamento_id'] : null,
+                'descricao' => $descricao,
+                'cliente_nome' => $clienteNome,
+                'cliente_documento' => $this->normalizarTextoPost($_POST['cliente_documento'] ?? null),
+                'local_pericia' => $this->normalizarTextoPost($_POST['local_pericia'] ?? null),
+                'reclamante_nome' => $this->normalizarTextoPost($_POST['reclamante_nome'] ?? null),
+                'numero_processo' => $this->normalizarTextoPost($_POST['numero_processo'] ?? null),
+                'valor_total' => $valorTotal,
+                'valor_recebido' => $valorRecebido,
+                'data_vencimento' => $dataVencimento,
+                'data_emissao' => $this->normalizarDataPost($_POST['data_emissao'] ?? null) ?? date('Y-m-d'),
+                'data_pericia' => $this->normalizarDataPost($_POST['data_pericia'] ?? null),
+                'data_envio' => $this->normalizarDataPost($_POST['data_envio'] ?? null),
+                'tipo' => $tipo,
+                'etapa' => $this->normalizarTextoPost($_POST['etapa'] ?? null) ?? 'PERICIA',
+                'situacao' => $this->normalizarTextoPost($_POST['situacao'] ?? null),
+                'data_situacao' => $this->normalizarDataPost($_POST['data_situacao'] ?? null),
+                'numero_nota_fiscal' => $this->normalizarTextoPost($_POST['numero_nota_fiscal'] ?? null),
+                'numero_pedido_cliente' => $this->normalizarTextoPost($_POST['numero_pedido_cliente'] ?? null),
+                'numero_boleto' => $this->normalizarTextoPost($_POST['numero_boleto'] ?? null),
+                'assistente_nome' => $this->normalizarTextoPost($_POST['assistente_nome'] ?? null),
+                'valor_assistente' => $valorAssistenteRaw !== null ? $this->parseCurrency($valorAssistenteRaw) : null,
+                'observacoes' => $this->normalizarTextoPost($_POST['observacoes'] ?? null),
+            ];
+
+            $model = new ContaReceber();
+            $result = $model->criar($data);
+
+            if ($result) {
+                $this->responseJson(['success' => true, 'message' => 'Conta a receber criada com sucesso']);
+                return;
+            }
+
+            $driverMsg = $model->getLastCreateError() ?? '';
             $this->responseJson([
                 'success' => false,
-                'message' => 'Preencha Descrição, Cliente e Data de Vencimento (obrigatórios).'
+                'message' => $driverMsg !== ''
+                    ? ('Erro ao criar conta a receber: ' . $driverMsg)
+                    : 'Erro ao criar conta a receber. Verifique os dados e tente novamente.',
             ]);
-            return;
+        } catch (\Throwable $e) {
+            $this->responseJson([
+                'success' => false,
+                'message' => 'Erro ao criar conta a receber: ' . $e->getMessage(),
+            ]);
         }
-
-        $valorTotal = $this->parseCurrency($_POST['valor_total'] ?? '0');
-        if ($valorTotal <= 0) {
-            $this->responseJson(['success' => false, 'message' => 'Informe um Valor Total maior que zero.']);
-            return;
-        }
-
-        $valorRecebido = $this->parseCurrency($_POST['valor_recebido'] ?? '0');
-        $valorAssistenteRaw = $this->normalizarTextoPost($_POST['valor_assistente'] ?? null);
-        $tipo = $this->normalizarTextoPost($_POST['tipo'] ?? 'Perícia') ?? 'Perícia';
-        $tiposValidos = ['Perícia', 'Serviço', 'Outro'];
-        if (!in_array($tipo, $tiposValidos, true)) {
-            $tipo = 'Perícia';
-        }
-
-        $data = [
-            'empresa' => (int) $empresa,
-            'agendamento_id' => !empty($_POST['agendamento_id']) ? (int) $_POST['agendamento_id'] : null,
-            'descricao' => $descricao,
-            'cliente_nome' => $clienteNome,
-            'cliente_documento' => $this->normalizarTextoPost($_POST['cliente_documento'] ?? null),
-            'local_pericia' => $this->normalizarTextoPost($_POST['local_pericia'] ?? null),
-            'reclamante_nome' => $this->normalizarTextoPost($_POST['reclamante_nome'] ?? null),
-            'numero_processo' => $this->normalizarTextoPost($_POST['numero_processo'] ?? null),
-            'valor_total' => $valorTotal,
-            'valor_recebido' => $valorRecebido,
-            'data_vencimento' => $dataVencimento,
-            'data_emissao' => $this->normalizarDataPost($_POST['data_emissao'] ?? null) ?? date('Y-m-d'),
-            'data_pericia' => $this->normalizarDataPost($_POST['data_pericia'] ?? null),
-            'data_envio' => $this->normalizarDataPost($_POST['data_envio'] ?? null),
-            'tipo' => $tipo,
-            'etapa' => $this->normalizarTextoPost($_POST['etapa'] ?? null) ?? 'PERICIA',
-            'situacao' => $this->normalizarTextoPost($_POST['situacao'] ?? null),
-            'data_situacao' => $this->normalizarDataPost($_POST['data_situacao'] ?? null),
-            'numero_nota_fiscal' => $this->normalizarTextoPost($_POST['numero_nota_fiscal'] ?? null),
-            'numero_boleto' => $this->normalizarTextoPost($_POST['numero_boleto'] ?? null),
-            'assistente_nome' => $this->normalizarTextoPost($_POST['assistente_nome'] ?? null),
-            'valor_assistente' => $valorAssistenteRaw !== null ? $this->parseCurrency($valorAssistenteRaw) : null,
-            'observacoes' => $this->normalizarTextoPost($_POST['observacoes'] ?? null),
-        ];
-
-        $model = new ContaReceber();
-        $result = $model->criar($data);
-        
-        if ($result) {
-            $this->responseJson(['success' => true, 'message' => 'Conta a receber criada com sucesso']);
-            return;
-        }
-
-        $this->responseJson([
-            'success' => false,
-            'message' => 'Erro ao criar conta a receber. Verifique se o agendamento vinculado existe e se os dados estão corretos.',
-        ]);
     }
 
     public function editarSalvar($params)

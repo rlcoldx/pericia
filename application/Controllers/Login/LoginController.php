@@ -32,16 +32,16 @@ class LoginController extends Controller
             echo '1';
         } else {
             echo '0';
-        } 
+        }
     }
 
     public function logout(array $params)
     {
         $this->setParams($params);
 
-        $email = $_SESSION['pericia_perfil_email'] ?? null;
         $userId = $_SESSION['pericia_perfil_id'] ?? null;
 
+        // Revoga apenas ESTE dispositivo no login permanente
         if ($userId) {
             try {
                 PersistentLoginService::revokeCurrentDevice((int) $userId);
@@ -51,43 +51,44 @@ class LoginController extends Controller
         }
         PersistentLoginService::clearCookie();
 
-        session_destroy();
-
-        // Limpa cookie no browser (mesmos parâmetros de path/samesite)
-        $secure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
-        $host = (string) ($_SERVER['HTTP_HOST'] ?? '');
-        $hostNoPort = preg_replace('/:\d+$/', '', $host) ?? $host;
-        $domain = null;
-        if ($hostNoPort !== '' && $hostNoPort !== 'localhost' && !filter_var($hostNoPort, FILTER_VALIDATE_IP)) {
-            $domain = '.' . ltrim($hostNoPort, '.');
-        }
+        // Limpa cookies legados
+        $opts = PersistentLoginService::cookieOptions(time() - 3600);
+        setcookie('CookieLoginEmail', '', $opts);
+        setcookie('CookieLoginHash', '', $opts);
         setcookie('CookieLoginEmail', '', [
             'expires' => time() - 3600,
             'path' => '/',
-            'domain' => $domain,
-            'secure' => $secure,
+            'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
             'httponly' => true,
             'samesite' => 'Lax',
         ]);
         setcookie('CookieLoginHash', '', [
             'expires' => time() - 3600,
             'path' => '/',
-            'domain' => $domain,
-            'secure' => $secure,
+            'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
             'httponly' => true,
             'samesite' => 'Lax',
         ]);
 
-        // Revoga no banco (remove cookie_key) se tiver id
-        if ($userId) {
-            try {
-                (new User())->saveDatabase(null, (int) $userId);
-            } catch (\Throwable $e) {
-                // não bloqueia logout
-            }
+        // Não zera cookie_key no banco: isso derrubaria login legado em outros dispositivos.
+        // Neste PC os cookies já foram apagados; o hash permanente deste dispositivo já foi removido.
+
+        // Destrói sessão PHP de forma completa
+        $_SESSION = [];
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            $paramsCookie = session_get_cookie_params();
+            setcookie(session_name(), '', [
+                'expires' => time() - 3600,
+                'path' => $paramsCookie['path'] ?? '/',
+                'domain' => $paramsCookie['domain'] ?? '',
+                'secure' => (bool) ($paramsCookie['secure'] ?? false),
+                'httponly' => (bool) ($paramsCookie['httponly'] ?? true),
+                'samesite' => $paramsCookie['samesite'] ?? 'Lax',
+            ]);
+            session_destroy();
         }
 
-        $this->router->redirect("login");
+        $this->router->redirect('login');
     }
 
     private function createUser(string $name, string $email, array $arrayIdentification): void
@@ -98,7 +99,7 @@ class LoginController extends Controller
 
         if (!EmailUser::verifyIfEmailExist($identification)) {
             $user = new User();
-            $createdId = $user->saveUserByOauth($name, $email, $arrayIdentification);
+            $user->saveUserByOauth($name, $email, $arrayIdentification);
         }
     }
 }

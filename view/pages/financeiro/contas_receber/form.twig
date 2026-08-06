@@ -154,9 +154,9 @@
                             <h5 class="mb-0">Datas</h5>
                         </div>
                         <div class="card-body">
-                            <div class="alert alert-warning py-2 mb-3">
-                                <i class="fa fa-exclamation-triangle me-2"></i>
-                                <strong>Data de Vencimento</strong> é obrigatória para salvar. Se o agendamento não tiver vencimento financeiro, preencha manualmente.
+                            <div class="alert alert-info py-2 mb-3" id="alertaVencimento">
+                                <i class="fa fa-info-circle me-2"></i>
+                                Confira a <strong>Data de Vencimento</strong> antes de salvar. Se o agendamento não tiver vencimento financeiro, preencha manualmente.
                             </div>
                             <div class="row">
                                 <div class="col-md-3 mb-3">
@@ -438,15 +438,22 @@
             }
             
             const formData = new FormData(this);
-            const url = ACTION === 'criar' ? DOMAIN + '/contas-receber/add/save' : DOMAIN + '/contas-receber/edit/save';
-            const $btn = $('#btnSalvarContaReceber');
-            const originalHtml = $btn.html();
-            $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin me-2"></i>Salvando...');
+            // Usa o mesmo host da página (evita "Failed to fetch" com www/http vs DOMAIN)
+            const savePath = ACTION === 'criar' ? '/contas-receber/add/save' : '/contas-receber/edit/save';
+            const url = window.location.origin + savePath;
+            const $btn = $('#btnSalvarContaReceber, button[type="submit"][form="formContaReceber"]');
+            const originalHtml = $btn.first().html();
+            $btn.prop('disabled', true);
+            $('#btnSalvarContaReceber').html('<i class="fa fa-spinner fa-spin me-2"></i>Salvando...');
             
             fetch(url, {
                 method: 'POST',
                 body: formData,
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                credentials: 'same-origin',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
             })
             .then(async function(response) {
                 const text = await response.text();
@@ -454,6 +461,9 @@
                 try {
                     data = JSON.parse(text);
                 } catch (err) {
+                    if (/login/i.test(response.url || '') || /<html/i.test(text)) {
+                        throw new Error('Sessão expirada. Faça login novamente e tente salvar de novo.');
+                    }
                     throw new Error(text && text.trim()
                         ? ('Resposta inválida do servidor: ' + text.substring(0, 180))
                         : 'Resposta vazia do servidor. Verifique permissões e tente novamente.');
@@ -472,7 +482,7 @@
                         timer: 2000,
                         showConfirmButton: false
                     }).then(function() {
-                        window.location.href = DOMAIN + '/contas-receber';
+                        window.location.href = window.location.origin + '/contas-receber';
                     });
                 } else {
                     Swal.fire({
@@ -480,17 +490,23 @@
                         title: 'Erro!',
                         text: data.message || 'Não foi possível salvar a conta a receber.'
                     });
-                    $btn.prop('disabled', false).html(originalHtml);
+                    $btn.prop('disabled', false);
+                    $('#btnSalvarContaReceber').html(originalHtml);
                 }
             })
             .catch(function(error) {
                 console.error('Erro ao salvar conta a receber:', error);
+                var msg = (error && error.message) ? error.message : '';
+                if (!msg || /failed to fetch/i.test(msg) || error.name === 'TypeError') {
+                    msg = 'Não foi possível conectar ao servidor. Atualize a página com Ctrl+F5 e tente novamente. Se continuar, verifique a conexão ou se a sessão ainda está ativa.';
+                }
                 Swal.fire({
                     icon: 'error',
                     title: 'Erro!',
-                    text: error.message || 'Ocorreu um erro ao salvar. Verifique o console (F12).'
+                    text: msg
                 });
-                $btn.prop('disabled', false).html(originalHtml);
+                $btn.prop('disabled', false);
+                $('#btnSalvarContaReceber').html(originalHtml);
             });
         });
     });

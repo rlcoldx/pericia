@@ -2,20 +2,24 @@
 
 namespace Agencia\Close\Services\Login;
 
+use Agencia\Close\Conn\Read;
 use Agencia\Close\Models\User\User;
+use PDOException;
 
 /**
- * Login persistente: um cookie com token opaco; no banco, SHA-256 do token em `usuarios.loginHash`
- * (vários hashes separados por vírgula para vários PCs).
+ * Login permanente: cookie opaco no navegador + hash SHA-256 em `usuarios.loginHash`
+ * (vários hashes separados por vírgula = vários PCs/dispositivos).
+ *
+ * Só é revogado no logout explícito deste dispositivo.
  */
 class PersistentLoginService
 {
     public const COOKIE_NAME = 'PericiaLoginPersist';
 
-    /** @var int Tempo de vida do cookie (1 ano) */
-    private const COOKIE_LIFETIME = 3600 * 24 * 365;
+    /** ~10 anos — praticamente permanente até logout */
+    private const COOKIE_LIFETIME = 315360000;
 
-    public static function cookieOptions(): array
+    public static function cookieOptions(?int $expires = null): array
     {
         $secure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
         $host = (string) ($_SERVER['HTTP_HOST'] ?? '');
@@ -26,7 +30,7 @@ class PersistentLoginService
         }
 
         return [
-            'expires' => time() + self::COOKIE_LIFETIME,
+            'expires' => $expires ?? (time() + self::COOKIE_LIFETIME),
             'path' => '/',
             'domain' => $domain,
             'secure' => $secure,
@@ -36,26 +40,75 @@ class PersistentLoginService
     }
 
     /**
-     * Gera token, grava hash em `loginHash` e envia cookie único.
+     * Garante coluna loginHash (idempotente) para o login permanente funcionar sem depender
+     * de alguém abrir o painel de migrations.
+     */
+    public static function ensureSchema(): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+
+        try {
+            $read = new Read();
+            $read->FullRead("SHOW COLUMNS FROM `usuarios` LIKE 'loginHash'");
+            if ($read->getResult()) {
+                return;
+            }
+
+            // Usa Update/FullUpdate path via PDO do Read: executa ALTER direto
+            $conn = (new class extends \Agencia\Close\Conn\Conn {
+                public function pdo()
+                {
+                    return $this->getConn();
+                }
+            })->pdo();
+
+            $conn->exec(
+                "ALTER TABLE `usuarios`
+                 ADD COLUMN `loginHash` TEXT NULL DEFAULT NULL
+                 COMMENT 'Hashes SHA-256 de tokens persistentes (vírgula)'"
+            );
+        } catch (PDOException $e) {
+            // coluna já existe / sem permissão
+        } catch (\Throwable $e) {
+            // ignore
+        }
+    }
+
+    /**
+     * Emite cookie permanente para o dispositivo atual (não invalida outros PCs).
      */
     public static function issueForUser(int $userId): void
     {
         if ($userId <= 0) {
             return;
         }
+
+        self::ensureSchema();
+
         $rawToken = bin2hex(random_bytes(32));
         $hashHex = hash('sha256', $rawToken);
 
         $userModel = new User();
-        if (!$userModel->appendLoginHash($userId, $hashHex)) {
+        $saved = $userModel->appendLoginHash($userId, $hashHex);
+        if (!$saved) {
+            // Última tentativa: se a coluna acabou de ser criada, tenta de novo
+            self::ensureSchema();
+            $saved = $userModel->appendLoginHash($userId, $hashHex);
+        }
+        if (!$saved) {
             return;
         }
 
-        setcookie(self::COOKIE_NAME, $rawToken, self::cookieOptions());
+        self::setPersistCookie($rawToken);
+        $_COOKIE[self::COOKIE_NAME] = $rawToken;
     }
 
     /**
-     * Restaura sessão a partir do cookie, se o hash existir em `loginHash`.
+     * Restaura sessão a partir do cookie permanente.
      */
     public static function tryRestoreSession(): bool
     {
@@ -63,15 +116,11 @@ class PersistentLoginService
         if ($loginSession->userIsLogged()) {
             return true;
         }
-        $raw = $_COOKIE[self::COOKIE_NAME] ?? null;
-        if ($raw === null || $raw === '') {
-            return false;
-        }
-        if (is_array($raw)) {
-            $raw = (string) ($raw[0] ?? '');
-        }
-        $raw = trim((string) $raw);
-        if ($raw === '' || strlen($raw) < 32) {
+
+        self::ensureSchema();
+
+        $raw = self::rawTokenFromRequest();
+        if ($raw === null) {
             return false;
         }
 
@@ -83,33 +132,108 @@ class PersistentLoginService
         }
 
         $loginSession->loginUser($row);
-        // Renova expiração do cookie no browser
-        setcookie(self::COOKIE_NAME, $raw, self::cookieOptions());
+        self::setPersistCookie($raw);
+        self::renewPhpSessionCookie();
 
         return true;
     }
 
+    /**
+     * Renova cookies de sessão + persistência enquanto o usuário está logado.
+     * Se estiver logado sem cookie permanente, emite um (migração de sessões antigas).
+     */
+    public static function touchWhileLoggedIn(): void
+    {
+        $loginSession = new LoginSession();
+        if (!$loginSession->userIsLogged()) {
+            return;
+        }
+
+        self::renewPhpSessionCookie();
+
+        $raw = self::rawTokenFromRequest();
+        if ($raw !== null) {
+            self::setPersistCookie($raw);
+
+            return;
+        }
+
+        $userId = (int) $loginSession->getUserId();
+        if ($userId > 0) {
+            self::issueForUser($userId);
+        }
+    }
+
     public static function clearCookie(): void
     {
-        $opts = self::cookieOptions();
-        $opts['expires'] = time() - 3600;
+        $opts = self::cookieOptions(time() - 3600);
         setcookie(self::COOKIE_NAME, '', $opts);
+        // Também limpa sem domain (caso o cookie tenha sido gravado sem domain)
+        setcookie(self::COOKIE_NAME, '', [
+            'expires' => time() - 3600,
+            'path' => '/',
+            'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
+        unset($_COOKIE[self::COOKIE_NAME]);
     }
 
     public static function revokeCurrentDevice(int $userId): void
     {
-        $raw = $_COOKIE[self::COOKIE_NAME] ?? null;
-        if ($raw === null || $raw === '' || $userId <= 0) {
+        $raw = self::rawTokenFromRequest();
+        if ($raw === null || $userId <= 0) {
             return;
+        }
+        $hashHex = hash('sha256', $raw);
+        (new User())->removeLoginHash($userId, $hashHex);
+    }
+
+    public static function lifetimeSeconds(): int
+    {
+        return self::COOKIE_LIFETIME;
+    }
+
+    private static function rawTokenFromRequest(): ?string
+    {
+        $raw = $_COOKIE[self::COOKIE_NAME] ?? null;
+        if ($raw === null || $raw === '') {
+            return null;
         }
         if (is_array($raw)) {
             $raw = (string) ($raw[0] ?? '');
         }
         $raw = trim((string) $raw);
-        if ($raw === '') {
+        if ($raw === '' || strlen($raw) < 32) {
+            return null;
+        }
+
+        return $raw;
+    }
+
+    private static function setPersistCookie(string $rawToken): void
+    {
+        setcookie(self::COOKIE_NAME, $rawToken, self::cookieOptions());
+    }
+
+    /**
+     * Renova o cookie PHPSESSID com a mesma longevidade do login permanente.
+     */
+    public static function renewPhpSessionCookie(): void
+    {
+        if (session_status() !== PHP_SESSION_ACTIVE) {
             return;
         }
-        $hashHex = hash('sha256', $raw);
-        (new User())->removeLoginHash($userId, $hashHex);
+
+        $name = session_name();
+        $id = session_id();
+        if ($name === '' || $id === '') {
+            return;
+        }
+
+        $opts = self::cookieOptions();
+        setcookie($name, $id, $opts);
+        // Marca atividade para o GC não considerar a sessão “morta”
+        $_SESSION['_pericia_last_touch'] = time();
     }
 }

@@ -1,14 +1,13 @@
 <?php
 /**
- * Sessão persistente (mínimo 7 dias): cookie de sessão + tempo de vida no servidor.
- * Sem isso, o cookie PHPSESSION costuma ser "de sessão" (some ao fechar o navegador)
- * e o GC do PHP pode apagar dados da sessão em ~24 minutos.
+ * Sessão praticamente permanente (alinhada ao cookie PericiaLoginPersist).
+ * Só some de fato no logout explícito; o middleware restaura via cookie se o PHP limpar a sessão.
  */
 if (session_status() !== PHP_SESSION_NONE) {
     return;
 }
 
-$lifetimeSeconds = 60 * 60 * 24 * 7; // 7 dias
+$lifetimeSeconds = 315360000; // ~10 anos
 $secure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
 $host = (string) ($_SERVER['HTTP_HOST'] ?? '');
 $hostNoPort = preg_replace('/:\d+$/', '', $host) ?? $host;
@@ -18,15 +17,12 @@ if ($hostNoPort !== '' && $hostNoPort !== 'localhost' && !filter_var($hostNoPort
 }
 
 ini_set('session.gc_maxlifetime', (string) $lifetimeSeconds);
-// Evita que o coletor apague sessões válidas em ambientes com baixo tráfego
 ini_set('session.gc_probability', '1');
-ini_set('session.gc_divisor', '100');
-/*
- * PHP 7+ (padrão On): com lazy_write, se $_SESSION não mudar entre requisições o arquivo
- * da sessão pode não ser regravado — o mtime fica antigo e o GC apaga a sessão mesmo com
- * o usuário navegando. Isso derruba o login antes dos 7 dias e impede o cookie persistente
- * de “salvar” a tempo. Desligar força gravação a cada request e renova o ciclo de vida.
- */
+ini_set('session.gc_divisor', '1000');
+ini_set('session.cookie_lifetime', (string) $lifetimeSeconds);
+ini_set('session.use_strict_mode', '1');
+ini_set('session.use_only_cookies', '1');
+
 if (PHP_VERSION_ID >= 70000) {
     ini_set('session.lazy_write', '0');
 }
@@ -41,7 +37,6 @@ if (PHP_VERSION_ID >= 70300) {
         'samesite' => 'Lax',
     ]);
 } else {
-    // assinatura antiga: lifetime, path, domain, secure, httponly
     session_set_cookie_params($lifetimeSeconds, '/', (string) ($domain ?? ''), $secure, true);
 }
 

@@ -9,6 +9,7 @@ use Agencia\Close\Conn\Update;
 use Agencia\Close\Helpers\User\Identification;
 use Agencia\Close\Helpers\User\UserIdentification;
 use Agencia\Close\Models\Model;
+use Agencia\Close\Services\Login\PersistentLoginService;
 
 class User extends Model
 {
@@ -45,35 +46,12 @@ class User extends Model
 
     public function saveCookie($email, $cookieValue): void
     {
-        // 7 dias
-        $expire = time() + 3600 * 24 * 7;
-        $secure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
-        $host = (string) ($_SERVER['HTTP_HOST'] ?? '');
-        // remove porta (ex.: localhost:8080)
-        $hostNoPort = preg_replace('/:\d+$/', '', $host) ?? $host;
-        // para domínio normal (sem localhost/IP), usar cookie de domínio para não perder login entre www/sem-www
-        $domain = null;
-        if ($hostNoPort !== '' && $hostNoPort !== 'localhost' && !filter_var($hostNoPort, FILTER_VALIDATE_IP)) {
-            $domain = '.' . ltrim($hostNoPort, '.');
-        }
+        // Alinhado ao login permanente (~10 anos)
+        $expire = time() + PersistentLoginService::lifetimeSeconds();
+        $opts = PersistentLoginService::cookieOptions($expire);
 
-        setcookie('CookieLoginEmail', (string) $email, [
-            'expires' => $expire,
-            'path' => '/',
-            'domain' => $domain,
-            'secure' => $secure,
-            'httponly' => true,
-            'samesite' => 'Lax',
-        ]);
-
-        setcookie('CookieLoginHash', (string) $cookieValue, [
-            'expires' => $expire,
-            'path' => '/',
-            'domain' => $domain,
-            'secure' => $secure,
-            'httponly' => true,
-            'samesite' => 'Lax',
-        ]);
+        setcookie('CookieLoginEmail', (string) $email, $opts);
+        setcookie('CookieLoginHash', (string) $cookieValue, $opts);
     }
 
 
@@ -161,7 +139,7 @@ class User extends Model
         }
         $filtered[] = $hashHex;
 
-        $max = 25;
+        $max = 50;
         if (count($filtered) > $max) {
             $filtered = array_slice($filtered, -$max);
         }
