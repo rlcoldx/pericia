@@ -77,18 +77,28 @@ class LoginController extends Controller
         $_SESSION = [];
         if (session_status() === PHP_SESSION_ACTIVE) {
             $paramsCookie = session_get_cookie_params();
-            setcookie(session_name(), '', [
+            $clearOpts = [
                 'expires' => time() - 3600,
                 'path' => $paramsCookie['path'] ?? '/',
-                'domain' => $paramsCookie['domain'] ?? '',
                 'secure' => (bool) ($paramsCookie['secure'] ?? false),
                 'httponly' => (bool) ($paramsCookie['httponly'] ?? true),
                 'samesite' => $paramsCookie['samesite'] ?? 'Lax',
-            ]);
+            ];
+            if (!empty($paramsCookie['domain'])) {
+                $clearOpts['domain'] = $paramsCookie['domain'];
+            }
+            setcookie(session_name(), '', $clearOpts);
+            // Limpa também nomes antigos/novos de sessão
+            setcookie('PHPSESSID', '', $clearOpts);
+            setcookie('PERICIASESSID', '', $clearOpts);
             session_destroy();
         }
 
-        $this->router->redirect('login');
+        $scheme = PersistentLoginService::isHttps() ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? '';
+        $loginUrl = $host !== '' ? ($scheme . '://' . $host . '/login') : (DOMAIN . '/login');
+        header('Location: ' . $loginUrl);
+        exit;
     }
 
     private function createUser(string $name, string $email, array $arrayIdentification): void

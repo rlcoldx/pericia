@@ -163,10 +163,37 @@ class User extends Model
             return $this->read;
         }
 
-        $this->read->FullRead(
-            "SELECT * FROM usuarios WHERE tipo <> '4' AND loginHash IS NOT NULL AND loginHash <> '' AND FIND_IN_SET(:h, loginHash) > 0 LIMIT 1",
-            'h=' . $hashHex
-        );
+        // Evita parse_str no hash; usa bind direto via PDO
+        try {
+            $pdo = (new class extends Conn {
+                public function pdo()
+                {
+                    return $this->getConn();
+                }
+            })->pdo();
+            $stmt = $pdo->prepare(
+                "SELECT * FROM usuarios
+                 WHERE tipo <> '4'
+                   AND loginHash IS NOT NULL
+                   AND loginHash <> ''
+                   AND FIND_IN_SET(:h, loginHash) > 0
+                 LIMIT 1"
+            );
+            $stmt->execute(['h' => $hashHex]);
+            $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+            if ($row) {
+                // Empacota no Read via FullRead falso + merge — mais simples: query alternativa
+                $this->read->FullRead(
+                    'SELECT * FROM usuarios WHERE id = :id LIMIT 1',
+                    'id=' . (int) $row['id']
+                );
+
+                return $this->read;
+            }
+        } catch (\Throwable $e) {
+        }
+
+        $this->read->FullRead('SELECT * FROM usuarios WHERE 1=0');
 
         return $this->read;
     }

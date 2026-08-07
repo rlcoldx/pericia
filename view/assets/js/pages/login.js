@@ -3,20 +3,29 @@ $(document).ready(function () {
     $("#login-form").submit(function (c) {
         $('.login-load').show();
         c.preventDefault();
-        var DOMAIN = $('body').data('domain');
+        // Mesmo host da página (evita cookie gravado em domínio diferente do www/sem-www)
+        var origin = window.location.origin;
         var form = $(this);
         $.ajax({
-            type: "POST", async: true, data: form.serialize(),
-            url: DOMAIN + '/login/sign',
+            type: "POST",
+            async: true,
+            data: form.serialize(),
+            url: origin + '/login/sign',
+            xhrFields: { withCredentials: true },
             success: function (data) {
                 $('#info-login').hide();
                 if (data == "1") {
-                    window.location.href = DOMAIN+'/';
+                    window.location.href = origin + '/';
                 } else {
                     $('button[type="submit"]').prop("disabled", false);
                     $('#info-login').show();
                     $('.login-load').hide();
                 }
+            },
+            error: function () {
+                $('button[type="submit"]').prop("disabled", false);
+                $('#info-login').show();
+                $('.login-load').hide();
             }
         });
     });
