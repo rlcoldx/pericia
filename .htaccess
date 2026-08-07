@@ -1,5 +1,9 @@
 <IfModule mod_rewrite.c>
    RewriteEngine On
+
+   # Canônico: www → sem www (antes de qualquer rota)
+   RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
+   RewriteRule ^ https://%1%{REQUEST_URI} [L,R=301]
    
    # ROUTER URL Rewrite
    RewriteCond %{SCRIPT_FILENAME} !-f
