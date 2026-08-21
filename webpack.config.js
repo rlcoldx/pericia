@@ -6,9 +6,9 @@ require('graceful-fs').gracefulify(require('fs'));
 let ASSET_PATH = '';
 module.exports = env => {
 
-    let DOMAIN = JSON.stringify('http://localhost/tanamesa');
+    let DOMAIN = JSON.stringify('http://localhost/pericia');
     if (env.NODE_ENV === 'app') {
-        DOMAIN = JSON.stringify('https://tanamesa.app.br/painel');
+        DOMAIN = JSON.stringify('https://fast4.com.br');
         ASSET_PATH = '';
     }
 

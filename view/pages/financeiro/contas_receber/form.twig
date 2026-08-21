@@ -61,6 +61,7 @@
                                                 data-pedido="{{ agendamento.numero_pedido_cliente|default('') }}"
                                                 data-envio="{{ agendamento.data_envio_financeiro|default('') }}"
                                                 data-vencimento="{{ agendamento.data_vencimento_financeiro|default('') }}"
+                                                data-tipo-pericia="{{ agendamento.tipo_pericia|default('') }}"
                                                 {{ (conta.agendamento_id|default('') == agendamento.id) ? 'selected' : '' }}>
                                             {{ agendamento.cliente_nome }} - {{ agendamento.data_agendamento|date('d/m/Y') }} - {{ agendamento.tipo_pericia|default('') }}
                                         </option>
@@ -108,15 +109,27 @@
                                         selected: conta.numero_processo|default('')
                                     }) }}
                                 </div>
-                                <div class="col-md-6 mb-3">
+                                <div class="col-md-4 mb-3">
                                     <label class="form-label">Tipo</label>
-                                    <select name="tipo" class="form-control">
+                                    <select name="tipo" id="tipo" class="form-control">
                                         <option value="Perícia" {{ conta.tipo|default('Perícia') == 'Perícia' ? 'selected' : '' }}>Perícia</option>
                                         <option value="Serviço" {{ conta.tipo|default('') == 'Serviço' ? 'selected' : '' }}>Serviço</option>
                                         <option value="Outro" {{ conta.tipo|default('') == 'Outro' ? 'selected' : '' }}>Outro</option>
                                     </select>
                                 </div>
-                                <div class="col-md-6 mb-3">
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Tipo de Perícia</label>
+                                    {% set tipoPericiaAtual = conta.tipo_pericia|default('') %}
+                                    <select name="tipo_pericia" id="tipo_pericia" class="form-control">
+                                        <option value="">Selecione</option>
+                                        <option value="Perícia Médica" {{ tipoPericiaAtual == 'Perícia Médica' or tipoPericiaAtual == 'MEDICA' or tipoPericiaAtual == 'MÉDICA' ? 'selected' : '' }}>Perícia Médica</option>
+                                        <option value="Técnica" {{ tipoPericiaAtual == 'Técnica' or tipoPericiaAtual == 'TECNICA' ? 'selected' : '' }}>Técnica</option>
+                                        <option value="Ergonomia" {{ tipoPericiaAtual == 'Ergonomia' or tipoPericiaAtual == 'ERGONO' ? 'selected' : '' }}>Ergonomia</option>
+                                        <option value="Fisiologia" {{ tipoPericiaAtual == 'Fisiologia' or tipoPericiaAtual == 'CINESIO' ? 'selected' : '' }}>Fisiologia</option>
+                                        <option value="Quesitos" {{ tipoPericiaAtual == 'Quesitos' ? 'selected' : '' }}>Quesitos</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 mb-3">
                                     <label class="form-label">Etapa</label>
                                     <input type="text" name="etapa" class="form-control" value="{{ conta.etapa|default('PERICIA') }}" readonly>
                                 </div>
@@ -342,6 +355,19 @@
             }
         });
         
+        function mapearTipoPericiaContaReceber(codigo) {
+            var c = String(codigo || '').trim().toUpperCase();
+            if (c === 'MEDICA' || c === 'MÉDICA' || c === 'MEDIACA') return 'Perícia Médica';
+            if (c === 'TECNICA' || c === 'TÉCNICA') return 'Técnica';
+            if (c === 'ERGONO' || c === 'ERGONOMIA') return 'Ergonomia';
+            if (c === 'CINESIO' || c === 'FISIOLOGIA') return 'Fisiologia';
+            if (c === 'QUESITOS' || c === 'QUESITO') return 'Quesitos';
+            // já veio no formato do formulário
+            var labels = ['Perícia Médica', 'Técnica', 'Ergonomia', 'Fisiologia', 'Quesitos'];
+            if (labels.indexOf(String(codigo || '').trim()) >= 0) return String(codigo).trim();
+            return '';
+        }
+
         $('#agendamento_id').on('change', function() {
             const selectedValue = $(this).val();
             if (selectedValue) {
@@ -359,6 +385,11 @@
                 $('#numero_boleto').val(option.data('boleto') || '');
                 $('#numero_pedido_cliente').val(option.data('pedido') || '');
                 $('#data_envio').val(option.data('envio') || '');
+
+                var tipoMapped = mapearTipoPericiaContaReceber(option.data('tipo-pericia'));
+                if (tipoMapped) {
+                    $('#tipo_pericia').val(tipoMapped);
+                }
 
                 var vencimento = option.data('vencimento') || '';
                 if (!vencimento) {
@@ -390,6 +421,7 @@
                 $('#numero_pedido_cliente').val('');
                 $('#data_envio').val('');
                 $('#data_vencimento').val('');
+                $('#tipo_pericia').val('');
             }
         });
 

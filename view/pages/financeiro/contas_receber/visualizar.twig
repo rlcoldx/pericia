@@ -60,6 +60,10 @@
                         {{ conta.tipo|default('-') }}
                     </div>
                     <div class="col-md-6 mb-3">
+                        <strong>Tipo de Perícia:</strong><br>
+                        {{ conta.tipo_pericia|default('-') }}
+                    </div>
+                    <div class="col-md-6 mb-3">
                         <strong>Etapa:</strong><br>
                         {{ conta.etapa|default('PERICIA') }}
                     </div>

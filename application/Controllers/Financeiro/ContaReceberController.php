@@ -198,13 +198,11 @@ class ContaReceberController extends Controller
                 return;
             }
 
+            $tipo = $this->normalizarTipoContaPost($_POST['tipo'] ?? null) ?? 'Perícia';
+            $tipoPericia = $this->normalizarTipoPericiaPost($_POST['tipo_pericia'] ?? null);
+
             $valorRecebido = $this->parseCurrency($_POST['valor_recebido'] ?? '0');
             $valorAssistenteRaw = $this->normalizarTextoPost($_POST['valor_assistente'] ?? null);
-            $tipo = $this->normalizarTextoPost($_POST['tipo'] ?? 'Perícia') ?? 'Perícia';
-            $tiposValidos = ['Perícia', 'Serviço', 'Outro'];
-            if (!in_array($tipo, $tiposValidos, true)) {
-                $tipo = 'Perícia';
-            }
 
             $data = [
                 'empresa' => (int) $empresa,
@@ -222,6 +220,7 @@ class ContaReceberController extends Controller
                 'data_pericia' => $this->normalizarDataPost($_POST['data_pericia'] ?? null),
                 'data_envio' => $this->normalizarDataPost($_POST['data_envio'] ?? null),
                 'tipo' => $tipo,
+                'tipo_pericia' => $tipoPericia,
                 'etapa' => $this->normalizarTextoPost($_POST['etapa'] ?? null) ?? 'PERICIA',
                 'situacao' => $this->normalizarTextoPost($_POST['situacao'] ?? null),
                 'data_situacao' => $this->normalizarDataPost($_POST['data_situacao'] ?? null),
@@ -291,13 +290,11 @@ class ContaReceberController extends Controller
             return;
         }
 
+        $tipo = $this->normalizarTipoContaPost($_POST['tipo'] ?? null) ?? 'Perícia';
+        $tipoPericia = $this->normalizarTipoPericiaPost($_POST['tipo_pericia'] ?? null);
+
         $valorRecebido = $this->parseCurrency($_POST['valor_recebido'] ?? '0');
         $valorAssistenteRaw = $this->normalizarTextoPost($_POST['valor_assistente'] ?? null);
-        $tipo = $this->normalizarTextoPost($_POST['tipo'] ?? 'Perícia') ?? 'Perícia';
-        $tiposValidos = ['Perícia', 'Serviço', 'Outro'];
-        if (!in_array($tipo, $tiposValidos, true)) {
-            $tipo = 'Perícia';
-        }
 
         $data = [
             'agendamento_id' => !empty($_POST['agendamento_id']) ? (int) $_POST['agendamento_id'] : null,
@@ -314,10 +311,12 @@ class ContaReceberController extends Controller
             'data_pericia' => $this->normalizarDataPost($_POST['data_pericia'] ?? null),
             'data_envio' => $this->normalizarDataPost($_POST['data_envio'] ?? null),
             'tipo' => $tipo,
+            'tipo_pericia' => $tipoPericia,
             'etapa' => $this->normalizarTextoPost($_POST['etapa'] ?? null) ?? 'PERICIA',
             'situacao' => $this->normalizarTextoPost($_POST['situacao'] ?? null),
             'data_situacao' => $this->normalizarDataPost($_POST['data_situacao'] ?? null),
             'numero_nota_fiscal' => $this->normalizarTextoPost($_POST['numero_nota_fiscal'] ?? null),
+            'numero_pedido_cliente' => $this->normalizarTextoPost($_POST['numero_pedido_cliente'] ?? null),
             'numero_boleto' => $this->normalizarTextoPost($_POST['numero_boleto'] ?? null),
             'assistente_nome' => $this->normalizarTextoPost($_POST['assistente_nome'] ?? null),
             'valor_assistente' => $valorAssistenteRaw !== null ? $this->parseCurrency($valorAssistenteRaw) : null,
@@ -403,24 +402,31 @@ class ContaReceberController extends Controller
         // Formata dados para DataTables
         $data = [];
         foreach ($dadosPaginados as $conta) {
+            $dataPericia = $conta['data_pericia_completo'] ?? null;
+            $dataEnvio = $conta['data_envio'] ?? ($conta['data_envio_financeiro'] ?? null);
+            $dataVenc = $conta['data_vencimento'] ?? null;
+            $valorAssistente = $conta['valor_assistente_completo'] ?? null;
+
             $data[] = [
                 'id' => $conta['id'],
                 'local' => $conta['local_pericia_completo'] ?? '-',
                 'reclamante' => $conta['reclamante_nome_completo'] ?? '-',
                 'tipo' => $conta['tipo'] ?? '-',
                 'etapa' => $conta['etapa'] ?? 'PERICIA',
-                'valor' => 'R$ ' . number_format($conta['valor_total'], 2, ',', '.'),
+                'valor' => 'R$ ' . number_format((float) ($conta['valor_total'] ?? 0), 2, ',', '.'),
                 'processo' => $conta['numero_processo_completo'] ?? '-',
-                'data_pericia' => $conta['data_pericia_completo'] ? date('d/m/Y', strtotime($conta['data_pericia_completo'])) : '-',
+                'data_pericia' => $dataPericia ? date('d/m/Y', strtotime($dataPericia)) : '-',
                 'situacao' => $conta['situacao'] ?? '-',
                 'numero_pedido' => $conta['numero_pedido_cliente'] ?? '-',
                 'numero_nota_fiscal' => $conta['numero_nota_fiscal'] ?? '-',
                 'numero_boleto' => $conta['numero_boleto'] ?? '-',
-                'data_envio' => $conta['data_envio'] ? date('d/m/Y', strtotime($conta['data_envio'])) : ($conta['data_envio_financeiro'] ? date('d/m/Y', strtotime($conta['data_envio_financeiro'])) : '-'),
-                'prazo' => date('d/m/Y', strtotime($conta['data_vencimento'])),
-                'status' => $conta['status_pagamento_agendamento'] ?? $conta['status'],
+                'data_envio' => $dataEnvio ? date('d/m/Y', strtotime($dataEnvio)) : '-',
+                'prazo' => $dataVenc ? date('d/m/Y', strtotime($dataVenc)) : '-',
+                'status' => $conta['status_pagamento_agendamento'] ?? ($conta['status'] ?? '-'),
                 'assistente' => $conta['assistente_nome_completo'] ?? '-',
-                'valor_assistente' => $conta['valor_assistente_completo'] ? 'R$ ' . number_format($conta['valor_assistente_completo'], 2, ',', '.') : '-',
+                'valor_assistente' => $valorAssistente !== null && $valorAssistente !== ''
+                    ? ('R$ ' . number_format((float) $valorAssistente, 2, ',', '.'))
+                    : '-',
                 'acoes' => $this->formatAcoesCell($conta)
             ];
         }
@@ -487,6 +493,63 @@ class ContaReceberController extends Controller
         $texto = trim((string) $value);
 
         return $texto !== '' ? $texto : null;
+    }
+
+    /**
+     * Tipo da conta: Perícia / Serviço / Outro.
+     */
+    private function normalizarTipoContaPost($value): ?string
+    {
+        $texto = $this->normalizarTextoPost($value);
+        if ($texto === null) {
+            return null;
+        }
+
+        $validos = ['Perícia', 'Serviço', 'Outro'];
+        if (in_array($texto, $validos, true)) {
+            return $texto;
+        }
+
+        return null;
+    }
+
+    /**
+     * Tipo de perícia (opcional): Médica, Técnica, Ergonomia, Fisiologia, Quesitos.
+     */
+    private function normalizarTipoPericiaPost($value): ?string
+    {
+        $texto = $this->normalizarTextoPost($value);
+        if ($texto === null) {
+            return null;
+        }
+
+        $validos = [
+            'Perícia Médica',
+            'Técnica',
+            'Ergonomia',
+            'Fisiologia',
+            'Quesitos',
+        ];
+        if (in_array($texto, $validos, true)) {
+            return $texto;
+        }
+
+        $codigo = mb_strtoupper($texto, 'UTF-8');
+        $mapa = [
+            'MEDICA' => 'Perícia Médica',
+            'MÉDICA' => 'Perícia Médica',
+            'MEDIACA' => 'Perícia Médica',
+            'TECNICA' => 'Técnica',
+            'TÉCNICA' => 'Técnica',
+            'ERGONO' => 'Ergonomia',
+            'ERGONOMIA' => 'Ergonomia',
+            'CINESIO' => 'Fisiologia',
+            'FISIOLOGIA' => 'Fisiologia',
+            'QUESITOS' => 'Quesitos',
+            'QUESITO' => 'Quesitos',
+        ];
+
+        return $mapa[$codigo] ?? null;
     }
 
     private function normalizarDataPost($value): ?string

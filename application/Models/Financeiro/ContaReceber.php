@@ -128,6 +128,25 @@ class ContaReceber extends Model
                     if (empty($data['valor_total']) && !empty($agendamento['valor_pericia_cobrado'])) {
                         $data['valor_total'] = $agendamento['valor_pericia_cobrado'];
                     }
+                    if (empty($data['tipo_pericia']) && !empty($agendamento['tipo_pericia'])) {
+                        $codigo = mb_strtoupper(trim((string) $agendamento['tipo_pericia']), 'UTF-8');
+                        $mapa = [
+                            'MEDICA' => 'Perícia Médica',
+                            'MÉDICA' => 'Perícia Médica',
+                            'MEDIACA' => 'Perícia Médica',
+                            'TECNICA' => 'Técnica',
+                            'TÉCNICA' => 'Técnica',
+                            'ERGONO' => 'Ergonomia',
+                            'ERGONOMIA' => 'Ergonomia',
+                            'CINESIO' => 'Fisiologia',
+                            'FISIOLOGIA' => 'Fisiologia',
+                            'QUESITOS' => 'Quesitos',
+                            'QUESITO' => 'Quesitos',
+                        ];
+                        if (isset($mapa[$codigo])) {
+                            $data['tipo_pericia'] = $mapa[$codigo];
+                        }
+                    }
                 } else {
                     // Agendamento inválido/inexistente: não quebra o cadastro — remove o vínculo
                     $data['agendamento_id'] = null;
@@ -219,6 +238,7 @@ class ContaReceber extends Model
                 'valor_assistente' => "ALTER TABLE `contas_receber` ADD COLUMN `valor_assistente` decimal(10,2) DEFAULT NULL",
                 'data_envio' => "ALTER TABLE `contas_receber` ADD COLUMN `data_envio` date DEFAULT NULL",
                 'numero_pedido_cliente' => "ALTER TABLE `contas_receber` ADD COLUMN `numero_pedido_cliente` varchar(255) DEFAULT NULL",
+                'tipo_pericia' => "ALTER TABLE `contas_receber` ADD COLUMN `tipo_pericia` varchar(80) DEFAULT NULL",
             ];
 
             // Só ADD COLUMN (rápido). Nunca MODIFY no request — trava/timeout → "Failed to fetch"
@@ -230,6 +250,22 @@ class ContaReceber extends Model
                     }
                 } catch (\Throwable $e) {
                     // coluna já existe ou sem permissão
+                }
+            }
+
+            // ENUM tipo/status → VARCHAR (só se ainda for ENUM; evita "Data truncated" em Perícia/Serviço)
+            foreach ([
+                'tipo' => "ALTER TABLE `contas_receber` MODIFY COLUMN `tipo` varchar(80) NULL DEFAULT 'Perícia'",
+                'status' => "ALTER TABLE `contas_receber` MODIFY COLUMN `status` varchar(40) NULL DEFAULT 'Pendente'",
+            ] as $col => $sql) {
+                try {
+                    $check = $conn->query("SHOW COLUMNS FROM `contas_receber` LIKE " . $conn->quote($col));
+                    $row = $check ? $check->fetch(\PDO::FETCH_ASSOC) : false;
+                    $type = strtolower((string) ($row['Type'] ?? ''));
+                    if ($row && str_starts_with($type, 'enum')) {
+                        $conn->exec($sql);
+                    }
+                } catch (\Throwable $e) {
                 }
             }
         } catch (\Throwable $e) {
