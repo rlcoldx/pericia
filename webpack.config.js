@@ -5,9 +5,11 @@ require('graceful-fs').gracefulify(require('fs'));
 
 let ASSET_PATH = '';
 module.exports = env => {
+    const nodeEnv = (env && env.NODE_ENV) ? String(env.NODE_ENV) : 'local';
 
+    // local/dev → XAMPP; app/pericia/prod → domínio de produção
     let DOMAIN = JSON.stringify('http://localhost/pericia');
-    if (env.NODE_ENV === 'app') {
+    if (nodeEnv === 'app' || nodeEnv === 'pericia' || nodeEnv === 'production') {
         DOMAIN = JSON.stringify('https://fast4.com.br');
         ASSET_PATH = '';
     }

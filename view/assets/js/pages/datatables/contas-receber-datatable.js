@@ -55,6 +55,35 @@
 
         setupFilterForm();
         setupActionButtons();
+        setupExportButton();
+    }
+
+    function setupExportButton() {
+        const btn = document.getElementById('btnExportarContasExcel');
+        if (!btn) return;
+
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const base = (window.DOMAIN || '').replace(/\/$/, '');
+            const filters = getFiltersFromForm();
+            const params = new URLSearchParams();
+            Object.keys(filters).forEach(function(key) {
+                if (filters[key]) params.append(key, filters[key]);
+            });
+            // Inclui busca da DataTable, se houver
+            try {
+                const api = dataTableInstance && dataTableInstance.table
+                    ? dataTableInstance.table
+                    : null;
+                if (api && typeof api.search === 'function') {
+                    const q = api.search();
+                    if (q) params.append('search', q);
+                }
+            } catch (err) {}
+
+            const qs = params.toString();
+            window.location.href = base + '/contas-receber/exportar' + (qs ? ('?' + qs) : '');
+        });
     }
 
     function getFiltersFromForm() {
@@ -122,7 +151,7 @@
     }
 
     function removerConta(id) {
-        fetch(window.location.origin + '/contas-receber/remover', {
+        fetch((window.DOMAIN || window.location.origin).replace(/\/$/, '') + '/contas-receber/remover', {
             method: 'POST',
             credentials: 'same-origin',
             headers: {

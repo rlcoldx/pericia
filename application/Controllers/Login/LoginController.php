@@ -94,9 +94,7 @@ class LoginController extends Controller
             session_destroy();
         }
 
-        $scheme = PersistentLoginService::isHttps() ? 'https' : 'http';
-        $host = $_SERVER['HTTP_HOST'] ?? '';
-        $loginUrl = $host !== '' ? ($scheme . '://' . $host . '/login') : (DOMAIN . '/login');
+        $loginUrl = defined('DOMAIN') ? (rtrim((string) DOMAIN, '/') . '/login') : '/login';
         header('Location: ' . $loginUrl);
         exit;
     }

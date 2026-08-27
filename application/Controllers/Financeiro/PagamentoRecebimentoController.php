@@ -24,6 +24,11 @@ class PagamentoRecebimentoController extends Controller
         }
 
         $model = new PagamentoRecebimento();
+        // Contas já marcadas como recebidas passam a aparecer na listagem de Recebimentos
+        try {
+            $model->backfillRecebimentosFromContas((int) $empresa);
+        } catch (\Throwable $e) {
+        }
         $totais = $model->getTotaisFinanceiros($empresa);
 
         $this->render('pages/financeiro/pagamentos_recebimentos/recebimentos.twig', [
@@ -276,6 +281,10 @@ class PagamentoRecebimentoController extends Controller
         }
 
         $model = new PagamentoRecebimento();
+        try {
+            $model->backfillRecebimentosFromContas((int) $empresa);
+        } catch (\Throwable $e) {
+        }
         $todosRecebimentos = $model->getRecebimentosDataTable($empresa, $filtros);
         
         $total = count($todosRecebimentos);
@@ -291,11 +300,26 @@ class PagamentoRecebimentoController extends Controller
                 'forma_pagamento' => $recebimento['forma_pagamento'],
                 'status' => $recebimento['status'],
                 'conta_descricao' => $recebimento['conta_descricao'] ?? '-',
-                'acoes' => ''
+                'acoes' => $this->formatAcoesRecebimento($recebimento)
             ];
         }
 
         $this->responseJson(DataTableResponse::format($data, $total, $total, $paramsDataTable['draw']));
+    }
+
+    private function formatAcoesRecebimento(array $recebimento): string
+    {
+        $html = '<div class="d-flex gap-1">';
+        $permissionService = new \Agencia\Close\Services\Login\PermissionsService();
+        if ($permissionService->verifyPermissions('pagamento_recebimento_deletar')) {
+            $html .= '<button type="button" class="btn btn-danger btn-sm btn-remover-recebimento" data-id="'
+                . (int) $recebimento['id']
+                . '" data-bs-toggle="tooltip" title="Remover">'
+                . '<i class="fa-light fa-trash"></i></button>';
+        }
+        $html .= '</div>';
+
+        return $html;
     }
 
     public function pagamentosDatatable($params)

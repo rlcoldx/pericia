@@ -127,6 +127,8 @@
                                         <option value="Ergonomia" {{ tipoPericiaAtual == 'Ergonomia' or tipoPericiaAtual == 'ERGONO' ? 'selected' : '' }}>Ergonomia</option>
                                         <option value="Fisiologia" {{ tipoPericiaAtual == 'Fisiologia' or tipoPericiaAtual == 'CINESIO' ? 'selected' : '' }}>Fisiologia</option>
                                         <option value="Quesitos" {{ tipoPericiaAtual == 'Quesitos' ? 'selected' : '' }}>Quesitos</option>
+                                        <option value="Não Realizada" {{ tipoPericiaAtual == 'Não Realizada' ? 'selected' : '' }}>Não Realizada</option>
+                                        <option value="Outros" {{ tipoPericiaAtual == 'Outros' ? 'selected' : '' }}>Outros</option>
                                     </select>
                                 </div>
                                 <div class="col-md-4 mb-3">
@@ -363,8 +365,10 @@
             if (c === 'CINESIO' || c === 'FISIOLOGIA') return 'Fisiologia';
             if (c === 'QUESITOS' || c === 'QUESITO') return 'Quesitos';
             // já veio no formato do formulário
-            var labels = ['Perícia Médica', 'Técnica', 'Ergonomia', 'Fisiologia', 'Quesitos'];
+            var labels = ['Perícia Médica', 'Técnica', 'Ergonomia', 'Fisiologia', 'Quesitos', 'Não Realizada', 'Outros'];
             if (labels.indexOf(String(codigo || '').trim()) >= 0) return String(codigo).trim();
+            if (c === 'NAO REALIZADA' || c === 'NÃO REALIZADA') return 'Não Realizada';
+            if (c === 'OUTROS' || c === 'OUTRO') return 'Outros';
             return '';
         }
 
@@ -472,7 +476,8 @@
             const formData = new FormData(this);
             // Usa o mesmo host da página (evita "Failed to fetch" com www/http vs DOMAIN)
             const savePath = ACTION === 'criar' ? '/contas-receber/add/save' : '/contas-receber/edit/save';
-            const url = window.location.origin + savePath;
+            const base = (typeof DOMAIN !== 'undefined' && DOMAIN) ? String(DOMAIN).replace(/\/$/, '') : window.location.origin;
+            const url = base + savePath;
             const $btn = $('#btnSalvarContaReceber, button[type="submit"][form="formContaReceber"]');
             const originalHtml = $btn.first().html();
             $btn.prop('disabled', true);
@@ -481,13 +486,23 @@
             fetch(url, {
                 method: 'POST',
                 body: formData,
-                credentials: 'same-origin',
+                credentials: 'include',
+                redirect: 'manual',
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
                     'Accept': 'application/json'
                 }
             })
             .then(async function(response) {
+                if (response.type === 'opaqueredirect'
+                    || response.status === 301
+                    || response.status === 302
+                    || response.status === 303
+                    || response.status === 307
+                    || response.status === 308) {
+                    throw new Error('Sessão expirada. Faça login novamente e tente salvar de novo.');
+                }
+
                 const text = await response.text();
                 let data;
                 try {
@@ -499,6 +514,9 @@
                     throw new Error(text && text.trim()
                         ? ('Resposta inválida do servidor: ' + text.substring(0, 180))
                         : 'Resposta vazia do servidor. Verifique permissões e tente novamente.');
+                }
+                if (response.status === 401) {
+                    throw new Error(data.message || 'Sessão expirada. Faça login novamente e tente salvar de novo.');
                 }
                 if (!response.ok && !data.message) {
                     throw new Error('Erro HTTP ' + response.status);
@@ -514,7 +532,7 @@
                         timer: 2000,
                         showConfirmButton: false
                     }).then(function() {
-                        window.location.href = window.location.origin + '/contas-receber';
+                        window.location.href = base + '/contas-receber';
                     });
                 } else {
                     Swal.fire({

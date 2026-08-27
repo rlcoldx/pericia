@@ -116,17 +116,182 @@ class PagamentoRecebimento extends Model
 
     /**
      * Cria um novo recebimento
+     * @param bool $atualizarConta Se false, não altera valor_recebido da conta (já veio dela)
      */
-    public function criarRecebimento($data): bool
+    public function criarRecebimento($data, bool $atualizarConta = true): bool
     {
-        $this->create->ExeCreate("recebimentos", $data);
-        
-        // Atualiza conta a receber se vinculada
-        if (!empty($data['conta_receber_id'])) {
-            $this->atualizarContaReceberAposRecebimento($data['conta_receber_id'], $data['valor'], $data['empresa']);
+        $this->ensureRecebimentosSchema();
+
+        // Normaliza forma_pagamento para valores sem acento problemático no ENUM legado
+        if (!empty($data['forma_pagamento'])) {
+            $fp = (string) $data['forma_pagamento'];
+            if ($fp === 'Transferência' || $fp === 'TransferÃªncia') {
+                $data['forma_pagamento'] = 'PIX';
+            }
+        } else {
+            $data['forma_pagamento'] = 'PIX';
         }
-        
-        return $this->create->getResult();
+
+        $this->create = new Create();
+        $this->create->ExeCreate("recebimentos", $data);
+        $ok = (bool) $this->create->getResult();
+
+        if ($ok && $atualizarConta && !empty($data['conta_receber_id'])) {
+            $this->atualizarContaReceberAposRecebimento(
+                $data['conta_receber_id'],
+                $data['valor'],
+                $data['empresa']
+            );
+        }
+
+        return $ok;
+    }
+
+    /**
+     * Garante um recebimento na tabela `recebimentos` quando a conta já tem valor_recebido.
+     * (Contas marcadas como Recebido no formulário de NF não criavam linha em Recebimentos.)
+     */
+    public function sincronizarDaContaReceber(int $contaId, int $empresa, array $conta): bool
+    {
+        if ($contaId <= 0 || $empresa <= 0) {
+            return false;
+        }
+
+        $valorRecebido = (float) ($conta['valor_recebido'] ?? 0);
+        if ($valorRecebido <= 0) {
+            return false;
+        }
+
+        $this->read = new Read();
+        $this->read->ExeRead(
+            'recebimentos',
+            'WHERE conta_receber_id = :cid AND empresa = :empresa AND status <> :cancelado LIMIT 1',
+            "cid={$contaId}&empresa={$empresa}&cancelado=Cancelado"
+        );
+        $existente = $this->read->getResult()[0] ?? null;
+
+        $dataRecebimento = $conta['data_envio']
+            ?? $conta['data_emissao']
+            ?? $conta['data_vencimento']
+            ?? date('Y-m-d');
+        if (empty($dataRecebimento) || $dataRecebimento === false) {
+            $dataRecebimento = date('Y-m-d');
+        }
+
+        $descricao = trim((string) ($conta['descricao'] ?? ''));
+        if ($descricao === '') {
+            $descricao = 'Recebimento da conta #' . $contaId;
+        }
+
+        if ($existente) {
+            // Mantém o registro visível na listagem; ajusta valor se divergir
+            if ((float) ($existente['valor'] ?? 0) !== $valorRecebido) {
+                $this->update = new Update();
+                $this->update->ExeUpdate(
+                    'recebimentos',
+                    [
+                        'valor' => $valorRecebido,
+                        'descricao' => $descricao,
+                        'data_recebimento' => $dataRecebimento,
+                    ],
+                    'WHERE id = :id AND empresa = :empresa',
+                    'id=' . (int) $existente['id'] . '&empresa=' . $empresa
+                );
+            }
+
+            return true;
+        }
+
+        return $this->criarRecebimento([
+            'empresa' => $empresa,
+            'conta_receber_id' => $contaId,
+            'agendamento_id' => !empty($conta['agendamento_id']) ? (int) $conta['agendamento_id'] : null,
+            'descricao' => $descricao,
+            'valor' => $valorRecebido,
+            'data_recebimento' => $dataRecebimento,
+            // PIX evita ENUM legado com acento corrompido (Transferência)
+            'forma_pagamento' => 'PIX',
+            'status' => 'Confirmado',
+            'numero_comprovante' => $conta['numero_nota_fiscal'] ?? null,
+            'observacoes' => 'Gerado automaticamente a partir da Conta a Receber',
+        ], false);
+    }
+
+    /**
+     * Cria recebimentos faltantes para contas já marcadas como recebidas/parciais.
+     */
+    public function backfillRecebimentosFromContas(int $empresa): int
+    {
+        if ($empresa <= 0) {
+            return 0;
+        }
+
+        $this->ensureRecebimentosSchema();
+
+        $this->read = new Read();
+        $this->read->FullRead(
+            "SELECT cr.*
+             FROM contas_receber cr
+             WHERE cr.empresa = :empresa
+               AND (
+                    cr.valor_recebido > 0
+                    OR cr.status IN ('Recebido', 'Parcial')
+               )
+               AND NOT EXISTS (
+                   SELECT 1 FROM recebimentos r
+                   WHERE r.conta_receber_id = cr.id
+                     AND r.empresa = cr.empresa
+                     AND (r.status IS NULL OR r.status <> 'Cancelado')
+               )",
+            "empresa={$empresa}"
+        );
+        $contas = $this->read->getResult() ?? [];
+        $criados = 0;
+        foreach ($contas as $conta) {
+            // Se status Recebido mas valor_recebido zerado, usa valor_total
+            if ((float) ($conta['valor_recebido'] ?? 0) <= 0 && ($conta['status'] ?? '') === 'Recebido') {
+                $conta['valor_recebido'] = (float) ($conta['valor_total'] ?? 0);
+            }
+            if ($this->sincronizarDaContaReceber((int) $conta['id'], $empresa, $conta)) {
+                $criados++;
+            }
+        }
+
+        return $criados;
+    }
+
+    /**
+     * ENUM legado com mojibake em forma_pagamento bloqueava INSERT (Data truncated).
+     */
+    private function ensureRecebimentosSchema(): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+
+        try {
+            $pdo = (new class extends \Agencia\Close\Conn\Conn {
+                public function pdo()
+                {
+                    return $this->getConn();
+                }
+            })->pdo();
+
+            $row = $pdo->query("SHOW COLUMNS FROM `recebimentos` LIKE 'forma_pagamento'")->fetch(\PDO::FETCH_ASSOC);
+            $type = strtolower((string) ($row['Type'] ?? ''));
+            if ($row && str_starts_with($type, 'enum')) {
+                $pdo->exec("ALTER TABLE `recebimentos` MODIFY COLUMN `forma_pagamento` varchar(80) NULL DEFAULT 'PIX'");
+            }
+
+            $row = $pdo->query("SHOW COLUMNS FROM `recebimentos` LIKE 'status'")->fetch(\PDO::FETCH_ASSOC);
+            $type = strtolower((string) ($row['Type'] ?? ''));
+            if ($row && str_starts_with($type, 'enum')) {
+                $pdo->exec("ALTER TABLE `recebimentos` MODIFY COLUMN `status` varchar(40) NULL DEFAULT 'Confirmado'");
+            }
+        } catch (\Throwable $e) {
+        }
     }
 
     /**

@@ -40,7 +40,22 @@ class PersistentLoginService
         if ($forwarded === 'https') {
             return true;
         }
-        if (defined('DOMAIN') && is_string(DOMAIN) && str_starts_with(DOMAIN, 'https://')) {
+
+        // NÃO usar DOMAIN=https em localhost/HTTP — cookie Secure impede o login local.
+        $host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+        $host = preg_replace('/:\d+$/', '', $host) ?? $host;
+        $isLocal = (
+            $host === 'localhost'
+            || $host === '127.0.0.1'
+            || $host === '::1'
+            || filter_var($host, FILTER_VALIDATE_IP) !== false
+        );
+        if (
+            !$isLocal
+            && defined('DOMAIN')
+            && is_string(DOMAIN)
+            && str_starts_with(DOMAIN, 'https://')
+        ) {
             return true;
         }
 

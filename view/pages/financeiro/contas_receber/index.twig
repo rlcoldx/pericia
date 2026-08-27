@@ -131,8 +131,11 @@
 
         <!-- Listagem -->
         <div class="card">
-            <div class="card-header">
-                <h4 class="card-title">Lista de Contas a Receber</h4>
+            <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <h4 class="card-title mb-0">Lista de Contas a Receber</h4>
+                <a href="{{ DOMAIN }}/contas-receber/exportar" id="btnExportarContasExcel" class="btn btn-success btn-sm text-nowrap">
+                    <i class="fa-solid fa-file-excel me-2"></i>Exportar Excel
+                </a>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
@@ -189,6 +192,6 @@
 </script>
 <script src="{{ PATH }}/view/assets/vendor/datatables/js/jquery.dataTables.min.js"></script>
 <script src="{{ PATH }}/view/assets/js/datatables/datatables-ajax.js"></script>
-<script src="{{ PATH }}/view/assets/js/pages/datatables/contas-receber-datatable.js?v=20260820cols2"></script>
+<script src="{{ PATH }}/view/assets/js/pages/datatables/contas-receber-datatable.js?v=20260827excel"></script>
 {% endblock %}
 

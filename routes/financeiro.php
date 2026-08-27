@@ -10,6 +10,7 @@ $router->post("/contas-receber/add/save", "ContaReceberController:criarSalvar");
 $router->post("/contas-receber/edit/save", "ContaReceberController:editarSalvar");
 $router->post("/contas-receber/remover", "ContaReceberController:remover");
 $router->get("/contas-receber/datatable", "ContaReceberController:datatable");
+$router->get("/contas-receber/exportar", "ContaReceberController:exportarExcel");
 
 // PAGE FINANCEIRO - FATURAMENTO
 $router->namespace("Agencia\Close\Controllers\Financeiro");

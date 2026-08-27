@@ -417,7 +417,8 @@ class ContaReceberController extends Controller
                 'processo' => $conta['numero_processo_completo'] ?? '-',
                 'data_pericia' => $dataPericia ? date('d/m/Y', strtotime($dataPericia)) : '-',
                 'situacao' => $conta['situacao'] ?? '-',
-                'numero_pedido' => $conta['numero_pedido_cliente'] ?? '-',
+                'numero_pedido' => $conta['numero_pedido_export']
+                    ?? ($conta['numero_pedido_cliente'] ?? '-'),
                 'numero_nota_fiscal' => $conta['numero_nota_fiscal'] ?? '-',
                 'numero_boleto' => $conta['numero_boleto'] ?? '-',
                 'data_envio' => $dataEnvio ? date('d/m/Y', strtotime($dataEnvio)) : '-',
@@ -514,7 +515,7 @@ class ContaReceberController extends Controller
     }
 
     /**
-     * Tipo de perícia (opcional): Médica, Técnica, Ergonomia, Fisiologia, Quesitos.
+     * Tipo de perícia (opcional).
      */
     private function normalizarTipoPericiaPost($value): ?string
     {
@@ -529,6 +530,8 @@ class ContaReceberController extends Controller
             'Ergonomia',
             'Fisiologia',
             'Quesitos',
+            'Não Realizada',
+            'Outros',
         ];
         if (in_array($texto, $validos, true)) {
             return $texto;
@@ -547,6 +550,10 @@ class ContaReceberController extends Controller
             'FISIOLOGIA' => 'Fisiologia',
             'QUESITOS' => 'Quesitos',
             'QUESITO' => 'Quesitos',
+            'NAO REALIZADA' => 'Não Realizada',
+            'NÃO REALIZADA' => 'Não Realizada',
+            'OUTROS' => 'Outros',
+            'OUTRO' => 'Outros',
         ];
 
         return $mapa[$codigo] ?? null;
@@ -570,6 +577,224 @@ class ContaReceberController extends Controller
         $ts = strtotime($texto);
 
         return $ts !== false ? date('Y-m-d', $ts) : null;
+    }
+
+    public function exportarExcel($params)
+    {
+        $this->setParams($params);
+        $this->requirePermission('contas_receber_ver');
+
+        $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
+        if (!$empresa) {
+            $this->redirectUrl(DOMAIN . '/login');
+            return;
+        }
+
+        $filtros = [];
+        if (!empty($_GET['status'])) {
+            $filtros['status'] = $_GET['status'];
+        }
+        if (!empty($_GET['situacao'])) {
+            $filtros['situacao'] = $_GET['situacao'];
+        }
+        if (!empty($_GET['data_inicio'])) {
+            $filtros['data_inicio'] = $_GET['data_inicio'];
+        }
+        if (!empty($_GET['data_fim'])) {
+            $filtros['data_fim'] = $_GET['data_fim'];
+        }
+        if (!empty($_GET['numero_processo'])) {
+            $filtros['numero_processo'] = $_GET['numero_processo'];
+        }
+        if (!empty($_GET['search'])) {
+            $filtros['cliente'] = $_GET['search'];
+        }
+
+        $model = new ContaReceber();
+        $contas = $model->getContasReceberDataTable((int) $empresa, $filtros);
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Contas a Receber');
+
+        $headers = [
+            'A1' => 'LOCAL',
+            'B1' => 'RECLAMANTE',
+            'C1' => 'TIPO',
+            'D1' => 'PROCESSO',
+            'E1' => 'ETAPA',
+            'F1' => 'VALOR',
+            'G1' => 'DATA DA PERÍCIA',
+            'H1' => 'NUMERO DO PEDIDO',
+        ];
+        foreach ($headers as $cell => $label) {
+            $sheet->setCellValue($cell, $label);
+        }
+
+        $headerStyle = [
+            'font' => [
+                'bold' => true,
+                'color' => ['rgb' => '7030A0'],
+            ],
+            'alignment' => [
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+            ],
+        ];
+        $sheet->getStyle('A1:H1')->applyFromArray($headerStyle);
+
+        $row = 2;
+        foreach ($contas as $conta) {
+            $localRaw = $conta['local_pericia_completo'] ?? ($conta['local_pericia'] ?? '');
+            $tipo = $this->formatarTipoExportacao($conta);
+            $etapa = trim((string) ($conta['etapa'] ?? 'PERICIA'));
+            if (strcasecmp($etapa, 'PERICIA') === 0) {
+                $etapa = 'PERÍCIA';
+            }
+            $dataPericia = $conta['data_pericia_completo'] ?? ($conta['data_pericia'] ?? null);
+            $valor = (float) ($conta['valor_total'] ?? 0);
+            $pedido = $conta['numero_pedido_export']
+                ?? ($conta['numero_pedido_cliente'] ?? '');
+
+            $sheet->setCellValue('A' . $row, $this->extrairCidadeEstado((string) $localRaw));
+            $sheet->setCellValue('B' . $row, (string) ($conta['reclamante_nome_completo'] ?? ($conta['reclamante_nome'] ?? '')));
+            $sheet->setCellValue('C' . $row, $tipo);
+            $sheet->setCellValueExplicit(
+                'D' . $row,
+                (string) ($conta['numero_processo_completo'] ?? ($conta['numero_processo'] ?? '')),
+                \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING
+            );
+            $sheet->setCellValue('E' . $row, mb_strtoupper($etapa, 'UTF-8'));
+            $sheet->setCellValue('F' . $row, 'R$ ' . number_format($valor, 2, ',', '.'));
+            $sheet->setCellValue(
+                'G' . $row,
+                $dataPericia ? date('d/m/Y', strtotime((string) $dataPericia)) : ''
+            );
+            $sheet->setCellValueExplicit(
+                'H' . $row,
+                (string) $pedido,
+                \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING
+            );
+
+            $sheet->getStyle('A' . $row . ':H' . $row)->applyFromArray([
+                'fill' => [
+                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                    'startColor' => ['rgb' => 'C6EFCE'],
+                ],
+            ]);
+            $row++;
+        }
+
+        foreach (range('A', 'H') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        $filename = 'contas_receber_' . date('Y-m-d_His') . '.xlsx';
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('php://output');
+        exit;
+    }
+
+    /**
+     * Extrai CIDADE/UF do endereço completo.
+     * Aceita: JOINVILLE/SC, Joinville-SC, CAMPINAS SP, "... , Campinas - SP"
+     */
+    private function extrairCidadeEstado(string $local): string
+    {
+        $local = trim(preg_replace('/\s+/u', ' ', $local) ?? '');
+        if ($local === '' || $local === '-') {
+            return '';
+        }
+
+        $ufs = [
+            'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG',
+            'PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO',
+        ];
+        $ufsAlt = implode('|', $ufs);
+
+        // Já no formato CIDADE/UF
+        if (preg_match('/^([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s\.\']+)\s*\/\s*(' . $ufsAlt . ')$/iu', $local, $m)) {
+            return $this->formatarCidadeUf($m[1], $m[2]);
+        }
+
+        // Final do texto: Cidade[-/ ]UF  (ex.: Joinville-SC, CAMPINAS SP, Campinas / SP)
+        if (preg_match(
+            '/(?:^|[,\s])([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s\.\']{1,40}?)\s*[-–\/]?\s*(' . $ufsAlt . ')\s*$/iu',
+            $local,
+            $m
+        )) {
+            return $this->formatarCidadeUf($m[1], $m[2]);
+        }
+
+        // Último segmento após vírgula
+        $parts = preg_split('/,\s*/u', $local) ?: [];
+        $last = trim((string) end($parts));
+        if ($last !== '' && preg_match(
+            '/^([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s\.\']+?)\s*[-–\/]?\s*(' . $ufsAlt . ')\s*$/iu',
+            $last,
+            $m
+        )) {
+            return $this->formatarCidadeUf($m[1], $m[2]);
+        }
+
+        // Dois últimos tokens: "CIDADE UF"
+        if (preg_match('/\b([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\.\']+(?:\s+[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\.\']+){0,3})\s+(' . $ufsAlt . ')\s*$/iu', $local, $m)) {
+            $cidade = trim($m[1]);
+            // Evita capturar "SALA 15" etc. — cidade não deve ser só número/sigla curta
+            if (mb_strlen($cidade, 'UTF-8') >= 3) {
+                return $this->formatarCidadeUf($cidade, $m[2]);
+            }
+        }
+
+        return mb_strtoupper($local, 'UTF-8');
+    }
+
+    private function formatarCidadeUf(string $cidade, string $uf): string
+    {
+        $cidade = trim($cidade);
+        // Remove prefixos comuns grudados no final do endereço
+        $cidade = preg_replace('/^(?:JD\.?|JARDIM|BAIRRO|CENTRO)\s+/iu', '', $cidade) ?? $cidade;
+        $cidade = trim($cidade, " \t\n\r\0\x0B,.-/");
+
+        return mb_strtoupper($cidade, 'UTF-8') . '/' . strtoupper(trim($uf));
+    }
+
+    private function formatarTipoExportacao(array $conta): string
+    {
+        $tipo = trim((string) (
+            $conta['tipo_pericia']
+            ?? $conta['agendamento_tipo_pericia']
+            ?? $conta['tipo']
+            ?? ''
+        ));
+        if ($tipo === '') {
+            return '';
+        }
+
+        $codigo = mb_strtoupper($tipo, 'UTF-8');
+        $mapa = [
+            'MEDICA' => 'MÉDICA',
+            'MÉDICA' => 'MÉDICA',
+            'MEDIACA' => 'MÉDICA',
+            'PERÍCIA MÉDICA' => 'MÉDICA',
+            'PERICIA MEDICA' => 'MÉDICA',
+            'TECNICA' => 'TÉCNICA',
+            'TÉCNICA' => 'TÉCNICA',
+            'ERGONO' => 'ERGONOMIA',
+            'ERGONOMIA' => 'ERGONOMIA',
+            'CINESIO' => 'FISIOLOGIA',
+            'FISIOLOGIA' => 'FISIOLOGIA',
+            'QUESITOS' => 'QUESITOS',
+            'NÃO REALIZADA' => 'NÃO REALIZADA',
+            'NAO REALIZADA' => 'NÃO REALIZADA',
+            'OUTROS' => 'OUTROS',
+            'OUTRO' => 'OUTROS',
+        ];
+
+        return $mapa[$codigo] ?? $mapa[$tipo] ?? mb_strtoupper($tipo, 'UTF-8');
     }
 
     private function temPermissaoJson(string $permission): bool

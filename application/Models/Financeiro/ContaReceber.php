@@ -196,6 +196,14 @@ class ContaReceber extends Model
                     ?? (($this->create->getErrorInfo()[2] ?? null) ?: 'Falha ao inserir no banco.');
             } else {
                 $this->lastCreateError = null;
+                $novoId = (int) $this->create->getResult();
+                if ($novoId > 0 && (float) ($data['valor_recebido'] ?? 0) > 0) {
+                    try {
+                        (new PagamentoRecebimento())->sincronizarDaContaReceber($novoId, (int) ($data['empresa'] ?? 0), $data);
+                    } catch (\Throwable $e) {
+                        // não bloqueia o cadastro da conta
+                    }
+                }
             }
 
             return $ok;
@@ -410,7 +418,23 @@ class ContaReceber extends Model
 
         $this->update = new Update();
         $this->update->ExeUpdate("contas_receber", $data, "WHERE id = :id AND empresa = :empresa", "id={$id}&empresa={$company}");
-        return (bool) $this->update->getResult();
+        $ok = (bool) $this->update->getResult();
+
+        if ($ok && (float) ($data['valor_recebido'] ?? 0) > 0) {
+            try {
+                $contaSync = $data;
+                $contaSync['id'] = $id;
+                // Garante campos usados no sync
+                if (!isset($contaSync['descricao']) || !isset($contaSync['agendamento_id'])) {
+                    $atual = $this->getContaReceber($id, $company)->getResult()[0] ?? [];
+                    $contaSync = array_merge($atual, $contaSync);
+                }
+                (new PagamentoRecebimento())->sincronizarDaContaReceber((int) $id, (int) $company, $contaSync);
+            } catch (\Throwable $e) {
+            }
+        }
+
+        return $ok;
     }
 
     /**
@@ -469,10 +493,11 @@ class ContaReceber extends Model
                          COALESCE(cr.data_pericia, a.data_realizada) as data_pericia_completo,
                          COALESCE(cr.assistente_nome, a.assistente_nome) as assistente_nome_completo,
                          COALESCE(cr.valor_assistente, a.valor_pago_assistente) as valor_assistente_completo,
-                         a.numero_pedido_cliente,
+                         COALESCE(NULLIF(cr.numero_pedido_cliente, ''), a.numero_pedido_cliente) as numero_pedido_export,
                          a.data_envio_financeiro,
                          a.data_vencimento_financeiro,
-                         a.status_pagamento as status_pagamento_agendamento
+                         a.status_pagamento as status_pagamento_agendamento,
+                         a.tipo_pericia as agendamento_tipo_pericia
                   FROM contas_receber cr
                   LEFT JOIN agendamentos a ON cr.agendamento_id = a.id AND cr.empresa = a.empresa
                   {$where}

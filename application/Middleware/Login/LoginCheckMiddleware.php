@@ -45,6 +45,8 @@ class LoginCheckMiddleware extends Middleware
             (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])
                 && strtolower((string) $_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
             || (isset($_SERVER['HTTP_ACCEPT']) && str_contains((string) $_SERVER['HTTP_ACCEPT'], 'application/json'))
+            || (($_SERVER['HTTP_SEC_FETCH_DEST'] ?? '') === 'empty')
+            || (isset($_SERVER['REQUEST_URI']) && str_contains((string) $_SERVER['REQUEST_URI'], '/save'))
         );
 
         if ($isAjax) {
@@ -52,16 +54,12 @@ class LoginCheckMiddleware extends Middleware
             header('Content-Type: application/json; charset=utf-8');
             echo json_encode([
                 'success' => false,
-                'message' => 'Sessão expirada. Faça login novamente.',
+                'message' => 'Sessão expirada. Faça login novamente e tente salvar de novo.',
             ], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
-        $scheme = PersistentLoginService::isHttps() ? 'https' : 'http';
-        $host = $_SERVER['HTTP_HOST'] ?? '';
-        $loginUrl = $host !== ''
-            ? ($scheme . '://' . $host . '/login')
-            : (DOMAIN . '/login');
+        $loginUrl = defined('DOMAIN') ? (rtrim(DOMAIN, '/') . '/login') : '/login';
         header('Location: ' . $loginUrl);
         exit;
     }
