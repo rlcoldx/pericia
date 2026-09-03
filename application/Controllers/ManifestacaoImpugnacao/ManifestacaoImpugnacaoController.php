@@ -515,6 +515,109 @@ class ManifestacaoImpugnacaoController extends Controller
         $this->responseJson($response);
     }
 
+    public function exportarExcel($params)
+    {
+        $this->setParams($params);
+        $this->requirePermission('manifestacao_impugnacao_ver');
+
+        $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
+        if (!$empresa) {
+            $this->redirectUrl(DOMAIN . '/login');
+            return;
+        }
+
+        $filtros = [];
+        if (!empty($_GET['tipo'])) {
+            $filtros['tipo'] = $_GET['tipo'];
+        }
+        if (!empty($_GET['data_inicio'])) {
+            $filtros['data_inicio'] = $_GET['data_inicio'];
+        }
+        if (!empty($_GET['data_fim'])) {
+            $filtros['data_fim'] = $_GET['data_fim'];
+        }
+        if (!empty($_GET['favoravel'])) {
+            $filtros['favoravel'] = $_GET['favoravel'];
+        }
+        if (!empty($_GET['reclamada_id'])) {
+            $filtros['reclamada_id'] = $_GET['reclamada_id'];
+        }
+        if (!empty($_GET['reclamante_id'])) {
+            $filtros['reclamante_id'] = $_GET['reclamante_id'];
+        }
+        if (!empty($_GET['perito_id'])) {
+            $filtros['perito_id'] = $_GET['perito_id'];
+        }
+
+        $dtParams = [
+            'start' => 0,
+            'length' => -1,
+            'search' => trim((string) ($_GET['search'] ?? '')),
+            'order_column' => 0,
+            'order_dir' => 'DESC',
+        ];
+
+        $model = new ManifestacaoImpugnacao();
+        $result = $model->getManifestacoesDataTable((int) $empresa, $dtParams, $filtros);
+        $rows = $result['data'] ?? [];
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Manifestacoes');
+
+        $headers = [
+            'A1' => 'Data',
+            'B1' => 'Tipo',
+            'C1' => 'Trabalho',
+            'D1' => 'Processo',
+            'E1' => 'Reclamada',
+            'F1' => 'Reclamante',
+            'G1' => 'Fav/Desfav',
+            'H1' => 'Status',
+            'I1' => 'Perito',
+        ];
+        foreach ($headers as $cell => $label) {
+            $sheet->setCellValue($cell, $label);
+        }
+        $sheet->getStyle('A1:I1')->applyFromArray([
+            'font' => ['bold' => true],
+            'alignment' => [
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+            ],
+        ]);
+
+        $rowNum = 2;
+        foreach ($rows as $m) {
+            $sheet->setCellValue('A' . $rowNum, !empty($m['data']) ? date('d/m/Y', strtotime($m['data'])) : '');
+            $sheet->setCellValue('B' . $rowNum, (string) ($m['tipo'] ?? ''));
+            $sheet->setCellValue('C' . $rowNum, (string) (($m['tipo_trabalho'] ?? '') !== '' ? $m['tipo_trabalho'] : '-'));
+            $sheet->setCellValueExplicit(
+                'D' . $rowNum,
+                (string) ($m['numero'] ?? ''),
+                \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING
+            );
+            $sheet->setCellValue('E' . $rowNum, (string) ($m['reclamada_nome'] ?? ''));
+            $sheet->setCellValue('F' . $rowNum, (string) ($m['reclamante_nome'] ?? ''));
+            $sheet->setCellValue('G' . $rowNum, (string) ($m['favoravel'] ?? ''));
+            $sheet->setCellValue('H' . $rowNum, (string) ($m['status'] ?? ''));
+            $sheet->setCellValue('I' . $rowNum, (string) ($m['perito_nome'] ?? ''));
+            $rowNum++;
+        }
+
+        foreach (range('A', 'I') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        $filename = 'manifestacoes_impugnacoes_' . date('Y-m-d_His') . '.xlsx';
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('php://output');
+        exit;
+    }
+
     /**
      * Exclui apenas o registro em manifestacoes_impugnacoes (sem cascata em outros módulos).
      */

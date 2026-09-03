@@ -62,7 +62,31 @@
         dataTableInstance = new DataTableAjax('datatable-manifestacoes', config);
         dataTableInstance.init();
 
+        setupExportButton();
         bindExcluirManifestacao();
+    }
+
+    function setupExportButton() {
+        const btn = document.getElementById('btnExportarManifestacoesExcel');
+        if (!btn) return;
+
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const base = (window.DOMAIN || '').replace(/\/$/, '');
+            const params = new URLSearchParams();
+            try {
+                const api = dataTableInstance && dataTableInstance.table
+                    ? dataTableInstance.table
+                    : null;
+                if (api && typeof api.search === 'function') {
+                    const q = api.search();
+                    if (q) params.append('search', q);
+                }
+            } catch (err) {}
+
+            const qs = params.toString();
+            window.location.href = base + '/manifestacoes-impugnacoes/exportar' + (qs ? ('?' + qs) : '');
+        });
     }
 
     function bindExcluirManifestacao() {

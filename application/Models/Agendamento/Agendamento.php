@@ -261,15 +261,19 @@ class Agendamento extends Model
         }
 
         // Busca dados paginados com JOIN para pegar nome do perito
+        // length < 0 = todos (export Excel / "Todos" no DataTable)
         $this->read = new Read();
         $query = "SELECT a.*, p.nome as perito_nome, ass.nome as assistente_nome_cadastro 
                   FROM agendamentos a 
                   LEFT JOIN peritos p ON a.perito_id = p.id AND a.empresa = p.empresa 
                   LEFT JOIN assistentes ass ON a.assistente_id = ass.id AND a.empresa = ass.empresa 
                   {$searchWhereWithAlias} 
-                  ORDER BY {$orderBy} 
-                  LIMIT :limit OFFSET :offset";
-        $finalParams = $searchParamsWithAlias . "&limit={$length}&offset={$start}";
+                  ORDER BY {$orderBy}";
+        $finalParams = $searchParamsWithAlias;
+        if ((int) $length >= 0) {
+            $query .= ' LIMIT :limit OFFSET :offset';
+            $finalParams .= "&limit={$length}&offset={$start}";
+        }
         $this->read->FullRead($query, $finalParams);
         
         return [

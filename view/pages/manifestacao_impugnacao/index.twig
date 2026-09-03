@@ -23,8 +23,11 @@
         </div>
 
         <div class="card">
-            <div class="card-header">
-                <h4 class="card-title">Manifestações e Impugnações</h4>
+            <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <h4 class="card-title mb-0">Manifestações e Impugnações</h4>
+                <a href="{{ DOMAIN }}/manifestacoes-impugnacoes/exportar" id="btnExportarManifestacoesExcel" class="btn btn-success btn-sm text-nowrap">
+                    <i class="fa-solid fa-file-excel me-2"></i>Exportar Excel
+                </a>
             </div>
             <div class="card-body">
                 <style>
@@ -64,6 +67,9 @@
 {% endblock %}
 
 {% block scripts %}
+<script>
+    window.DOMAIN = '{{ DOMAIN }}';
+</script>
 <script src="{{ PATH }}/view/assets/js/datatables/datatables-ajax.js"></script>
 <script src="{{ PATH }}/view/assets/js/pages/datatables/manifestacao-impugnacao-datatable.js"></script>
 {% endblock %}

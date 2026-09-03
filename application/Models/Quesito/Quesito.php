@@ -256,11 +256,15 @@ class Quesito extends Model
         $this->read->FullRead($baseQuery . ' ' . $searchWhere, $searchParams);
         $filteredRecords = $this->read->getRowCount();
 
-        // Dados paginados
+        // Dados paginados (length < 0 = todos, ex.: export Excel / "Todos" no DataTable)
         $this->read = new Read();
-        $limitClause = 'LIMIT :limit OFFSET :offset';
-        $finalParams = $searchParams . "&limit={$length}&offset={$start}";
-        $this->read->FullRead($baseQuery . ' ' . $searchWhere . ' ORDER BY ' . $orderBy . ' ' . $limitClause, $finalParams);
+        $query = $baseQuery . ' ' . $searchWhere . ' ORDER BY ' . $orderBy;
+        $finalParams = $searchParams;
+        if ((int) $length >= 0) {
+            $query .= ' LIMIT :limit OFFSET :offset';
+            $finalParams .= "&limit={$length}&offset={$start}";
+        }
+        $this->read->FullRead($query, $finalParams);
 
         return [
             'data'     => $this->read->getResult() ?? [],

@@ -794,6 +794,106 @@ class AgendamentoController extends Controller
     $this->responseJson($response);
   }
 
+  public function exportarExcel($params)
+  {
+    $this->setParams($params);
+    $this->requirePermission('agendamento_ver');
+
+    $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
+    if (!$empresa) {
+      $this->redirectUrl(DOMAIN . '/login');
+      return;
+    }
+
+    $filtros = [];
+    if (!empty($_GET['status'])) {
+      $filtros['status'] = $_GET['status'];
+    }
+    if (!empty($_GET['data_inicio'])) {
+      $filtros['data_inicio'] = $_GET['data_inicio'];
+    }
+    if (!empty($_GET['data_fim'])) {
+      $filtros['data_fim'] = $_GET['data_fim'];
+    }
+    if (!empty($_GET['perito_id'])) {
+      $filtros['perito_id'] = $_GET['perito_id'];
+    }
+
+    $dtParams = [
+      'start' => 0,
+      'length' => -1,
+      'search' => trim((string) ($_GET['search'] ?? '')),
+      'order_column' => 1,
+      'order_dir' => 'DESC',
+    ];
+
+    $model = new Agendamento();
+    $result = $model->getAgendamentosDataTable((int) $empresa, $dtParams, $filtros);
+    $rows = $result['data'] ?? [];
+
+    $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+    $sheet = $spreadsheet->getActiveSheet();
+    $sheet->setTitle('Agendamentos');
+
+    $headers = [
+      'A1' => 'Status',
+      'B1' => 'Data',
+      'C1' => 'Hora',
+      'D1' => 'Tipo',
+      'E1' => 'Reclamada',
+      'F1' => 'Reclamante',
+      'G1' => 'Assistente',
+      'H1' => 'Perito',
+      'I1' => 'Local',
+    ];
+    foreach ($headers as $cell => $label) {
+      $sheet->setCellValue($cell, $label);
+    }
+    $sheet->getStyle('A1:I1')->applyFromArray([
+      'font' => ['bold' => true],
+      'alignment' => [
+        'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+      ],
+    ]);
+
+    $rowNum = 2;
+    foreach ($rows as $a) {
+      $data = !empty($a['data_agendamento'])
+        ? date('d/m/Y', strtotime($a['data_agendamento']))
+        : '';
+      $hora = '';
+      if (!empty($a['hora_agendamento'])) {
+        $hora = date('H:i', strtotime($a['hora_agendamento']));
+      }
+      $assistente = $a['assistente_nome_cadastro']
+        ?? ($a['assistente_nome'] ?? '');
+
+      $sheet->setCellValue('A' . $rowNum, (string) ($a['status'] ?? ''));
+      $sheet->setCellValue('B' . $rowNum, $data);
+      $sheet->setCellValue('C' . $rowNum, $hora);
+      $sheet->setCellValue('D' . $rowNum, (string) ($a['tipo_pericia'] ?? ''));
+      $sheet->setCellValue('E' . $rowNum, (string) ($a['cliente_nome'] ?? ''));
+      $sheet->setCellValue('F' . $rowNum, (string) ($a['reclamante_nome'] ?? ''));
+      $sheet->setCellValue('G' . $rowNum, (string) $assistente);
+      $sheet->setCellValue('H' . $rowNum, (string) ($a['perito_nome'] ?? ''));
+      $sheet->setCellValue('I' . $rowNum, (string) ($a['local_pericia'] ?? ''));
+      $rowNum++;
+    }
+
+    foreach (range('A', 'I') as $col) {
+      $sheet->getColumnDimension($col)->setAutoSize(true);
+    }
+
+    $filename = 'agendamentos_' . date('Y-m-d_His') . '.xlsx';
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    header('Cache-Control: max-age=0');
+
+    $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+    $writer->save('php://output');
+    exit;
+  }
+
   /**
    * Formata célula de Reclamada
    */

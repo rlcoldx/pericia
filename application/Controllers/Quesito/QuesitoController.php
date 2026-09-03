@@ -132,6 +132,108 @@ class QuesitoController extends Controller
         $this->responseJson($response);
     }
 
+    public function exportarExcel($params)
+    {
+        $this->setParams($params);
+        $this->requirePermission('quesito_gerenciar');
+
+        $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
+        if (!$empresa) {
+            $this->redirectUrl(DOMAIN . '/login');
+            return;
+        }
+
+        $filtros = [];
+        if (!empty($_GET['status'])) {
+            $filtros['status'] = $_GET['status'];
+        }
+        if (!empty($_GET['data_inicio'])) {
+            $filtros['data_inicio'] = $_GET['data_inicio'];
+        }
+        if (!empty($_GET['data_fim'])) {
+            $filtros['data_fim'] = $_GET['data_fim'];
+        }
+        if (!empty($_GET['tipo'])) {
+            $filtros['tipo'] = $_GET['tipo'];
+        }
+        if (!empty($_GET['vara'])) {
+            $filtros['vara'] = $_GET['vara'];
+        }
+        if (!empty($_GET['reclamante'])) {
+            $filtros['reclamante'] = $_GET['reclamante'];
+        }
+        if (!empty($_GET['reclamada'])) {
+            $filtros['reclamada'] = $_GET['reclamada'];
+        }
+
+        $dtParams = [
+            'start' => 0,
+            'length' => -1,
+            'search' => trim((string) ($_GET['search'] ?? '')),
+            'order_column' => 0,
+            'order_dir' => 'DESC',
+        ];
+
+        $model = new Quesito();
+        $result = $model->getQuesitosDataTable((int) $empresa, $dtParams, $filtros);
+        $rows = $result['data'] ?? [];
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Quesitos');
+
+        $headers = [
+            'A1' => 'Data',
+            'B1' => 'Tipo',
+            'C1' => 'Trabalho',
+            'D1' => 'Vara',
+            'E1' => 'Reclamante',
+            'F1' => 'Reclamada',
+            'G1' => 'Status',
+            'H1' => 'E-mail Cliente',
+            'I1' => 'E-mail Enviado',
+        ];
+        foreach ($headers as $cell => $label) {
+            $sheet->setCellValue($cell, $label);
+        }
+        $sheet->getStyle('A1:I1')->applyFromArray([
+            'font' => ['bold' => true],
+            'alignment' => [
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+            ],
+        ]);
+
+        $rowNum = 2;
+        foreach ($rows as $q) {
+            $emailEnviado = !empty($q['email_cliente_enviado'])
+                && ((int) $q['email_cliente_enviado'] === 1);
+
+            $sheet->setCellValue('A' . $rowNum, !empty($q['data']) ? date('d/m/Y', strtotime($q['data'])) : '');
+            $sheet->setCellValue('B' . $rowNum, (string) ($q['tipo'] ?? ''));
+            $sheet->setCellValue('C' . $rowNum, (string) (($q['tipo_trabalho'] ?? '') !== '' ? $q['tipo_trabalho'] : '-'));
+            $sheet->setCellValue('D' . $rowNum, (string) ($q['vara'] ?? ''));
+            $sheet->setCellValue('E' . $rowNum, (string) ($q['reclamante_nome'] ?? ''));
+            $sheet->setCellValue('F' . $rowNum, (string) ($q['reclamada_nome'] ?? ''));
+            $sheet->setCellValue('G' . $rowNum, (string) ($q['status'] ?? ''));
+            $sheet->setCellValue('H' . $rowNum, (string) ($q['email_cliente'] ?? ''));
+            $sheet->setCellValue('I' . $rowNum, $emailEnviado ? 'Sim' : 'Não');
+            $rowNum++;
+        }
+
+        foreach (range('A', 'I') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        $filename = 'quesitos_' . date('Y-m-d_His') . '.xlsx';
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('php://output');
+        exit;
+    }
+
     /**
      * Exclui apenas o registro em quesitos (sem cascata em outros módulos).
      */

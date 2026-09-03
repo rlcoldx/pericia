@@ -10,6 +10,7 @@ $router->post("/agendamento/edit/save", "AgendamentoController:editarSalvar");
 $router->post("/agendamento/remover", "AgendamentoController:remover");
 $router->post("/agendamento/alterar-status", "AgendamentoController:alterarStatus");
 $router->get("/agendamento/datatable", "AgendamentoController:datatable");
+$router->get("/agendamento/exportar", "AgendamentoController:exportarExcel");
 $router->get("/agendamento/calendario", "AgendamentoController:calendario");
 $router->get("/agendamento/calendario/eventos", "AgendamentoController:calendarioEventos");
 

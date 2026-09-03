@@ -7,3 +7,4 @@ $router->post("/pareceres/add/save", "ParecerController:salvarCriar");
 $router->get("/pareceres/editar/{id}", "ParecerController:editar");
 $router->post("/pareceres/editar/save", "ParecerController:salvarEditar");
 $router->get("/pareceres/datatable", "ParecerController:datatable");
+$router->get("/pareceres/exportar", "ParecerController:exportarExcel");

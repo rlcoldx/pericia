@@ -62,6 +62,34 @@
         dataTableInstance = new DataTableAjax('datatable-agendamentos', config);
         dataTableInstance.init();
         setupFilterForm();
+        setupExportButton();
+    }
+
+    function setupExportButton() {
+        const btn = document.getElementById('btnExportarAgendamentosExcel');
+        if (!btn) return;
+
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const base = (window.DOMAIN || '').replace(/\/$/, '');
+            const filters = getFiltersFromForm();
+            const params = new URLSearchParams();
+            Object.keys(filters).forEach(function(key) {
+                if (filters[key]) params.append(key, filters[key]);
+            });
+            try {
+                const api = dataTableInstance && dataTableInstance.table
+                    ? dataTableInstance.table
+                    : null;
+                if (api && typeof api.search === 'function') {
+                    const q = api.search();
+                    if (q) params.append('search', q);
+                }
+            } catch (err) {}
+
+            const qs = params.toString();
+            window.location.href = base + '/agendamento/exportar' + (qs ? ('?' + qs) : '');
+        });
     }
 
     function getFiltersFromForm() {

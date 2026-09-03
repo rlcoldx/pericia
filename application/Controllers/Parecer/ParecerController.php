@@ -411,6 +411,101 @@ class ParecerController extends Controller
         $this->responseJson($response);
     }
 
+    public function exportarExcel($params)
+    {
+        $this->setParams($params);
+        $this->requirePermission('parecer_ver');
+
+        $empresa = $_SESSION['pericia_perfil_empresa'] ?? null;
+        if (!$empresa) {
+            $this->redirectUrl(DOMAIN . '/login');
+            return;
+        }
+
+        $filtros = [];
+        if (!empty($_GET['data_inicio'])) {
+            $filtros['data_inicio'] = $_GET['data_inicio'];
+        }
+        if (!empty($_GET['data_fim'])) {
+            $filtros['data_fim'] = $_GET['data_fim'];
+        }
+        if (!empty($_GET['tipo'])) {
+            $filtros['tipo'] = $_GET['tipo'];
+        }
+        if (!empty($_GET['reclamada_id'])) {
+            $filtros['reclamada_id'] = $_GET['reclamada_id'];
+        }
+        if (!empty($_GET['reclamante_id'])) {
+            $filtros['reclamante_id'] = $_GET['reclamante_id'];
+        }
+
+        $dtParams = [
+            'start' => 0,
+            'length' => -1,
+            'search' => trim((string) ($_GET['search'] ?? '')),
+            'order_column' => 1,
+            'order_dir' => 'DESC',
+        ];
+
+        $parecerModel = new Parecer();
+        $result = $parecerModel->getPareceresDataTable((int) $empresa, $dtParams, $filtros);
+        $rows = $result['data'] ?? [];
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Pareceres');
+
+        $headers = [
+            'A1' => 'Status',
+            'B1' => 'Data Realização',
+            'C1' => 'Data Fatal',
+            'D1' => 'Tipo',
+            'E1' => 'Assistente',
+            'F1' => 'Reclamada',
+            'G1' => 'Reclamante',
+        ];
+        foreach ($headers as $cell => $label) {
+            $sheet->setCellValue($cell, $label);
+        }
+        $sheet->getStyle('A1:G1')->applyFromArray([
+            'font' => ['bold' => true],
+            'alignment' => [
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+            ],
+        ]);
+
+        $rowNum = 2;
+        foreach ($rows as $p) {
+            $sheet->setCellValue('A' . $rowNum, (string) ($p['status'] ?? ''));
+            $sheet->setCellValue(
+                'B' . $rowNum,
+                !empty($p['data_realizacao']) ? date('d/m/Y', strtotime($p['data_realizacao'])) : ''
+            );
+            $sheet->setCellValue(
+                'C' . $rowNum,
+                !empty($p['data_fatal']) ? date('d/m/Y', strtotime($p['data_fatal'])) : ''
+            );
+            $sheet->setCellValue('D' . $rowNum, (string) ($p['tipo'] ?? ''));
+            $sheet->setCellValue('E' . $rowNum, (string) ($p['assistente'] ?? ''));
+            $sheet->setCellValue('F' . $rowNum, (string) ($p['reclamada_nome'] ?? ''));
+            $sheet->setCellValue('G' . $rowNum, (string) ($p['reclamante_nome'] ?? ''));
+            $rowNum++;
+        }
+
+        foreach (range('A', 'G') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        $filename = 'pareceres_' . date('Y-m-d_His') . '.xlsx';
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('php://output');
+        exit;
+    }
+
     private function montarInputParecerFromPost(): array
     {
         return [

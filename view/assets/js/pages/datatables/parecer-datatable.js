@@ -11,6 +11,8 @@
         init();
     }
 
+    let dataTableInstance = null;
+
     function renderHtml(data) {
         return data == null ? '' : data;
     }
@@ -56,6 +58,31 @@
             }
         };
 
-        new DataTableAjax('datatable-pareceres', config).init();
+        dataTableInstance = new DataTableAjax('datatable-pareceres', config);
+        dataTableInstance.init();
+        setupExportButton();
+    }
+
+    function setupExportButton() {
+        const btn = document.getElementById('btnExportarPareceresExcel');
+        if (!btn) return;
+
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const base = (window.DOMAIN || '').replace(/\/$/, '');
+            const params = new URLSearchParams();
+            try {
+                const api = dataTableInstance && dataTableInstance.table
+                    ? dataTableInstance.table
+                    : null;
+                if (api && typeof api.search === 'function') {
+                    const q = api.search();
+                    if (q) params.append('search', q);
+                }
+            } catch (err) {}
+
+            const qs = params.toString();
+            window.location.href = base + '/pareceres/exportar' + (qs ? ('?' + qs) : '');
+        });
     }
 })();
